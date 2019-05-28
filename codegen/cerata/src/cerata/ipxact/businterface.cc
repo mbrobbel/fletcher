@@ -11,20 +11,3 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include <gtest/gtest.h>
-
-// Graph layer tests
-#include "./test_expressions.h"
-#include "./test_types.h"
-
-// VHDL backend tests
-#include "./vhdl/test_declarators.h"
-#include "./vhdl/test_instantiators.h"
-#include "./vhdl/test_designs.h"
-
-// DOT backend tests
-#include "./dot/test_graphs.h"
-
-// IPXACT backend tests
-#include "./ipxact/test_ipxact.h"

@@ -12,19 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gtest/gtest.h>
+#pragma once
 
-// Graph layer tests
-#include "./test_expressions.h"
-#include "./test_types.h"
+#include <string.h>
+#include <deque>
+#include "cerata/output.h"
 
-// VHDL backend tests
-#include "./vhdl/test_declarators.h"
-#include "./vhdl/test_instantiators.h"
-#include "./vhdl/test_designs.h"
+namespace cerata::ipxact {
 
-// DOT backend tests
-#include "./dot/test_graphs.h"
+class IPXACTOutputGenerator : public OutputGenerator {
+ public:
+  explicit IPXACTOutputGenerator(
+      std::string root_dir,
+      std::deque<OutputGenerator::OutputSpec> outputs = {})
+      : OutputGenerator(std::move(root_dir), std::move(outputs)) {}
+  void Generate() override;
+  std::string subdir() override { return "ipxact"; }
+};
 
-// IPXACT backend tests
-#include "./ipxact/test_ipxact.h"
+}  // namespace cerata::ipxact

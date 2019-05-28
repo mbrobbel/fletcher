@@ -42,4 +42,6 @@ add_compile_unit(
 
     test/cerata/vhdl/test_declarators.h
     test/cerata/vhdl/test_instantiators.h
+  DEPS
+    tinyxml2
 )
