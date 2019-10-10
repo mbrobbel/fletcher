@@ -24,6 +24,7 @@
 
 #include "fletcher/arrow-utils.h"
 #include "fletcher/logging.h"
+#include "fletcher/meta/meta.h"
 
 namespace fletcher {
 
@@ -57,18 +58,10 @@ std::string GetMeta(const arrow::Field &field, const std::string &key) {
 
 Mode GetMode(const arrow::Schema &schema) {
   Mode mode = Mode::READ;
-  if (GetMeta(schema, "fletcher_mode") == "write") {
+  if (GetMeta(schema, fletcher::meta::MODE) == "write") {
     mode = Mode::WRITE;
   }
   return mode;
-}
-
-bool MustIgnore(const arrow::Field &field) {
-  bool ret = false;
-  if (GetMeta(field, "fletcher_ignore") == "true") {
-    ret = true;
-  }
-  return ret;
 }
 
 int GetIntMeta(const arrow::Field &field, const std::string &key, int default_to) {
@@ -93,9 +86,9 @@ bool GetBoolMeta(const arrow::Field &field, const std::string &key, bool default
   return default_to;
 }
 
-std::shared_ptr<arrow::Schema> AppendMetaRequired(const arrow::Schema &schema,
-                                                  std::string schema_name,
-                                                  Mode mode) {
+std::shared_ptr<arrow::Schema> WithMetaRequired(const arrow::Schema &schema,
+                                                std::string schema_name,
+                                                Mode mode) {
   std::vector<std::string> keys = {"fletcher_name", "fletcher_mode"};
   std::vector<std::string> values = {std::move(schema_name)};
   if (mode == Mode::READ)
@@ -106,20 +99,20 @@ std::shared_ptr<arrow::Schema> AppendMetaRequired(const arrow::Schema &schema,
   return schema.WithMetadata(meta);
 }
 
-std::shared_ptr<arrow::Field> AppendMetaEPC(const arrow::Field &field, int epc) {
+std::shared_ptr<arrow::Field> WithMetaEPC(const arrow::Field &field, int epc) {
   auto meta = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>({"fletcher_epc"}),
                                                         std::vector<std::string>({std::to_string(epc)}));
   return field.WithMetadata(meta);
 }
 
-std::shared_ptr<arrow::Field> AppendMetaIgnore(const arrow::Field &field) {
+std::shared_ptr<arrow::Field> WithMetaIgnore(const arrow::Field &field) {
   std::vector<std::string> ignore_key = {"fletcher_ignore"};
   std::vector<std::string> ignore_value = {"true"};
   auto meta = std::make_shared<arrow::KeyValueMetadata>(ignore_key, ignore_value);
   return field.WithMetadata(meta);
 }
 
-std::shared_ptr<arrow::Field> AppendMetaProfile(const arrow::Field &field) {
+std::shared_ptr<arrow::Field> WithMetaProfile(const arrow::Field &field) {
   std::vector<std::string> profile_key = {"fletcher_profile"};
   std::vector<std::string> profile_value = {"true"};
   auto meta = std::make_shared<arrow::KeyValueMetadata>(profile_key, profile_value);

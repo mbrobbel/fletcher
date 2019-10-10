@@ -93,14 +93,7 @@ int GetIntMeta(const arrow::Field &field, const std::string &key, int default_to
  * @param field   A field
  * @return        The bool the field represents, if it exists. Returns default_to otherwise.
  */
-bool GetBoolMeta(const arrow::Field &field, const std::string &key, bool default_to);
-
-/**
- * @brief Check if a field should be ignored in Fletcher.
- * @param field   The field to check the metadata for.
- * @return        Return true if the value for the "ignore" metadata key is set to "true", else false.
- */
-bool MustIgnore(const arrow::Field &field);
+bool GetBoolMeta(const arrow::Field &field, const std::string &key, bool default_to = false);
 
 /**
  * @brief Append the minimum required metadata for Fletcher to a schema. Returns a copy of the schema.
@@ -110,9 +103,7 @@ bool MustIgnore(const arrow::Field &field);
  *                      the accelerator kernel.
  * @return              A copy of the Schema with metadata appended.
  */
-std::shared_ptr<arrow::Schema> AppendMetaRequired(const arrow::Schema &schema,
-                                                  std::string schema_name,
-                                                  Mode schema_mode);
+std::shared_ptr<arrow::Schema> WithMetaRequired(const arrow::Schema &schema, std::string schema_name, Mode schema_mode);
 
 /**
  * @brief Append Elements-Per-Cycle metadata to a field. Returns a copy of the field.
@@ -123,21 +114,21 @@ std::shared_ptr<arrow::Schema> AppendMetaRequired(const arrow::Schema &schema,
  * @param epc     The elements-per-cycle.
  * @return        A copy of the field with metadata appended.
  */
-std::shared_ptr<arrow::Field> AppendMetaEPC(const arrow::Field &field, int epc);
+std::shared_ptr<arrow::Field> WithMetaEPC(const arrow::Field &field, int epc);
 
 /**
  * @brief Append metadata to a field to signify Fletcher should ignore this field. Returns a copy of the field.
  * @param field   The field to append to.
  * @return        A copy of the field with metadata appended.
  */
-std::shared_ptr<arrow::Field> AppendMetaIgnore(const arrow::Field &field);
+std::shared_ptr<arrow::Field> WithMetaIgnore(const arrow::Field &field);
 
 /**
 * @brief Append metadata to a field to signify Fletcher should profile the streams resulting from this field. Returns a copy.
 * @param field   The field to append to.
 * @return        A copy of the field with metadata appended.
 */
-std::shared_ptr<arrow::Field> AppendMetaProfile(const arrow::Field &field);
+std::shared_ptr<arrow::Field> WithMetaProfile(const arrow::Field &field);
 
 /**
  * Write a schema to a Flatbuffer file

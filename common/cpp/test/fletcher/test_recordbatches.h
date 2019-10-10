@@ -15,12 +15,13 @@
 #pragma once
 
 #include <arrow/api.h>
-#include <cassert>
 #include <string>
 #include <memory>
 #include <vector>
 
 #include "fletcher/test_schemas.h"
+
+#define THROW_NOT_OK(status) if (!status.ok()) throw std::runtime_error(status.ToString())
 
 namespace fletcher {
 
@@ -37,11 +38,11 @@ inline std::shared_ptr<arrow::RecordBatch> GetStringRB() {
   // Make a string builder
   arrow::StringBuilder string_builder;
   // Append the strings in the string builder
-  assert(string_builder.AppendValues(names).ok());
+  THROW_NOT_OK(string_builder.AppendValues(names));
   // Array to hold Arrow formatted string data
   std::shared_ptr<arrow::Array> data_array;
   // Finish building and create a new data array around the data
-  assert(string_builder.Finish(&data_array).ok());
+  THROW_NOT_OK(string_builder.Finish(&data_array));
   // Create the Record Batch
   std::shared_ptr<arrow::RecordBatch>
       record_batch = arrow::RecordBatch::Make(GetStringReadSchema(), names.size(), {data_array});
@@ -52,11 +53,11 @@ inline std::shared_ptr<arrow::RecordBatch> GetIntRB() {
   std::vector<int8_t> numbers = {-1, 3, -3, 7};
   // Make a string builder
   arrow::Int8Builder int_builder;
-  assert(int_builder.AppendValues(numbers).ok());
+  THROW_NOT_OK(int_builder.AppendValues(numbers));
   // Array to hold Arrow formatted string data
   std::shared_ptr<arrow::Array> data_array;
   // Finish building and create a new data array around the data
-  assert(int_builder.Finish(&data_array).ok());
+  THROW_NOT_OK(int_builder.Finish(&data_array));
   // Create the Record Batch
   std::shared_ptr<arrow::RecordBatch>
       record_batch = arrow::RecordBatch::Make(GetPrimReadSchema(), numbers.size(), {data_array});
@@ -70,13 +71,13 @@ inline std::shared_ptr<arrow::RecordBatch> GetListUint8RB() {
   auto lb = std::make_shared<arrow::ListBuilder>(arrow::default_memory_pool(), vb);
 
   for (const auto &number : numbers) {
-    assert(lb->Append().ok());
-    assert(vb->AppendValues(number).ok());
+    THROW_NOT_OK(lb->Append());
+    THROW_NOT_OK(vb->AppendValues(number));
   }
   // Array to hold Arrow formatted string data
   std::shared_ptr<arrow::Array> a;
   // Finish building and create a new data array around the data
-  assert(lb->Finish(&a).ok());
+  THROW_NOT_OK(lb->Finish(&a));
   // Create the Record Batch
   std::shared_ptr<arrow::RecordBatch>
       record_batch = arrow::RecordBatch::Make(GetListUint8Schema(), numbers.size(), {a});
@@ -96,20 +97,20 @@ inline std::shared_ptr<arrow::RecordBatch> GetFloat64RB() {
   const unsigned int list_length = 2;
   for (size_t list_start = 0; list_start < numbers.size(); list_start += list_length) {
     // Append single list
-    assert(list_builder.Append().ok());
+    THROW_NOT_OK(list_builder.Append());
     for (size_t index = list_start; index < list_start + list_length; index++) {
       // Append number to current list
-      assert(float_builder->Append(numbers[index]).ok());
+      THROW_NOT_OK(float_builder->Append(numbers[index]));
     }
   }
   // Array to hold Arrow formatted data
   std::shared_ptr<arrow::Array> data_array;
   // Finish building and create a new data array around the data
-  assert(list_builder.Finish(&data_array).ok());
+  THROW_NOT_OK(list_builder.Finish(&data_array));
   // Create the Record Batch
   auto record_batch = arrow::RecordBatch::Make(GetListFloatSchema(), numbers.size() / list_length, {data_array});
   // Check whether the Record Batch is alright
-  assert(record_batch->Validate().ok());
+  THROW_NOT_OK(record_batch->Validate());
   return record_batch;
 }
 
@@ -125,20 +126,20 @@ inline std::shared_ptr<arrow::RecordBatch> GetInt64RB() {
   const unsigned int list_length = 2;
   for (size_t list_start = 0; list_start < numbers.size(); list_start += list_length) {
     // Append single list
-    assert(list_builder.Append().ok());
+    THROW_NOT_OK(list_builder.Append());
     for (size_t index = list_start; index < list_start + list_length; index++) {
       // Append number to current list
-      assert(int_builder->Append(numbers[index]).ok());
+      THROW_NOT_OK(int_builder->Append(numbers[index]));
     }
   }
   // Array to hold Arrow formatted data
   std::shared_ptr<arrow::Array> data_array;
   // Finish building and create a new data array around the data
-  assert(list_builder.Finish(&data_array).ok());
+  THROW_NOT_OK(list_builder.Finish(&data_array));
   // Create the Record Batch
   auto record_batch = arrow::RecordBatch::Make(GetListIntSchema(), numbers.size() / list_length, {data_array});
   // Check whether the RecordBatch is alright
-  assert(record_batch->Validate().ok());
+  THROW_NOT_OK(record_batch->Validate());
   return record_batch;
 }
 
@@ -156,20 +157,20 @@ inline std::shared_ptr<arrow::RecordBatch> GetInt64ListWideRB() {
   const unsigned int list_length = 8;
   for (size_t list_start = 0; list_start < numbers.size(); list_start += list_length) {
     // Append single list
-    assert(list_builder.Append().ok());
+    THROW_NOT_OK(list_builder.Append());
     for (size_t index = list_start; index < list_start + list_length; index++) {
       // Append number to current list
-      assert(int_builder->Append(numbers[index]).ok());
+      THROW_NOT_OK(int_builder->Append(numbers[index]));
     }
   }
   // Array to hold Arrow formatted data
   std::shared_ptr<arrow::Array> data_array;
   // Finish building and create a new data array around the data
-  assert(list_builder.Finish(&data_array).ok());
+  THROW_NOT_OK(list_builder.Finish(&data_array));
   // Create the Record Batch
   auto record_batch = arrow::RecordBatch::Make(GetListIntSchema(), numbers.size() / list_length, {data_array});
   // Check whether the Record Batch is alright
-  assert(record_batch->Validate().ok());
+  THROW_NOT_OK(record_batch->Validate());
   return record_batch;
 }
 
@@ -178,14 +179,14 @@ inline std::shared_ptr<arrow::RecordBatch> GetStructRB() {
   auto ab = std::make_shared<arrow::UInt16Builder>();
   auto bb = std::make_shared<arrow::UInt32Builder>();
   arrow::StructBuilder sb(schema->field(0)->type(), arrow::default_memory_pool(), {ab, bb});
-  assert(ab->AppendValues({1, 3, 3, 7}).ok());
-  assert(bb->AppendValues({3, 1, 4, 1}).ok());
+  THROW_NOT_OK(ab->AppendValues({1, 3, 3, 7}));
+  THROW_NOT_OK(bb->AppendValues({3, 1, 4, 1}));
   const uint8_t valid_bytes[4] = {1, 1, 1, 1};
-  assert(sb.AppendValues(4, valid_bytes).ok());
+  THROW_NOT_OK(sb.AppendValues(4, valid_bytes));
   std::shared_ptr<arrow::Array> arr;
-  assert(sb.Finish(&arr).ok());
+  THROW_NOT_OK(sb.Finish(&arr));
   auto record_batch = arrow::RecordBatch::Make(schema, 4, {arr});
-  assert(record_batch->Validate().ok());
+  THROW_NOT_OK(record_batch->Validate());
   return record_batch;
 }
 
@@ -199,17 +200,17 @@ inline std::shared_ptr<arrow::RecordBatch> GetFilterRB() {
   arrow::StringBuilder ln_builder;
   arrow::UInt32Builder zip_builder;
   // Append the strings in the string builder
-  assert(fn_builder.AppendValues(first_names).ok());
-  assert(ln_builder.AppendValues(last_names).ok());
-  assert(zip_builder.AppendValues(zip_codes).ok());
+  THROW_NOT_OK(fn_builder.AppendValues(first_names));
+  THROW_NOT_OK(ln_builder.AppendValues(last_names));
+  THROW_NOT_OK(zip_builder.AppendValues(zip_codes));
   // Array to hold Arrow formatted string data
   std::shared_ptr<arrow::Array> fn_array;
   std::shared_ptr<arrow::Array> ln_array;
   std::shared_ptr<arrow::Array> zip_array;
   // Finish building and create a new data arr1ay around the data
-  assert(fn_builder.Finish(&fn_array).ok());
-  assert(ln_builder.Finish(&ln_array).ok());
-  assert(zip_builder.Finish(&zip_array).ok());
+  THROW_NOT_OK(fn_builder.Finish(&fn_array));
+  THROW_NOT_OK(ln_builder.Finish(&ln_array));
+  THROW_NOT_OK(zip_builder.Finish(&zip_array));
   // Create the Record Batch
   auto record_batch =
       arrow::RecordBatch::Make(GetFilterReadSchema(), fn_array->length(), {fn_array, ln_array, zip_array});
@@ -220,19 +221,21 @@ inline std::shared_ptr<arrow::RecordBatch> GetSodaBeerRB(
     const std::shared_ptr<arrow::Schema> &schema,
     const std::vector<std::string> &names,
     const std::vector<uint8_t> &ages) {
-  assert(names.size() == ages.size());
+  if (names.size() != ages.size()) {
+    throw std::runtime_error("Names and ages must be same size.");
+  }
   // Make a string builder
   arrow::StringBuilder name_builder;
   arrow::UInt8Builder age_builder;
   // Append the strings in the string builder
-  assert(name_builder.AppendValues(names).ok());
-  assert(age_builder.AppendValues(ages).ok());
+  THROW_NOT_OK(name_builder.AppendValues(names));
+  THROW_NOT_OK(age_builder.AppendValues(ages));
   // Array to hold Arrow formatted string data
   std::shared_ptr<arrow::Array> name_array;
   std::shared_ptr<arrow::Array> age_array;
   // Finish building and create a new data array around the data
-  assert(name_builder.Finish(&name_array).ok());
-  assert(age_builder.Finish(&age_array).ok());
+  THROW_NOT_OK(name_builder.Finish(&name_array));
+  THROW_NOT_OK(age_builder.Finish(&age_array));
   // Create the Record Batch
   auto record_batch = arrow::RecordBatch::Make(schema, name_array->length(), {name_array, age_array});
   return record_batch;
