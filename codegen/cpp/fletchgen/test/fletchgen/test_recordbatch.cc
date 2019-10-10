@@ -30,10 +30,13 @@
 
 namespace fletchgen {
 
-static void TestRecordBatchReader(const std::shared_ptr<arrow::Schema>& schema) {
+static void TestRecordBatchReader(const std::shared_ptr<arrow::Schema> &schema) {
   cerata::default_component_pool()->Clear();
   auto fs = FletcherSchema::Make(schema);
-  auto rbr = RecordBatch::Make(fs);
+  fletcher::RecordBatchDescription rbd;
+  fletcher::SchemaAnalyzer sa(&rbd);
+  sa.Analyze(*schema);
+  auto rbr = recordbatch("Test_" + fs->name(), fs, rbd);
   auto design = cerata::vhdl::Design(rbr);
   auto code = design.Generate().ToString();
   std::cerr.flush();

@@ -148,7 +148,8 @@ struct FieldPort : public Port {
  */
 struct RecordBatch : public Component {
  public:
-  RecordBatch(const std::shared_ptr<FletcherSchema> &fletcher_schema,
+  RecordBatch(const std::string &name,
+              const std::shared_ptr<FletcherSchema> &fletcher_schema,
               fletcher::RecordBatchDescription batch_desc);
   /// @brief Obtain all ports derived from an Arrow field with a specific function.
   std::deque<std::shared_ptr<FieldPort>> GetFieldPorts(const std::optional<FieldPort::Function> &function = {}) const;
@@ -187,7 +188,8 @@ struct RecordBatch : public Component {
 };
 
 /// @brief Make a new RecordBatch(Reader/Writer) component, based on a Fletcher schema.
-std::shared_ptr<RecordBatch> recordbatch(const std::shared_ptr<FletcherSchema> &fletcher_schema,
+std::shared_ptr<RecordBatch> recordbatch(const std::string &name,
+                                         const std::shared_ptr<FletcherSchema> &fletcher_schema,
                                          const fletcher::RecordBatchDescription &batch_desc);
 
 }  // namespace fletchgen

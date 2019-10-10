@@ -128,7 +128,9 @@ std::string GenerateVhdmmioYaml(std::vector<MmioReg> *regs, std::optional<size_t
     }
     // Set doc, name and other stuff.
     ss << "    name: " << r.name << "\n";
-    ss << "    doc: " << r.desc << "\n";
+    if (!r.desc.empty()) {
+      ss << "    doc: " << r.desc << "\n";
+    }
     if (r.width > 1) {
       ss << "    bitrange: " << r.index + r.width - 1 << ".." << r.index << "\n";
     } else {

@@ -31,9 +31,10 @@ using cerata::Port;
 using cerata::Literal;
 using cerata::intl;
 
-RecordBatch::RecordBatch(const std::shared_ptr<FletcherSchema> &fletcher_schema,
+RecordBatch::RecordBatch(const std::string &name,
+                         const std::shared_ptr<FletcherSchema> &fletcher_schema,
                          fletcher::RecordBatchDescription batch_desc)
-    : Component(fletcher_schema->name()), fletcher_schema_(fletcher_schema), batch_desc_(std::move(batch_desc)) {
+    : Component(name), fletcher_schema_(fletcher_schema), batch_desc_(std::move(batch_desc)) {
   // Get Arrow Schema
   auto as = fletcher_schema_->arrow_schema();
   // Add default port nodes
@@ -48,7 +49,7 @@ void RecordBatch::AddArrays(const std::shared_ptr<FletcherSchema> &fletcher_sche
   // Iterate over all fields and add ArrayReader/Writer data and control ports.
   for (const auto &field : fletcher_schema->arrow_schema()->fields()) {
     // Check if we must ignore the field
-    if (fletcher::MustIgnore(*field)) {
+    if (fletcher::GetBoolMeta(*field, fletcher::meta::IGNORE, false)) {
       FLETCHER_LOG(DEBUG, "Ignoring field " + field->name());
     } else {
       FLETCHER_LOG(DEBUG, "Instantiating Array" << (fletcher_schema->mode() == Mode::READ ? "Reader" : "Writer")
@@ -162,9 +163,10 @@ RecordBatch::GetFieldPorts(const std::optional<FieldPort::Function> &function) c
   return result;
 }
 
-std::shared_ptr<RecordBatch> recordbatch(const std::shared_ptr<FletcherSchema> &fletcher_schema,
+std::shared_ptr<RecordBatch> recordbatch(const std::string &name,
+                                         const std::shared_ptr<FletcherSchema> &fletcher_schema,
                                          const fletcher::RecordBatchDescription &batch_desc) {
-  auto rb = new RecordBatch(fletcher_schema, batch_desc);
+  auto rb = new RecordBatch(name, fletcher_schema, batch_desc);
   auto shared_rb = std::shared_ptr<RecordBatch>(rb);
   cerata::default_component_pool()->Add(shared_rb);
   return shared_rb;
@@ -181,10 +183,13 @@ std::shared_ptr<FieldPort> FieldPort::MakeArrowPort(const std::shared_ptr<Fletch
   } else {
     dir = mode2dir(mode);
   }
+  // Check if the Arrow data stream should be profiled. This is disabled by default but can be conveyed through
+  // the schema.
+  bool profile = fletcher::GetBoolMeta(*field, fletcher::meta::PROFILE, false);
   return std::make_shared<FieldPort>(fletcher_schema->name() + "_" + field->name(),
                                      ARROW, field, fletcher_schema, GetStreamType(*field, mode), dir,
                                      domain,
-                                     fletcher::GetBoolMeta(*field, "fletcher_profile", true));
+                                     profile);
 }
 
 std::shared_ptr<FieldPort> FieldPort::MakeCommandPort(const std::shared_ptr<FletcherSchema> &fletcher_schema,

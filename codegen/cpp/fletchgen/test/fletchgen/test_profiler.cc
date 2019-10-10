@@ -29,11 +29,10 @@ TEST(Profiler, Connect) {
 
   auto stream_type = cerata::Stream::Make("test_stream", cerata::Vector::Make(8), "data");
   auto stream_port = cerata::Port::Make(stream_type);
-  stream_port->meta[PROFILE] = "true";
   auto crp = cerata::Port::Make("bcd", cr());
   auto top = cerata::Component::Make("top", {crp, stream_port});
 
-  EnableStreamProfiling(top.get());
+  EnableStreamProfiling(top.get(), {stream_port.get()});
 
   auto vhdl = cerata::vhdl::Design(top);
   auto top_code = vhdl.Generate().ToString();

@@ -32,6 +32,8 @@
 
 namespace fletchgen {
 
+std::vector<MmioReg> GetRecordBatchRegs(const std::vector<fletcher::RecordBatchDescription> &batch_desc);
+
 /// A structure for all components in a Fletcher design.
 struct Design {
   /// Make a new Design structure based on program options.

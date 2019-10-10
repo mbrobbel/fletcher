@@ -53,12 +53,8 @@ std::shared_ptr<Node> ctrl_width(const arrow::Field &field) {
 }
 
 std::shared_ptr<Node> tag_width(const arrow::Field &field) {
-  auto meta_val = fletcher::GetMeta(field, "tag_width");
-  if (meta_val.empty()) {
-    return intl(1);
-  } else {
-    return Literal::MakeInt(std::stoi(meta_val));
-  }
+  auto meta_val = fletcher::GetIntMeta(field, fletcher::meta::TAG_WIDTH, 1);
+  return intl(meta_val);
 }
 
 std::shared_ptr<Type> cmd(const std::shared_ptr<Node> &tag_width = intl(1),

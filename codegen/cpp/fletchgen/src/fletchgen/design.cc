@@ -37,7 +37,7 @@ using RBVector = std::vector<std::shared_ptr<arrow::RecordBatch>>;
 static std::optional<std::shared_ptr<arrow::RecordBatch>> GetRecordBatchWithName(const RBVector &batches,
                                                                                  const std::string &name) {
   for (const auto &b :  batches) {
-    if (fletcher::GetMeta(*b->schema(), "fletcher_name") == name) {
+    if (fletcher::GetMeta(*b->schema(), fletcher::meta::NAME) == name) {
       return b;
     }
   }
@@ -114,6 +114,7 @@ static std::vector<MmioReg> ParseCustomRegs(const std::vector<std::string> &regs
       }
       // Mark the register as a custom register for the kernel.
       reg.meta["kernel"] = "true";
+      reg.desc = "Custom register " + reg.name;
       result.push_back(reg);
     }
   }
@@ -121,7 +122,7 @@ static std::vector<MmioReg> ParseCustomRegs(const std::vector<std::string> &regs
 }
 
 /// @brief Generate mmio registers from properly ordered RecordBatchDescriptions.
-static std::vector<MmioReg> GetRecordBatchRegs(const std::vector<fletcher::RecordBatchDescription> &batch_desc) {
+std::vector<MmioReg> GetRecordBatchRegs(const std::vector<fletcher::RecordBatchDescription> &batch_desc) {
   std::vector<MmioReg> result;
 
   // Get first and last indices.
@@ -163,7 +164,7 @@ Design::Design(const std::shared_ptr<Options> &opts) {
   for (size_t i = 0; i < batch_desc.size(); i++) {
     auto schema = schema_set->schemas()[i];
     auto rb_desc = batch_desc[i];
-    auto rb = recordbatch(schema, rb_desc);
+    auto rb = recordbatch(opts->kernel_name + "_" + schema->name(), schema, rb_desc);
     recordbatches.push_back(rb);
   }
 

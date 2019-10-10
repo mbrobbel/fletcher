@@ -20,17 +20,15 @@
 #include <deque>
 #include <memory>
 #include <vector>
+#include <unordered_map>
 
 #include "fletchgen/basic_types.h"
 #include "fletchgen/nucleus.h"
 
 namespace fletchgen {
 
-/// @brief Key for the kv-metadata annotation of stream nodes.
-constexpr char PROFILE[] = "fletchgen_profile";
-
 /// @brief Obtain the registers that should be reserved in the mmio component for profiling.
-std::vector<MmioReg> GetProfilingRegs(const std::vector<std::shared_ptr<RecordBatch>>& recordbatches);
+std::vector<MmioReg> GetProfilingRegs(const std::vector<std::shared_ptr<RecordBatch>> &recordbatches);
 
 /// @brief Returns a stream probe type.
 std::shared_ptr<cerata::Type> stream_probe();
@@ -47,9 +45,11 @@ std::unique_ptr<cerata::Instance> ProfilerInstance(const std::string &name,
  *
  * Currently doesn't make a deep copy, so it modifies the existing structure irreversibly.
  *
- * @param top The top-level component to apply this to.
- * @return    A transformed graph.
+ * @param top           The top-level component to apply this to.
+ * @param profile_nodes The nodes that should be profiled.
+ * @return              A mapping from each input node to the instantiated port nodes of the profilers.
  */
-cerata::Component *EnableStreamProfiling(cerata::Component *top);
+std::unordered_map<Node *, std::vector<Port *>> EnableStreamProfiling(cerata::Component *comp,
+                                                                      const std::vector<Node *> &profile_nodes);
 
 }  // namespace fletchgen

@@ -104,8 +104,8 @@ Nucleus::Nucleus(const std::string &name,
   // for later on.
   std::vector<Instance *> accms;
   // Get all the buffer ports from the mmio instance.
-  std::vector<MmioPort*> mmio_buffer_ports;
-  for (const auto& p : mmio_inst->GetAll<MmioPort>()) {
+  std::vector<MmioPort *> mmio_buffer_ports;
+  for (const auto &p : mmio_inst->GetAll<MmioPort>()) {
     if (p->reg.function == MmioReg::Function::BUFFER) {
       mmio_buffer_ports.push_back(p);
     }
@@ -174,6 +174,8 @@ Nucleus::Nucleus(const std::string &name,
       // We can look this up in the RecordBatchDescription.
       auto field_bufs = r->batch_desc().fields[field_idx].buffers;
       for (size_t b = 0; b < field_bufs.size(); b++) {
+        // TODO(johanpel): it is here somewhat blatantly assumed mmio_buffer_ports follows ordering, etc.. properly.
+        //  Perhaps it would be nicer if this was somewhat better synchronized.
         Connect(accm_ctrl->Append(), mmio_buffer_ports[buf_idx]);
         buf_idx++;
       }
@@ -196,6 +198,46 @@ Nucleus::Nucleus(const std::string &name,
       }
     }
   }
+
+  // Gather all Field-derived ports that require profiling on this Nucleus.
+  // Insert a signal in between, and then mark that signal for profiling.
+  std::vector<Node *> profile_nodes;
+  for (const auto &p : GetFieldPorts(FieldPort::Function::ARROW)) {
+    if (p->profile_) {
+      // At this point, these ports should only have one edge straight into the kernel.
+      if (p->edges().size() != 1) {
+        FLETCHER_LOG(ERROR, "Nucleus port has other than exactly one edge.")
+      }
+      // Insert a signal node in between that we can attach the profiler probe onto.
+      auto s = cerata::insert(p->edges()[0], "Prof", this);
+      profile_nodes.push_back(dynamic_cast<Node *>(s.get()));
+    }
+  }
+
+  // Attach stream profilers to the ports that need to be profiled.
+  auto profile_results = EnableStreamProfiling(this, profile_nodes);
+
+  // TODO(johanpel): in the following code it is assumed ordering between profile nodes, streams and mmio ports is
+  //  unchanged as well. This assumption might be a bit wild if things get added in the future, so it would be nice
+  //  to figure out a better way to keep this synchronized.
+
+  // Gather all mmio profile result ports
+  std::vector<MmioPort*> mmio_profile_ports;
+  for (auto &p : mmio_inst->GetAll<MmioPort>()) {
+    if (p->reg.function == MmioReg::Function::PROFILE) {
+      mmio_profile_ports.push_back(p);
+    }
+  }
+
+  // Loop over all profiled nodes.
+  size_t idx = 0;
+  for (const auto& pair : profile_results) {
+    for (const auto& profile_result : pair.second) {
+      Connect(mmio_profile_ports[idx], profile_result);
+      idx++;
+    }
+  }
+
 }
 
 std::shared_ptr<Nucleus> nucleus(const std::string &name,

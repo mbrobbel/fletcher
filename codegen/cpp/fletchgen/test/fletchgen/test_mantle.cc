@@ -18,6 +18,8 @@
 #include <deque>
 #include <memory>
 #include <vector>
+
+#include "fletchgen/design.h"
 #include "fletchgen/mantle.h"
 #include "fletchgen/test_utils.h"
 #include "fletcher/arrow-utils.h"
@@ -26,19 +28,20 @@
 
 namespace fletchgen {
 
-static void TestReadMantle(const std::shared_ptr<arrow::Schema>& schema) {
+static void TestReadMantle(const std::shared_ptr<arrow::Schema> &schema) {
   cerata::default_component_pool()->Clear();
-  auto set = SchemaSet::Make("test");
-  set->AppendSchema(schema);
-
+  auto fs = std::make_shared<FletcherSchema>(schema, "TestSchema");
   fletcher::RecordBatchDescription rbd;
   fletcher::SchemaAnalyzer sa(&rbd);
   sa.Analyze(*schema);
   std::vector<fletcher::RecordBatchDescription> rbds = {rbd};
-
-  auto mantle = Mantle::Make(*set, rbds);
-  auto design = cerata::vhdl::Design(mantle);
-
+  auto regs = GetRecordBatchRegs(rbds);
+  auto r = recordbatch("Test_" + rbd.name, fs, rbd);
+  auto m = mmio({rbd}, regs);
+  auto k = kernel("Test_Kernel", {r}, m);
+  auto n = nucleus("Test_Nucleus", {r}, k, m);
+  auto man = mantle("Test_Mantle", {r}, n);
+  auto design = cerata::vhdl::Design(man);
   auto code = design.Generate().ToString();
   std::cerr.flush();
   std::cout << code << std::endl;
@@ -52,6 +55,5 @@ TEST(Mantle, StringRead) {
 TEST(Mantle, NullablePrim) {
   TestReadMantle(fletcher::GetNullablePrimReadSchema());
 }
-
 
 }  // namespace fletchgen
