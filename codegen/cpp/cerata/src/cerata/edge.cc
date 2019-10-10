@@ -201,7 +201,7 @@ std::shared_ptr<Signal> insert(Edge *edge, const std::string &name_prefix, std::
 
   // Get the destination type
   auto type = src->type();
-  auto name = name_prefix + src->name();
+  auto name = name_prefix + "_" + src->name();
   // Create the signal and take shared ownership of the type
   auto signal = Signal::Make(name, type->shared_from_this(), domain);
 
@@ -219,6 +219,19 @@ std::shared_ptr<Signal> insert(Edge *edge, const std::string &name_prefix, std::
   dst <<= signal;
   // Return the new signal
   return signal;
+}
+
+std::shared_ptr<Signal> extend(Port *port, const std::string &name_prefix, std::optional<Graph *> new_owner) {
+  auto sig = Signal::Make(name_prefix + "_" + port->name(), port->type()->shared_from_this(), port->domain());
+  if (port->IsInput()) {
+    Connect(sig.get(), port);
+  } else {
+    Connect(port, sig.get());
+  }
+  if (new_owner) {
+    (*new_owner)->Add(sig);
+  }
+  return sig;
 }
 
 std::optional<Node *> Edge::GetOtherNode(const Node &node) const {

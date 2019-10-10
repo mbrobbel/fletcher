@@ -41,6 +41,7 @@ TEST(VHDL_INST, ArrayTypeMapper) {
             "library ieee;\n"
             "use ieee.std_logic_1164.all;\n"
             "use ieee.numeric_std.all;\n"
+            "\n"
             "entity top is\n"
             "  port (\n"
             "    B_r : out std_logic_vector(1 downto 0);\n"
@@ -49,6 +50,7 @@ TEST(VHDL_INST, ArrayTypeMapper) {
             "    C_s : out std_logic_vector(1 downto 0)\n"
             "  );\n"
             "end entity;\n"
+            "\n"
             "architecture Implementation of top is\n"
             "  component X is\n"
             "    generic (\n"
@@ -58,6 +60,7 @@ TEST(VHDL_INST, ArrayTypeMapper) {
             "      A_q : out std_logic_vector(ARRAY_SIZE*4-1 downto 0)\n"
             "    );\n"
             "  end component;\n"
+            "\n"
             "begin\n"
             "  X_inst : X\n"
             "    generic map (\n"
@@ -69,6 +72,7 @@ TEST(VHDL_INST, ArrayTypeMapper) {
             "      A_q(5 downto 4) => C_r,\n"
             "      A_q(7 downto 6) => C_s\n"
             "    );\n"
+            "\n"
             "end architecture;\n");
 }
 

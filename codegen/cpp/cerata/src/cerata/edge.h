@@ -80,6 +80,11 @@ std::shared_ptr<Signal> insert(Edge *edge,
                                const std::string &name_prefix = "int_",
                                std::optional<Graph *> new_owner = std::nullopt);
 
+/// @brief Create a signal node based on a port, and create an edge in between.
+std::shared_ptr<Signal> extend(Port *port,
+                               const std::string &name_prefix = "int_",
+                               std::optional<Graph *> new_owner = std::nullopt);
+
 /// @brief Obtain all edges in a graph.
 std::deque<Edge *> GetAllEdges(const Graph &graph);
 

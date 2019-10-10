@@ -25,6 +25,8 @@ namespace cerata::vhdl {
 struct Arch {
   /// @brief Generate the VHDL architecture of a component.
   static MultiBlock Generate(const Component &comp);
+  /// @brief Generate the VHDL signal assignments inside a component.
+  static Block Generate(const Signal& sig, int indent);
 };
 
 }  // namespace cerata::vhdl

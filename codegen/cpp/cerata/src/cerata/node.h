@@ -121,9 +121,9 @@ struct MultiOutputNode : public Node {
                                                                                         id,
                                                                                         std::move(type)) {}
 
-  /// @brief Return the incoming edges (in this case just the single input edge).
+  /// @brief Return the incoming edges (in this case just the single input edge) that sources this Node.
   std::deque<Edge *> sources() const override { return {}; }
-  /// @brief The outgoing Edges that have sinks to this Node.
+  /// @brief The outgoing Edges that this Node sinks.
   std::deque<Edge *> sinks() const override { return ToRawPointers(outputs_); }
 
   /// @brief Add an output edge to this node.

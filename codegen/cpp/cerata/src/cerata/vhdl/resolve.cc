@@ -33,9 +33,9 @@ static void InsertSignal(Component *comp, Edge *edge, std::deque<Object *> *reso
   CERATA_LOG(DEBUG, "VHDL:   Resolving " + edge->src()->ToString() + " --> " + edge->dst()->ToString());
   std::string prefix;
   if (edge->src()->parent()) {
-    prefix = edge->src()->parent().value()->name() + "_";
+    prefix = edge->src()->parent().value()->name();
   } else if (edge->dst()->parent()) {
-    prefix = edge->dst()->parent().value()->name() + "_";
+    prefix = edge->dst()->parent().value()->name();
   }
   // Remember we've touched these nodes already
   resolved->push_back(edge->src());

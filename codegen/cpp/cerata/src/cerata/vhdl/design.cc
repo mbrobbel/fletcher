@@ -42,10 +42,12 @@ MultiBlock Design::Generate() {
   Block h;
   if (!notice_.empty()) {
     h << notice_;
+    h << Line();
   }
 
   if (!libs_.empty()) {
     h << Line(libs_);
+    h << Line();
     ret << h;
   }
 
@@ -80,6 +82,7 @@ MultiBlock Design::Generate() {
       // TODO(johanpel): consider also allowing non-all.
       incl << Line("use " + kv.first + "." + pkg + ".all;");
     }
+    incl << Line();
   }
 
   ret << incl;
@@ -90,6 +93,7 @@ MultiBlock Design::Generate() {
   auto arch = Arch::Generate(*component_);
 
   ret << decl;
+  ret << Line();
   ret << arch;
 
   return ret;
