@@ -57,6 +57,14 @@ architecture Behavorial of SimTop_tc is
       bcd_reset                 : in  std_logic;
       kcd_clk                   : in  std_logic;
       kcd_reset                 : in  std_logic;
+      rd_mst_rreq_valid          : out std_logic;
+      rd_mst_rreq_ready          : in  std_logic;
+      rd_mst_rreq_addr           : out std_logic_vector(BUS_ADDR_WIDTH-1 downto 0);
+      rd_mst_rreq_len            : out std_logic_vector(BUS_LEN_WIDTH-1 downto 0);
+      rd_mst_rdat_valid          : in  std_logic;
+      rd_mst_rdat_ready          : out std_logic;
+      rd_mst_rdat_data           : in  std_logic_vector(BUS_DATA_WIDTH-1 downto 0);
+      rd_mst_rdat_last           : in  std_logic;
 
       wr_mst_wreq_valid          : out std_logic;
       wr_mst_wreq_ready          : in std_logic;
@@ -304,19 +312,19 @@ begin
     mmio_write(REG_CONTROL, CONTROL_CLEAR, mmio_source, mmio_sink, bcd_clk, bcd_reset);
 
     -- 2. Write addresses of the arrow buffers in the SREC file.
-    mmio_write(4, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- First idx
-    mmio_write(5, X"00000010", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- Last idx
-    
-    mmio_write(6, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- Offset buf lo
-    mmio_write(7, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- Offset buf hi
-    mmio_write(8, X"00001000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- Values buf lo
-    mmio_write(9, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- Values buf hi
+    mmio_write(8, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- PrimRead number_values
+    mmio_write(9, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset);
+    mmio_write(10, X"00001000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- PrimWrite number_values
+    mmio_write(11, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset);
 
     -- 3. Write recordbatch bounds.
+    mmio_write(4, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- PrimRead first index
+    mmio_write(5, X"00000004", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- PrimRead last index
+    mmio_write(6, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- PrimWrite first index
+    mmio_write(7, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- PrimWrite last index
 
     -- 4. Write any kernel-specific registers.
-    mmio_write(10, X"00000010", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- Str len min
-    mmio_write(11, X"FFFFFFFF", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- UTF8 PRNG mask
+    mmio_write(12, X"00000001", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- Number to add
 
     -- 5. Start the user core.
     mmio_write(REG_CONTROL, CONTROL_START, mmio_source, mmio_sink, bcd_clk, bcd_reset);
@@ -342,6 +350,9 @@ begin
     println("Return register 0: " & slvToHex(read_data));
     mmio_read(REG_RETURN1, read_data, mmio_source, mmio_sink, bcd_clk, bcd_reset);
     println("Return register 1: " & slvToHex(read_data));
+    
+    mmio_read(13, read_data, mmio_source, mmio_sink, bcd_clk, bcd_reset);
+    println("Sum: " & slvToDec(read_data));
 
     -- 8. Finish and stop simulation.
     report "Stimuli done.";
@@ -375,6 +386,29 @@ begin
     wait;
   end process;
 
+  rmem_inst: BusReadSlaveMock
+  generic map (
+    BUS_ADDR_WIDTH              => BUS_ADDR_WIDTH,
+    BUS_LEN_WIDTH               => BUS_LEN_WIDTH,
+    BUS_DATA_WIDTH              => BUS_DATA_WIDTH,
+    SEED                        => 1337,
+    RANDOM_REQUEST_TIMING       => false,
+    RANDOM_RESPONSE_TIMING      => false,
+    SREC_FILE                   => "../memory.srec"
+  )
+  port map (
+    clk                         => bcd_clk,
+    reset                       => bcd_reset,
+    rreq_valid                  => bus_rreq_valid,
+    rreq_ready                  => bus_rreq_ready,
+    rreq_addr                   => bus_rreq_addr,
+    rreq_len                    => bus_rreq_len,
+    rdat_valid                  => bus_rdat_valid,
+    rdat_ready                  => bus_rdat_ready,
+    rdat_data                   => bus_rdat_data,
+    rdat_last                   => bus_rdat_last
+  );
+
 
   wmem_inst: BusWriteSlaveMock
   generic map (
@@ -385,7 +419,7 @@ begin
     SEED                        => 1337,
     RANDOM_REQUEST_TIMING       => false,
     RANDOM_RESPONSE_TIMING      => false,
-    SREC_FILE                   => "memory.srec"
+    SREC_FILE                   => ""
   )
   port map (
     clk                         => bcd_clk,
@@ -414,6 +448,14 @@ begin
       kcd_reset                 => kcd_reset,
       bcd_clk                   => bcd_clk,
       bcd_reset                 => bcd_reset,
+      rd_mst_rreq_valid          => bus_rreq_valid,
+      rd_mst_rreq_ready          => bus_rreq_ready,
+      rd_mst_rreq_addr           => bus_rreq_addr,
+      rd_mst_rreq_len            => bus_rreq_len,
+      rd_mst_rdat_valid          => bus_rdat_valid,
+      rd_mst_rdat_ready          => bus_rdat_ready,
+      rd_mst_rdat_data           => bus_rdat_data,
+      rd_mst_rdat_last           => bus_rdat_last,
 
       wr_mst_wreq_valid          => bus_wreq_valid,
       wr_mst_wreq_ready          => bus_wreq_ready,
