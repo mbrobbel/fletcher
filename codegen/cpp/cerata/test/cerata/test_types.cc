@@ -22,19 +22,19 @@ namespace cerata {
 
 TEST(Types, Flatten) {
   auto a = bit();
-  auto b = Vector::Make<8>();
-  auto c = Stream::Make(b);
+  auto b = vector<8>();
+  auto c = stream(b);
 
-  auto d = Record::Make("inner", {
-      RecField::Make("a", a),
-      RecField::Make("b", b),
-      RecField::Make("c", c)});
+  auto d = record("inner", {
+      field("a", a),
+      field("b", b),
+      field("c", c)});
 
-  auto e = Stream::Make(c);
+  auto e = stream(c);
 
-  auto f = Record::Make("outer", {
-      RecField::Make("d", d),
-      RecField::Make("e", e)});
+  auto f = record("outer", {
+      field("d", d),
+      field("e", e)});
 
   auto flat = Flatten(f.get());
 
@@ -61,17 +61,17 @@ TEST(Types, Flatten) {
 
 TEST(Types, TypeMapper) {
   auto a = bit();
-  auto b = Vector::Make<8>();
-  auto c = Record::Make("rec_K", {RecField::Make("a", a),
-                                  RecField::Make("b", b)});
-  auto d = Stream::Make(c);
+  auto b = vector<8>();
+  auto c = record("rec_K", {field("a", a),
+                                  field("b", b)});
+  auto d = stream(c);
 
   auto q = bit();
-  auto r = Vector::Make<8>();
-  auto s = Record::Make("rec_L", {RecField::Make("q", q),
-                                  RecField::Make("r0", r),
-                                  RecField::Make("r1", Stream::Make(r))});
-  auto t = Stream::Make(s);
+  auto r = vector<8>();
+  auto s = record("rec_L", {field("q", q),
+                                  field("r0", r),
+                                  field("r1", stream(r))});
+  auto t = stream(s);
 
   TypeMapper conv(t.get(), d.get());
 

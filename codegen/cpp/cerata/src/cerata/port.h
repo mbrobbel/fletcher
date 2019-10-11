@@ -57,19 +57,20 @@ class Term {
 struct Port : public NormalNode, public Synchronous, public Term {
   /// @brief Construct a new port.
   Port(std::string name, std::shared_ptr<Type> type, Term::Dir dir, std::shared_ptr<ClockDomain> domain);
-  /// @brief Make a new port with some name, type and direction.
-  static std::shared_ptr<Port> Make(const std::string &name,
-                                    const std::shared_ptr<Type> &type,
-                                    Term::Dir dir = Term::IN,
-                                    const std::shared_ptr<ClockDomain> &domain = default_domain());
-  /// @brief Make a new port. The name will be derived from the name of the type.
-  static std::shared_ptr<Port> Make(const std::shared_ptr<Type> &type,
-                                    Term::Dir dir = Term::IN,
-                                    const std::shared_ptr<ClockDomain> &domain = default_domain());
   /// @brief Deep-copy the port.
   std::shared_ptr<Object> Copy() const override;
   /// @brief Invert the direction of this port.
   Port &InvertDirection();
 };
+
+/// @brief Make a new port with some name, type and direction.
+std::shared_ptr<Port> port(const std::string &name,
+                           const std::shared_ptr<Type> &type,
+                           Term::Dir dir = Term::IN,
+                           const std::shared_ptr<ClockDomain> &domain = default_domain());
+/// @brief Make a new port. The name will be derived from the name of the type.
+std::shared_ptr<Port> port(const std::shared_ptr<Type> &type,
+                           Term::Dir dir = Term::IN,
+                           const std::shared_ptr<ClockDomain> &domain = default_domain());
 
 }  // namespace cerata

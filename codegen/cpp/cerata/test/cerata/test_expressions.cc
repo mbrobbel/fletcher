@@ -49,9 +49,9 @@ TEST(Expressions, OpIntLiterals) {
 
 TEST(Expressions, Minimize) {
   auto a = strl("a");
-  auto b = Parameter::Make("b", string());
+  auto b = parameter("b", string());
   auto c = strl("c");
-  auto d = Parameter::Make("d", string());
+  auto d = parameter("d", string());
   auto e = intl(10);
 
   std::shared_ptr<Node> f = intl(10) + intl(10);

@@ -192,16 +192,17 @@ class Signal : public NormalNode, public Synchronous {
  public:
   /// @brief Signal constructor.
   Signal(std::string name, std::shared_ptr<Type> type, std::shared_ptr<ClockDomain> domain = default_domain());
-  /// @brief Create a new Signal and return a smart pointer to it.
-  static std::shared_ptr<Signal> Make(const std::string& name,
-                                      const std::shared_ptr<Type> &type,
-                                      const std::shared_ptr<ClockDomain>& domain = default_domain());
-  /// @brief Create a new Signal and return a smart pointer to it. The Signal name is derived from the Type name.
-  static std::shared_ptr<Signal> Make(const std::shared_ptr<Type> &type,
-                                      const std::shared_ptr<ClockDomain>& domain = default_domain());
   /// @brief Create a copy of this Signal.
   std::shared_ptr<Object> Copy() const override;
 };
+
+/// @brief Create a new Signal and return a smart pointer to it.
+std::shared_ptr<Signal> signal(const std::string &name,
+                               const std::shared_ptr<Type> &type,
+                               const std::shared_ptr<ClockDomain> &domain = default_domain());
+/// @brief Create a new Signal and return a smart pointer to it. The Signal name is derived from the Type name.
+std::shared_ptr<Signal> signal(const std::shared_ptr<Type> &type,
+                               const std::shared_ptr<ClockDomain> &domain = default_domain());
 
 /**
  * @brief A Parameter node.
@@ -210,25 +211,23 @@ class Signal : public NormalNode, public Synchronous {
  */
 class Parameter : public NormalNode {
  public:
-  /// @brief Get a smart pointer to a new Parameter, optionally owning a default value Literal.
-  static std::shared_ptr<Parameter> Make(const std::string &name,
-                                         const std::shared_ptr<Type> &type,
-                                         const std::optional<std::shared_ptr<Literal>> &default_value = {});
-
-  /// @brief Create a copy of this Parameter.
-  std::shared_ptr<Object> Copy() const override;
-
-  /// @brief Short hand to get value node.
-  std::optional<Node *> GetValue() const;
- protected:
   /// @brief Construct a new Parameter, optionally defining a default value Literal.
   Parameter(std::string name,
             const std::shared_ptr<Type> &type,
             std::optional<std::shared_ptr<Literal>> default_value = {});
-
+  /// @brief Create a copy of this Parameter.
+  std::shared_ptr<Object> Copy() const override;
+  /// @brief Short hand to get value node.
+  std::optional<Node *> GetValue() const;
+ protected:
   /// @brief An optional default value.
   std::optional<std::shared_ptr<Literal>> default_value_;
 };
+
+/// @brief Get a smart pointer to a new Parameter, optionally owning a default value Literal.
+std::shared_ptr<Parameter> parameter(const std::string &name,
+                                     const std::shared_ptr<Type> &type,
+                                     const std::optional<std::shared_ptr<Literal>> &default_value = {});
 
 /// @brief Convert a Node ID to a human-readable string.
 std::string ToString(Node::NodeID id);

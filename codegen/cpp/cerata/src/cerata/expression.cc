@@ -79,7 +79,7 @@ std::shared_ptr<const Node> Expression::EliminateZeroOne(const Expression *exp) 
 std::shared_ptr<const Node> Expression::Minimize(const Node *node) {
   std::shared_ptr<const Node> result = node->shared_from_this();
 
-  // If this node is an expression, we need to mimize its lhs and rhs first.
+  // If this node is an expression, we need to minimize its lhs and rhs first.
   if (node->IsExpression()) {
     auto expr = std::dynamic_pointer_cast<const Expression>(result);
     // Attempt to minimize children.

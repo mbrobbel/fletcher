@@ -154,12 +154,12 @@ std::string ToString(Node::NodeID id) {
 }
 
 std::shared_ptr<Object> Parameter::Copy() const {
-  return Make(name(), type()->shared_from_this(), default_value_);
+  return parameter(name(), type()->shared_from_this(), default_value_);
 }
 
-std::shared_ptr<Parameter> Parameter::Make(const std::string &name,
-                                           const std::shared_ptr<Type> &type,
-                                           const std::optional<std::shared_ptr<Literal>> &default_value) {
+std::shared_ptr<Parameter> parameter(const std::string &name,
+                                     const std::shared_ptr<Type> &type,
+                                     const std::optional<std::shared_ptr<Literal>> &default_value) {
   auto p = new Parameter(name, type, default_value);
   return std::shared_ptr<Parameter>(p);
 }
@@ -181,21 +181,21 @@ std::optional<Node *> Parameter::GetValue() const {
 Signal::Signal(std::string name, std::shared_ptr<Type> type, std::shared_ptr<ClockDomain> domain)
     : NormalNode(std::move(name), Node::NodeID::SIGNAL, std::move(type)), Synchronous(std::move(domain)) {}
 
-std::shared_ptr<Signal> Signal::Make(const std::string& name,
-                                     const std::shared_ptr<Type> &type,
-                                     const std::shared_ptr<ClockDomain>& domain) {
+std::shared_ptr<Object> Signal::Copy() const {
+  auto ret = std::make_shared<Signal>(this->name(), this->type_, this->domain_);
+  return ret;
+}
+
+std::shared_ptr<Signal> signal(const std::string &name,
+                               const std::shared_ptr<Type> &type,
+                               const std::shared_ptr<ClockDomain> &domain) {
   auto ret = std::make_shared<Signal>(name, type, domain);
   return ret;
 }
 
-std::shared_ptr<Signal> Signal::Make(const std::shared_ptr<Type> &type,
-                                     const std::shared_ptr<ClockDomain>& domain) {
+std::shared_ptr<Signal> signal(const std::shared_ptr<Type> &type,
+                               const std::shared_ptr<ClockDomain> &domain) {
   auto ret = std::make_shared<Signal>(type->name() + "_signal", type, domain);
-  return ret;
-}
-
-std::shared_ptr<Object> Signal::Copy() const {
-  auto ret = std::make_shared<Signal>(this->name(), this->type_, this->domain_);
   return ret;
 }
 

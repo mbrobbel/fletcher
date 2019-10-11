@@ -179,7 +179,7 @@ bool Type::IsEqual(const Type &other) const {
   return other.id() == id_;
 }
 
-Vector::Vector(std::string name, std::shared_ptr<Type> element_type, const std::optional<std::shared_ptr<Node>> &width)
+Vector::Vector(std::string name, std::shared_ptr<Type> element_type, const OptionalNode &width)
     : Type(std::move(name), Type::VECTOR), element_type_(std::move(element_type)) {
   // Check if width is parameter or literal node
   if (width) {
@@ -190,22 +190,21 @@ Vector::Vector(std::string name, std::shared_ptr<Type> element_type, const std::
   width_ = width;
 }
 
-std::shared_ptr<Type> Vector::Make(const std::string& name,
-                                   const std::shared_ptr<Type>& element_type,
-                                   const std::optional<std::shared_ptr<Node>>& width) {
+std::shared_ptr<Type> vector(const std::string &name,
+                             const std::shared_ptr<Type> &element_type, const OptionalNode &width) {
   return std::make_shared<Vector>(name, element_type, width);
 }
 
-std::shared_ptr<Type> Vector::Make(const std::string& name, const std::optional<std::shared_ptr<Node>>& width) {
+std::shared_ptr<Type> vector(const std::string &name, const OptionalNode &width) {
   return std::make_shared<Vector>(name, bit(), width);
 }
 
-std::shared_ptr<Type> Vector::Make(unsigned int width) {
-  return Make("vec_" + std::to_string(width), intl(static_cast<int>(width)));
+std::shared_ptr<Type> vector(unsigned int width) {
+  return vector("vec_" + std::to_string(width), intl(static_cast<int>(width)));
 }
 
-std::shared_ptr<Type> Vector::Make(std::string name, unsigned int width) {
-  auto ret = Make(width);
+std::shared_ptr<Type> vector(std::string name, unsigned int width) {
+  auto ret = vector(width);
   ret->SetName(std::move(name));
   return ret;
 }
@@ -230,9 +229,9 @@ bool Vector::IsEqual(const Type &other) const {
   return false;
 }
 
-std::deque<Node *> Vector::GetParameters() const {
+std::vector<Node *> Vector::GetParameters() const {
   if (width_) {
-    return std::deque({width_.value().get()});
+    return std::vector({width_.value().get()});
   } else {
     return {};
   }
@@ -243,18 +242,18 @@ Type &Vector::SetWidth(std::shared_ptr<Node> width) {
   return *this;
 }
 
-std::shared_ptr<Stream> Stream::Make(const std::string& name, const std::shared_ptr<Type>& element_type, int epc) {
+std::shared_ptr<Stream> stream(const std::string &name, const std::shared_ptr<Type> &element_type, int epc) {
   return std::make_shared<Stream>(name, element_type, "", epc);
 }
 
-std::shared_ptr<Stream> Stream::Make(const std::string& name,
-                                     const std::shared_ptr<Type>& element_type,
-                                     const std::string& element_name,
-                                     int epc) {
+std::shared_ptr<Stream> stream(const std::string &name,
+                               const std::shared_ptr<Type> &element_type,
+                               const std::string &element_name,
+                               int epc) {
   return std::make_shared<Stream>(name, element_type, element_name, epc);
 }
 
-std::shared_ptr<Stream> Stream::Make(const std::shared_ptr<Type>& element_type, int epc) {
+std::shared_ptr<Stream> stream(const std::shared_ptr<Type> &element_type, int epc) {
   return std::make_shared<Stream>("stream-" + element_type->name(), element_type, "", epc);
 }
 
@@ -268,18 +267,18 @@ Stream::Stream(const std::string &type_name, std::shared_ptr<Type> element_type,
   }
 }
 
-std::shared_ptr<Type> bit() {
-  static std::shared_ptr<Type> result = std::make_shared<Bit>("bit");
+std::shared_ptr<Type> bit(const std::string &name) {
+  std::shared_ptr<Type> result = std::make_shared<Bit>(name);
   return result;
 }
 
 std::shared_ptr<Type> nul() {
-  static std::shared_ptr<Type> result = std::make_shared<Nul>("nul");
+  static std::shared_ptr<Type> result = std::make_shared<Nul>("null");
   return result;
 }
 
-std::shared_ptr<Type> string() {
-  static std::shared_ptr<Type> result = std::make_shared<String>("string");
+std::shared_ptr<Type> boolean() {
+  static std::shared_ptr<Type> result = std::make_shared<Boolean>("boolean");
   return result;
 }
 
@@ -293,62 +292,32 @@ std::shared_ptr<Type> natural() {
   return result;
 }
 
-std::shared_ptr<Type> boolean() {
-  static std::shared_ptr<Type> result = std::make_shared<Boolean>("boolean");
+std::shared_ptr<Type> string() {
+  static std::shared_ptr<Type> result = std::make_shared<String>("string");
   return result;
-}
-
-std::shared_ptr<Type> Integer::Make(const std::string& name) {
-  return std::make_shared<Integer>(name);
-}
-
-std::shared_ptr<Type> Natural::Make(const std::string& name) {
-  return std::make_shared<Natural>(name);
-}
-
-Boolean::Boolean(std::string name) : Type(std::move(name), Type::BOOLEAN) {}
-
-std::shared_ptr<Type> Boolean::Make(const std::string& name) {
-  return std::make_shared<Boolean>(name);
-}
-
-String::String(std::string name) : Type(std::move(name), Type::STRING) {}
-
-std::shared_ptr<Type> String::Make(const std::string& name) {
-  return std::make_shared<String>(name);
-}
-
-Bit::Bit(std::string name) : Type(std::move(name), Type::BIT) {}
-
-std::shared_ptr<Bit> Bit::Make(const std::string& name) {
-  return std::make_shared<Bit>(name);
 }
 
 std::optional<Node *> Bit::width() const {
   return rintl(1);
 }
 
-RecField::RecField(std::string name, std::shared_ptr<Type> type, bool invert)
+Field::Field(std::string name, std::shared_ptr<Type> type, bool invert)
     : Named(std::move(name)), type_(std::move(type)), invert_(invert), sep_(true) {}
 
-std::shared_ptr<RecField> RecField::Make(const std::string& name, const std::shared_ptr<Type>& type, bool invert) {
-  return std::make_shared<RecField>(name, type, invert);
+std::shared_ptr<Field> field(const std::string &name, const std::shared_ptr<Type> &type, bool invert) {
+  return std::make_shared<Field>(name, type, invert);
 }
 
-std::shared_ptr<RecField> RecField::Make(const std::shared_ptr<Type>& type, bool invert) {
-  return std::make_shared<RecField>(type->name(), type, invert);
+std::shared_ptr<Field> field(const std::shared_ptr<Type> &type, bool invert) {
+  return std::make_shared<Field>(type->name(), type, invert);
 }
 
-std::shared_ptr<RecField> NoSep(std::shared_ptr<RecField> field) {
+std::shared_ptr<Field> NoSep(std::shared_ptr<Field> field) {
   field->NoSep();
   return field;
 }
 
-std::shared_ptr<Record> Record::Make(const std::string &name, const std::deque<std::shared_ptr<RecField>> &fields) {
-  return std::make_shared<Record>(name, fields);
-}
-
-Record &Record::AddField(const std::shared_ptr<RecField> &field, std::optional<size_t> index) {
+Record &Record::AddField(const std::shared_ptr<Field> &field, std::optional<size_t> index) {
   if (index) {
     auto it = fields_.begin() + *index;
     fields_.insert(it, field);
@@ -358,8 +327,16 @@ Record &Record::AddField(const std::shared_ptr<RecField> &field, std::optional<s
   return *this;
 }
 
-Record::Record(std::string name, std::deque<std::shared_ptr<RecField>> fields)
+Record::Record(std::string name, std::vector<std::shared_ptr<Field>> fields)
     : Type(std::move(name), Type::RECORD), fields_(std::move(fields)) {}
+
+std::shared_ptr<Record> record(const std::string &name, const std::initializer_list<std::shared_ptr<Field>> &fields) {
+  return std::make_shared<Record>(name, fields);
+}
+
+std::shared_ptr<Record> record(const std::string &name, const std::vector<std::shared_ptr<Field>> &fields) {
+  return std::make_shared<Record>(name, fields);
+}
 
 bool Stream::IsEqual(const Type &other) const {
   if (other.Is(Type::STREAM)) {
@@ -444,8 +421,8 @@ bool Record::IsEqual(const Type &other) const {
   return true;
 }
 
-std::deque<Node *> Record::GetParameters() const {
-  std::deque<Node *> result;
+std::vector<Node *> Record::GetParameters() const {
+  std::vector<Node *> result;
   for (const auto &field : fields_) {
     auto field_params = field->type()->GetParameters();
     result.insert(result.end(), field_params.begin(), field_params.end());

@@ -19,16 +19,16 @@
 
 namespace cerata {
 
-std::shared_ptr<Port> Port::Make(const std::string &name,
-                                 const std::shared_ptr<Type> &type,
-                                 Term::Dir dir,
-                                 const std::shared_ptr<ClockDomain> &domain) {
+std::shared_ptr<Port> port(const std::string &name,
+                           const std::shared_ptr<Type> &type,
+                           Term::Dir dir,
+                           const std::shared_ptr<ClockDomain> &domain) {
   return std::make_shared<Port>(name, type, dir, domain);
 }
 
-std::shared_ptr<Port> Port::Make(const std::shared_ptr<Type> &type,
-                                 Term::Dir dir,
-                                 const std::shared_ptr<ClockDomain> &domain) {
+std::shared_ptr<Port> port(const std::shared_ptr<Type> &type,
+                           Term::Dir dir,
+                           const std::shared_ptr<ClockDomain> &domain) {
   return std::make_shared<Port>(type->name(), type, dir, domain);
 }
 

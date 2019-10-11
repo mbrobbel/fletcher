@@ -17,7 +17,7 @@
 #include <optional>
 #include <utility>
 #include <memory>
-#include <deque>
+#include <vector>
 #include <unordered_map>
 #include <string>
 
@@ -32,6 +32,8 @@ class Node;
 class Literal;
 Literal *rintl(int i);
 std::shared_ptr<Literal> intl(int i);
+
+using OptionalNode =  std::optional<std::shared_ptr<Node>>;
 
 /**
  * @brief A Type
@@ -117,7 +119,7 @@ class Type : public Named, public std::enable_shared_from_this<Type> {
   virtual std::shared_ptr<TypeMapper> GenerateMapper(Type *other) { return nullptr; }
 
   /// @brief Obtain any Nodes that parametrize this type.
-  virtual std::deque<Node *> GetParameters() const { return {}; }
+  virtual std::vector<Node *> GetParameters() const { return {}; }
 
   /// @brief KV storage for metadata of tools or specific backend implementations
   std::unordered_map<std::string, std::string> meta;
@@ -134,14 +136,12 @@ class Type : public Named, public std::enable_shared_from_this<Type> {
 /// @brief A bit type.
 struct Bit : public Type {
   /// @brief Bit type constructor.
-  explicit Bit(std::string name);
-  /// @brief Create a new Bit type, and return a shared pointer to it.
-  static std::shared_ptr<Bit> Make(const std::string &name);
+  explicit Bit(std::string name) : Type(std::move(name), Type::BIT) {}
   /// @brief Bit width returns integer literal 1.
   std::optional<Node *> width() const override;
 };
 /// @brief Return a generic static Bit type.
-std::shared_ptr<Type> bit();
+std::shared_ptr<Type> bit(const std::string &name = "bit");
 
 // Abstract Primitive types:
 
@@ -153,12 +153,18 @@ struct Nul : public Type {
 /// @brief Return a static Nul type.
 std::shared_ptr<Type> nul();
 
+/// @brief Boolean type.
+struct Boolean : public Type {
+  /// @brief Boolean type constructor.
+  explicit Boolean(std::string name) : Type(std::move(name), Type::BOOLEAN) {}
+};
+/// @brief Generic static Boolean type.
+std::shared_ptr<Type> boolean();
+
 /// @brief Integer type.
 struct Integer : public Type {
   /// @brief Integer type constructor.
   explicit Integer(std::string name) : Type(std::move(name), Type::INTEGER) {}
-  /// @brief Create a new Integer type, and return a shared pointer to it.
-  static std::shared_ptr<Type> Make(const std::string &name);
 };
 /// @brief Return a generic static Integer type.
 std::shared_ptr<Type> integer();
@@ -167,28 +173,14 @@ std::shared_ptr<Type> integer();
 struct Natural : public Type {
   /// @brief Integer type constructor.
   explicit Natural(std::string name) : Type(std::move(name), Type::NATURAL) {}
-  /// @brief Create a new Integer type, and return a shared pointer to it.
-  static std::shared_ptr<Type> Make(const std::string &name);
 };
-/// @brief Return a generic static Integer type.
+/// @brief Return a generic static Natural type.
 std::shared_ptr<Type> natural();
-
-/// @brief Boolean type.
-struct Boolean : public Type {
-  /// @brief Boolean type constructor.
-  explicit Boolean(std::string name);
-  /// @brief Create a new Boolean type, and return a shared pointer to it.
-  static std::shared_ptr<Type> Make(const std::string &name);
-};
-/// @brief Generic static Boolean type.
-std::shared_ptr<Type> boolean();
 
 /// @brief String type.
 struct String : public Type {
   /// @brief String type constructor.
-  explicit String(std::string name);
-  /// @brief Create a new String type, and return a shared pointer to it.
-  static std::shared_ptr<Type> Make(const std::string &name);
+  explicit String(std::string name) : Type(std::move(name), Type::STRING) {}
 };
 /// @brief Generic static String type.
 std::shared_ptr<Type> string();
@@ -200,34 +192,7 @@ std::shared_ptr<Type> string();
 class Vector : public Type {
  public:
   /// @brief Vector constructor.
-  Vector(std::string name, std::shared_ptr<Type> element_type, const std::optional<std::shared_ptr<Node>> &width);
-
-  /// @brief Create a new Vector Type, and return a shared pointer to it.
-  static std::shared_ptr<Type> Make(const std::string &name,
-                                    const std::shared_ptr<Type> &element_type,
-                                    const std::optional<std::shared_ptr<Node>> &width);
-
-  /// @brief Create a new Vector Type, and return a shared pointer to it. The element type is the generic Bit type.
-  static std::shared_ptr<Type> Make(const std::string &name, const std::optional<std::shared_ptr<Node>> &width);
-
-  /// @brief Create a new Vector Type of width W and element type bit. Returns a shared pointer to it.
-  template<int W>
-  static std::shared_ptr<Type> Make(std::string name) {
-    return std::make_shared<Vector>(name, bit(), intl(W));
-  }
-
-  /// @brief Create a new Vector Type of width W and element type bit and name "vec<W>". Returns a shared pointer to it.
-  template<int W>
-  static std::shared_ptr<Type> Make() {
-    auto result = std::make_shared<Vector>("vec" + std::to_string(W), bit(), intl(W));
-    return result;
-  }
-
-  /// @brief Create a new Vector Type of some width.
-  static std::shared_ptr<Type> Make(unsigned int width);
-
-  /// @brief Create a new Vector Type of some width.
-  static std::shared_ptr<Type> Make(std::string name, unsigned int width);
+  Vector(std::string name, std::shared_ptr<Type> element_type, const OptionalNode &width);
 
   /// @brief Return a pointer to the node representing the width of this vector, if specified.
   std::optional<Node *> width() const override;
@@ -239,35 +204,56 @@ class Vector : public Type {
   bool IsEqual(const Type &other) const override;
 
   /// @brief Returns the width parameter of this vector, if any. Otherwise an empty list;
-  std::deque<Node *> GetParameters() const override;
+  std::vector<Node *> GetParameters() const override;
 
  private:
   /// The optional vector width.
-  std::optional<std::shared_ptr<Node>> width_;
+  OptionalNode width_;
   /// The type of elements in this vector.
   std::shared_ptr<Type> element_type_;
 };
 
+/// @brief Create a new Vector Type, and return a shared pointer to it.
+std::shared_ptr<Type> vector(const std::string &name,
+                             const std::shared_ptr<Type> &element_type,
+                             const OptionalNode &width);
+
+/// @brief Create a new Vector Type, and return a shared pointer to it. The element type is the generic Bit type.
+std::shared_ptr<Type> vector(const std::string &name, const OptionalNode &width);
+
+/// @brief Create a new Vector Type of width W and element type bit. Returns a shared pointer to it.
+template<int W>
+std::shared_ptr<Type> vector(const std::string &name) {
+  return std::make_shared<Vector>(name, bit(), intl(W));
+}
+
+/// @brief Create a new Vector Type of width W and element type bit and name "vec<W>". Returns a shared pointer to it.
+template<int W>
+std::shared_ptr<Type> vector() {
+  auto result = std::make_shared<Vector>("vec" + std::to_string(W), bit(), intl(W));
+  return result;
+}
+
+/// @brief Create a new Vector Type of some width.
+std::shared_ptr<Type> vector(unsigned int width);
+
+/// @brief Create a new Vector Type of some width.
+std::shared_ptr<Type> vector(std::string name, unsigned int width);
+
 /// @brief A Record field.
-class RecField : public Named {
+class Field : public Named {
  public:
   /// @brief RecordField constructor.
-  RecField(std::string name, std::shared_ptr<Type> type, bool invert = false);
-  /// @brief Create a new RecordField, and return a shared pointer to it.
-  static std::shared_ptr<RecField> Make(const std::string &name,
-                                        const std::shared_ptr<Type> &type,
-                                        bool invert = false);
-  /// @brief Create a new RecordField, and return a shared pointer to it. The name will be taken from the type.
-  static std::shared_ptr<RecField> Make(const std::shared_ptr<Type> &type, bool invert = false);
+  Field(std::string name, std::shared_ptr<Type> type, bool invert = false);
   /// @brief Return the type of the RecordField.
   std::shared_ptr<Type> type() const { return type_; }
   /// @brief Return if this individual field should be inverted w.r.t. parent Record type itself on graph edges.
   bool invert() const { return invert_; }
   /// @brief Return true if in name generation of this field name for flattened types a separator should be placed.
   bool sep() const { return sep_; }
-  /// @brief Disable the seperator in name generation of this field.
+  /// @brief Disable the separator in name generation of this field.
   void NoSep() { sep_ = false; }
-  /// @brief Enable the seperator in name generation of this field.
+  /// @brief Enable the separator in name generation of this field.
   void UseSep() { sep_ = true; }
   /// @brief Metadata for back-end implementations
   std::unordered_map<std::string, std::string> meta;
@@ -277,36 +263,44 @@ class RecField : public Named {
   std::shared_ptr<Type> type_;
   /// Whether this field should be inverted in directed use of the parent type.
   bool invert_;
-  /// Whether this field should generate a seperator for name/identifier generation in downstream tools.
+  /// Whether this field should generate a separator for name/identifier generation in downstream tools.
   bool sep_;
 };
 
-/// @brief Convenience function to disable the seperator for a record field.
-std::shared_ptr<RecField> NoSep(std::shared_ptr<RecField> field);
+/// @brief Create a new RecordField, and return a shared pointer to it.
+std::shared_ptr<Field> field(const std::string &name,
+                             const std::shared_ptr<Type> &type,
+                             bool invert = false);
+/// @brief Create a new RecordField, and return a shared pointer to it. The name will be taken from the type.
+std::shared_ptr<Field> field(const std::shared_ptr<Type> &type, bool invert = false);
+
+/// @brief Convenience function to disable the separator for a record field.
+std::shared_ptr<Field> NoSep(std::shared_ptr<Field> field);
 
 /// @brief A Record type containing zero or more RecordFields.
 class Record : public Type {
  public:
   /// @brief Record constructor.
-  explicit Record(std::string name, std::deque<std::shared_ptr<RecField>> fields = {});
-  /// @brief Create a new Record Type, and return a shared pointer to it.
-  static std::shared_ptr<Record> Make(const std::string &name,
-                                      const std::deque<std::shared_ptr<RecField>> &fields = {});
+  explicit Record(std::string name, std::vector<std::shared_ptr<Field>> fields = {});
   /// @brief Add a RecordField to this Record.
-  Record &AddField(const std::shared_ptr<RecField> &field, std::optional<size_t> index = std::nullopt);
+  Record &AddField(const std::shared_ptr<Field> &field, std::optional<size_t> index = std::nullopt);
   /// @brief Return the RecordField at index i contained by this record.
-  std::shared_ptr<RecField> field(size_t i) const { return fields_[i]; }
+  std::shared_ptr<Field> field(size_t i) const { return fields_[i]; }
   /// @brief Return all fields contained by this record.
-  std::deque<std::shared_ptr<RecField>> fields() const { return fields_; }
+  std::vector<std::shared_ptr<Field>> fields() const { return fields_; }
   /// @brief Return the number of fields in this record.
   inline size_t num_fields() const { return fields_.size(); }
   /// @brief Determine if this Type is exactly equal to an other Type.
   bool IsEqual(const Type &other) const override;
   /// @brief Return all nodes that potentially parametrize the fields of this record.
-  std::deque<Node *> GetParameters() const override;
+  std::vector<Node *> GetParameters() const override;
  private:
-  std::deque<std::shared_ptr<RecField>> fields_;
+  std::vector<std::shared_ptr<Field>> fields_;
 };
+
+/// @brief Create a new Record Type, and return a shared pointer to it.
+std::shared_ptr<Record> record(const std::string &name,
+                               const std::vector<std::shared_ptr<Field>> &fields = {});
 
 /// @brief A Stream type.
 class Stream : public Type {
@@ -319,16 +313,6 @@ class Stream : public Type {
    * @param epc             Maximum elements per cycle
    */
   Stream(const std::string &type_name, std::shared_ptr<Type> element_type, std::string element_name, int epc = 1);
-  /// @brief Create a smart pointer to a new Stream type. Stream name will be stream:\<type name\>, the elements "data".
-  static std::shared_ptr<Stream> Make(const std::shared_ptr<Type> &element_type, int epc = 1);
-  /// @brief Shorthand to create a smart pointer to a new Stream type. The elements are named "data".
-  static std::shared_ptr<Stream> Make(const std::string &name, const std::shared_ptr<Type> &element_type, int epc = 1);
-  /// @brief Shorthand to create a smart pointer to a new Stream type.
-  static std::shared_ptr<Stream> Make(const std::string &name,
-                                      const std::shared_ptr<Type> &element_type,
-                                      const std::string &element_name,
-                                      int epc = 1);
-
   /// @brief Set the type of the elements of this stream. Forgets any existing mappers.
   void SetElementType(std::shared_ptr<Type> type);
   /// @brief Return the type of the elements of this stream.
@@ -361,5 +345,15 @@ class Stream : public Type {
   /// @brief Elements Per Cycle
   int epc_ = 1;
 };
+
+/// @brief Create a smart pointer to a new Stream type. Stream name will be stream:\<type name\>, the elements "data".
+std::shared_ptr<Stream> stream(const std::shared_ptr<Type> &element_type, int epc = 1);
+/// @brief Shorthand to create a smart pointer to a new Stream type. The elements are named "data".
+std::shared_ptr<Stream> stream(const std::string &name, const std::shared_ptr<Type> &element_type, int epc = 1);
+/// @brief Shorthand to create a smart pointer to a new Stream type.
+std::shared_ptr<Stream> stream(const std::string &name,
+                               const std::shared_ptr<Type> &element_type,
+                               const std::string &element_name,
+                               int epc = 1);
 
 }  // namespace cerata

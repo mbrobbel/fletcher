@@ -92,9 +92,9 @@ class Graph : public Named {
   std::deque<Node *> GetImplicitNodes() const;
 
   /// @brief Shorthand to Get(, ..)
-  PortArray *porta(const std::string &port_name) const;
+  PortArray *prta(const std::string &port_name) const;
   /// @brief Shorthand to Get(Node::PORT, ..)
-  Port *port(const std::string &port_name) const;
+  Port *prt(const std::string &port_name) const;
   /// @brief Shorthand to Get(Node::SIGNAL, ..)
   Signal *sig(const std::string &signal_name) const;
   /// @brief Shorthand to Get(Node::PARAMETER, ..)
@@ -127,24 +127,14 @@ class Graph : public Named {
  */
 class Component : public Graph {
  public:
-  /// @brief Construct a Component with initial nodes
-  static std::shared_ptr<Component> Make(std::string name,
-                                         const std::deque<std::shared_ptr<Object>> &nodes,
-                                         ComponentPool *component_pool = default_component_pool());
-
-  /// @brief Construct an empty Component with only a name.
-  static std::shared_ptr<Component> Make(std::string name,
-                                         ComponentPool *component_pool = default_component_pool()) {
-    return Make(std::move(name), {}, component_pool);
-  }
-
+  /// @brief Construct an empty Component.
+  explicit Component(std::string name) : Graph(std::move(name), COMPONENT) {}
   /**
    * @brief Add and take ownership of an Instance graph.
    * @param child   The child graph to add.
    * @return        This component if successful.
    */
   Component &AddChild(std::unique_ptr<Instance> child);
-
   /**
    * @brief Add a child Instance from a component.
    * @param comp    The component to instantiate and add.
@@ -152,20 +142,23 @@ class Component : public Graph {
    * @return        A pointer to the instantiated component.
    */
   Instance *AddInstanceOf(Component *comp, const std::string &name = "");
-
   /// @brief Returns all Instance graphs from this Component.
   std::deque<Instance *> children() const { return ToRawPointers(children_); }
-
   /// @brief Returns all unique Components that are referred to by child Instances of this graph.
   virtual std::deque<const Component *> GetAllUniqueComponents() const;
 
  protected:
-  /// @brief Construct an empty Component.
-  explicit Component(std::string name) : Graph(std::move(name), COMPONENT) {}
-
   /// Graph children / subgraphs.
   std::deque<std::unique_ptr<Instance>> children_;
 };
+
+/// @brief Construct a Component with initial nodes
+std::shared_ptr<Component> component(std::string name,
+                                     const std::deque<std::shared_ptr<Object>> &nodes,
+                                     ComponentPool *component_pool = default_component_pool());
+/// @brief Construct an empty Component with only a name.
+std::shared_ptr<Component> component(std::string name,
+                                     ComponentPool *component_pool = default_component_pool());
 
 /**
  * @brief An instance.
@@ -174,31 +167,24 @@ class Component : public Graph {
  */
 class Instance : public Graph {
  public:
-  /// @brief Construct a shared pointer to a Component
-  static std::unique_ptr<Instance> Make(Component *component, const std::string &name);
-
-  /// @brief Construct a shared pointer to a Component
-  static std::unique_ptr<Instance> Make(Component *component);
-
-  /// @brief Add a node to the component, throwing an exception if the node is a signal.
-  Graph &Add(const std::shared_ptr<Object> &obj) override;
-
-  /// @brief Return the component this is an instance of.
-  Component *component() const { return component_; }
-
-  /// @brief Return the parent graph.
-  Graph *parent() const { return parent_; }
-
-  /// @brief Set the parent.
-  Graph &SetParent(Graph *parent);
-
- protected:
   /// @brief Construct an Instance of a Component, copying over all its ports and parameters
   explicit Instance(Component *comp, std::string name);
+  /// @brief Add a node to the component, throwing an exception if the node is a signal.
+  Graph &Add(const std::shared_ptr<Object> &obj) override;
+  /// @brief Return the component this is an instance of.
+  Component *component() const { return component_; }
+  /// @brief Return the parent graph.
+  Graph *parent() const { return parent_; }
+  /// @brief Set the parent.
+  Graph &SetParent(Graph *parent);
+ protected:
   /// The component that this instance instantiates.
   Component *component_{};
   /// The parent of this instance.
   Graph *parent_{};
 };
+
+/// @brief Construct a shared pointer to a Component
+std::unique_ptr<Instance> instance(Component *component, const std::string &name = "");
 
 }  // namespace cerata

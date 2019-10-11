@@ -201,13 +201,13 @@ static void ExpandStreamType(Type *type) {
           // Check if we didn't expand the type already.
           if (stream_type->meta.count(metakeys::EXPAND_TYPE) == 0) {
             // Create a new record to hold valid, ready and the original element type
-            auto new_elem_type = Record::Make(stream_type->name() + "_vr");
+            auto new_elem_type = record(stream_type->name() + "_vr");
             // Mark the record
             new_elem_type->meta[metakeys::EXPAND_TYPE] = "record";
             // Add valid, ready and original type to the record and set the new element type
-            new_elem_type->AddField(RecField::Make("valid", valid()));
-            new_elem_type->AddField(RecField::Make("ready", ready(), true));
-            new_elem_type->AddField(RecField::Make(stream_type->element_name(), stream_type->element_type()));
+            new_elem_type->AddField(field("valid", valid()));
+            new_elem_type->AddField(field("ready", ready(), true));
+            new_elem_type->AddField(field(stream_type->element_name(), stream_type->element_type()));
             stream_type->SetElementType(new_elem_type);
             // Mark the stream itself to remember we've expanded it.
             stream_type->meta[metakeys::EXPAND_TYPE] = "stream";

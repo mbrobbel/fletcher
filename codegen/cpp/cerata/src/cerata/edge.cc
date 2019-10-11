@@ -203,11 +203,11 @@ std::shared_ptr<Signal> insert(Edge *edge, const std::string &name_prefix, std::
   auto type = src->type();
   auto name = name_prefix + "_" + src->name();
   // Create the signal and take shared ownership of the type
-  auto signal = Signal::Make(name, type->shared_from_this(), domain);
+  auto sig = signal(name, type->shared_from_this(), domain);
 
   // Share ownership of the new signal with the potential new_owner
   if (new_owner) {
-    (*new_owner)->Add(signal);
+    (*new_owner)->Add(sig);
   }
 
   // Remove the original edge from the source and destination node
@@ -215,14 +215,14 @@ std::shared_ptr<Signal> insert(Edge *edge, const std::string &name_prefix, std::
   dst->RemoveEdge(edge);
   // From this moment onward, the edge may be deconstructed and should not be used anymore.
   // Make the new connections, effectively creating two new edges on either side of the signal node.
-  signal <<= src;
-  dst <<= signal;
+  sig <<= src;
+  dst <<= sig;
   // Return the new signal
-  return signal;
+  return sig;
 }
 
 std::shared_ptr<Signal> extend(Port *port, const std::string &name_prefix, std::optional<Graph *> new_owner) {
-  auto sig = Signal::Make(name_prefix + "_" + port->name(), port->type()->shared_from_this(), port->domain());
+  auto sig = signal(name_prefix + "_" + port->name(), port->type()->shared_from_this(), port->domain());
   if (port->IsInput()) {
     Connect(sig.get(), port);
   } else {

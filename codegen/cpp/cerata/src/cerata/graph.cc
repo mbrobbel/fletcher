@@ -92,22 +92,11 @@ Graph &Graph::Remove(Object *obj) {
   return *this;
 }
 
-std::shared_ptr<Component> Component::Make(std::string name,
-                                           const std::deque<std::shared_ptr<Object>> &objects,
-                                           ComponentPool *component_pool) {
-  // Create the new component.
-  auto *ptr = new Component(std::move(name));
-  auto ret = std::shared_ptr<Component>(ptr);
-
-  // Add the component to the pool.
-  component_pool->Add(ret);
-
-  // Add the objects shown in the queue.
-  for (const auto &object : objects) {
-    // Add the object to the graph.
-    ret->Add(object);
-  }
-  return ret;
+Instance *Component::AddInstanceOf(Component *comp, const std::string &name) {
+  auto inst = instance(comp, name);
+  auto raw_ptr = inst.get();
+  AddChild(std::move(inst));
+  return raw_ptr;
 }
 
 Component &Component::AddChild(std::unique_ptr<Instance> child) {
@@ -118,11 +107,24 @@ Component &Component::AddChild(std::unique_ptr<Instance> child) {
   return *this;
 }
 
-Instance *Component::AddInstanceOf(Component *comp, const std::string &name) {
-  auto inst = Instance::Make(comp, name);
-  auto raw_ptr = inst.get();
-  AddChild(std::move(inst));
-  return raw_ptr;
+std::shared_ptr<Component> component(std::string name,
+                                     const std::deque<std::shared_ptr<Object>> &objects,
+                                     ComponentPool *component_pool) {
+  // Create the new component.
+  auto *ptr = new Component(std::move(name));
+  auto ret = std::shared_ptr<Component>(ptr);
+  // Add the component to the pool.
+  component_pool->Add(ret);
+  // Add the objects shown in the queue.
+  for (const auto &object : objects) {
+    // Add the object to the graph.
+    ret->Add(object);
+  }
+  return ret;
+}
+
+std::shared_ptr<Component> component(std::string name, ComponentPool *component_pool) {
+  return component(std::move(name), {}, component_pool);
 }
 
 std::deque<const Component *> Component::GetAllUniqueComponents() const {
@@ -217,7 +219,7 @@ std::deque<NodeArray *> Graph::GetArraysOfType(Node::NodeID id) const {
   return result;
 }
 
-Port *Graph::port(const std::string &port_name) const {
+Port *Graph::prt(const std::string &port_name) const {
   return dynamic_cast<Port *>(GetNode(Node::NodeID::PORT, port_name));
 }
 
@@ -229,7 +231,7 @@ Parameter *Graph::par(const std::string &signal_name) const {
   return dynamic_cast<Parameter *>(GetNode(Node::NodeID::PARAMETER, signal_name));
 }
 
-PortArray *Graph::porta(const std::string &port_name) const {
+PortArray *Graph::prta(const std::string &port_name) const {
   auto opa = GetArray(Node::NodeID::PORT, port_name);
   if (opa) {
     return dynamic_cast<PortArray *>(*opa);
@@ -272,17 +274,13 @@ Graph &Graph::SetMeta(const std::string &key, std::string value) {
   return *this;
 }
 
-std::unique_ptr<Instance> Instance::Make(Component *component, const std::string &name) {
+std::unique_ptr<Instance> instance(Component *component, const std::string &name) {
   auto n = name;
   if (name.empty()) {
     n = component->name() + "_inst";
   }
   auto inst = new Instance(component, n);
   return std::unique_ptr<Instance>(inst);
-}
-
-std::unique_ptr<Instance> Instance::Make(Component *component) {
-  return Make(component, component->name() + "_inst");
 }
 
 Instance::Instance(Component *comp, std::string name)

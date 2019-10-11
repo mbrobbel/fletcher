@@ -18,6 +18,7 @@
 #include <string>
 
 #include "cerata/test_designs.h"
+#include "cerata/type.h"
 
 namespace cerata {
 
@@ -33,12 +34,12 @@ namespace cerata {
 
 TEST(VHDL_DESIGN, Simple) {
   default_component_pool()->Clear();
-  auto static_vec = Vector::Make<8>();
-  auto param = Parameter::Make("vec_width", natural(), intl(8));
-  auto param_vec = Vector::Make("param_vec_type", param);
-  auto veca = Port::Make("static_vec", static_vec);
-  auto vecb = Port::Make("param_vec", param_vec);
-  auto comp = Component::Make("simple", {veca, vecb});
+  auto static_vec = vector<8>();
+  auto param = parameter("vec_width", natural(), intl(8));
+  auto param_vec = vector("param_vec_type", param);
+  auto veca = port("static_vec", static_vec);
+  auto vecb = port("param_vec", param_vec);
+  auto comp = component("simple", {veca, vecb});
   auto design = vhdl::Design(comp);
   auto design_source = design.Generate().ToString();
   auto expected =
@@ -65,14 +66,14 @@ TEST(VHDL_DESIGN, Simple) {
 
 TEST(VHDL_DESIGN, CompInst) {
   default_component_pool()->Clear();
-  auto a = Port::Make("a", bit(), Port::Dir::IN);
-  auto b = Port::Make("b", bit(), Port::Dir::OUT);
-  auto ca = Component::Make("comp_a", {a});
-  auto cb = Component::Make("comp_b", {b});
-  auto top = Component::Make("top");
+  auto a = port("a", bit(), Port::Dir::IN);
+  auto b = port("b", bit(), Port::Dir::OUT);
+  auto ca = component("comp_a", {a});
+  auto cb = component("comp_b", {b});
+  auto top = component("top");
   auto ia = top->AddInstanceOf(ca.get());
   auto ib = top->AddInstanceOf(cb.get());
-  Connect(ia->port("a"), ib->port("b"));
+  Connect(ia->prt("a"), ib->prt("b"));
   auto design = vhdl::Design(top);
   auto design_source = design.Generate().ToString();
   std::cout << design_source;

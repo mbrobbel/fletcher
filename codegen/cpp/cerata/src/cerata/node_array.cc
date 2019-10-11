@@ -136,7 +136,7 @@ std::shared_ptr<PortArray> PortArray::Make(const std::string &name,
                                            std::shared_ptr<Node> size,
                                            Port::Dir dir,
                                            const std::shared_ptr<ClockDomain> &domain) {
-  auto base_node = Port::Make(name, type, dir, domain);
+  auto base_node = port(name, type, dir, domain);
   auto *port_array = new PortArray(base_node, std::move(size), dir);
   return std::shared_ptr<PortArray>(port_array);
 }
@@ -162,7 +162,7 @@ std::shared_ptr<NodeArray> SignalArray::Make(const std::string &name,
                                              const std::shared_ptr<Type> &type,
                                              std::shared_ptr<Node> size,
                                              const std::shared_ptr<ClockDomain> &domain) {
-  auto base_node = Signal::Make(name, type, domain);
+  auto base_node = signal(name, type, domain);
   auto *sig_array = new SignalArray(base_node, std::move(size));
   return std::shared_ptr<SignalArray>(sig_array);
 }
