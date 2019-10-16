@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,30 +21,27 @@
 
 namespace fletchgen {
 
-using cerata::Type;
-using cerata::Vector;
-using cerata::Bit;
+using cerata::vector;
 using cerata::bit;
 using cerata::intl;
 using cerata::integer;
-using cerata::Parameter;
-using cerata::RecField;
-using cerata::Record;
-using cerata::Stream;
-using cerata::Literal;
+using cerata::parameter;
+using cerata::field;
+using cerata::record;
+using cerata::stream;
 
 /// Creates basic, single-bit types similar to Arrow cpp/type.cc for convenience
-#define BIT_FACTORY(NAME)                                               \
-  std::shared_ptr<Type> NAME() {                                        \
-    static std::shared_ptr<Type> result = std::make_shared<Bit>(#NAME); \
-    return result;                                                      \
+#define BIT_FACTORY(NAME)                        \
+  std::shared_ptr<Type> NAME() {                 \
+    static std::shared_ptr<Type> result = bit(); \
+    return result;                               \
   }
 
 /// Creates basic, multi-bit types similar to Arrow cpp/type.cc for convenience, including their nullable versions.
-#define VEC_FACTORY(NAME, WIDTH)                                        \
-  std::shared_ptr<Type> NAME() {                                        \
-    static std::shared_ptr<Type> result = Vector::Make(#NAME, WIDTH);   \
-    return result;                                                      \
+#define VEC_FACTORY(NAME, WIDTH)                                \
+  std::shared_ptr<Type> NAME() {                                \
+    static std::shared_ptr<Type> result = vector(#NAME, WIDTH); \
+    return result;                                              \
   }
 
 // Validity bit
@@ -70,10 +67,10 @@ VEC_FACTORY(byte, 8)
 VEC_FACTORY(offset, 32)
 
 /// Creates generic Fletcher parameters.
-#define PARAM_FACTORY(NAME, SIZE)                                              \
-std::shared_ptr<Node> NAME() {                                                 \
-  auto result = Parameter::Make(#NAME, cerata::integer(), cerata::intl(SIZE)); \
-  return result;                                                               \
+#define PARAM_FACTORY(NAME, SIZE)                                  \
+std::shared_ptr<Parameter> NAME() {                                \
+  auto result = parameter(#NAME, cerata::integer(), std::nullopt); \
+  return result;                                                   \
 }
 
 PARAM_FACTORY(bus_addr_width, 64)
@@ -83,6 +80,7 @@ PARAM_FACTORY(bus_len_width, 8)
 PARAM_FACTORY(bus_burst_step_len, 4)
 PARAM_FACTORY(bus_burst_max_len, 16)
 PARAM_FACTORY(index_width, 32)
+PARAM_FACTORY(tag_width, 1)
 
 // Create basic clock domains
 std::shared_ptr<ClockDomain> kernel_cd() {
@@ -97,15 +95,15 @@ std::shared_ptr<ClockDomain> bus_cd() {
 
 // Create basic clock & reset record type
 std::shared_ptr<Type> cr() {
-  static std::shared_ptr<Type> result = Record::Make("cr", {
-      RecField::Make("clk", std::make_shared<Bit>("clk")),
-      RecField::Make("reset", std::make_shared<Bit>("reset"))});
+  static std::shared_ptr<Type> result = record("cr", {
+      field("clk", bit()),
+      field("reset", bit())});
   return result;
 }
 
 // Data channel
 std::shared_ptr<Type> data(const std::shared_ptr<Node> &width) {
-  std::shared_ptr<Type> result = Vector::Make("data", width);
+  std::shared_ptr<Type> result = vector("data", width);
   // Mark this type so later we can figure out that it was concatenated onto the data port of an ArrayReader/Writer.
   result->meta[metakeys::ARRAY_DATA] = "true";
   return result;
@@ -113,26 +111,27 @@ std::shared_ptr<Type> data(const std::shared_ptr<Node> &width) {
 
 // Length channel
 std::shared_ptr<Type> length(const std::shared_ptr<Node> &width) {
-  std::shared_ptr<Type> result = Vector::Make("length", width);
+  std::shared_ptr<Type> result = vector("length", width);
   // Mark this type so later we can figure out that it was concatenated onto the data port of an ArrayReader/Writer.
   result->meta[metakeys::ARRAY_DATA] = "true";
   return result;
 }
 
 std::shared_ptr<Type> count(const std::shared_ptr<Node> &width) {
-  std::shared_ptr<Type> result = Vector::Make("count", width);
+  std::shared_ptr<Type> result = vector("count", width);
   // Mark this type so later we can figure out that it was concatenated onto the data port of an ArrayReader/Writer.
   result->meta[metakeys::ARRAY_DATA] = "true";
+  result->meta[metakeys::COUNT] = width->ToString();
   return result;
 }
 
 std::shared_ptr<Type> dvalid() {
-  static std::shared_ptr<Type> result = std::make_shared<Bit>("dvalid");
+  static std::shared_ptr<Type> result = bit("dvalid");
   return result;
 }
 
 std::shared_ptr<Type> last() {
-  static std::shared_ptr<Type> result = std::make_shared<Bit>("last");
+  static std::shared_ptr<Type> result = bit("last");
   return result;
 }
 

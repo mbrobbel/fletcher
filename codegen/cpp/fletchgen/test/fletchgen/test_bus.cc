@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,9 +28,9 @@ using cerata::Port;
 
 TEST(Bus, BusArbiter) {
   cerata::default_component_pool()->Clear();
-  BusSpec spec;
-  auto top = Component::Make("top");
-  top->AddChild(std::move(BusArbiterInstance(spec)));
+  BusParam param;
+  auto top = cerata::component("top");
+  top->AddInstanceOf(bus_arbiter(BusFunction::READ));
   auto design = cerata::vhdl::Design(top);
   auto code = design.Generate().ToString();
   std::cerr.flush();

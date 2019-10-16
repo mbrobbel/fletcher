@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -149,24 +149,24 @@ std::string GenerateSimTop(const Mantle &mantle,
                     "\n");
 
     t.Replace("MST_RREQ_DECLARE",
-              "      rd_mst_rreq_valid          : out std_logic;\n"
-              "      rd_mst_rreq_ready          : in  std_logic;\n"
-              "      rd_mst_rreq_addr           : out std_logic_vector(BUS_ADDR_WIDTH-1 downto 0);\n"
-              "      rd_mst_rreq_len            : out std_logic_vector(BUS_LEN_WIDTH-1 downto 0);\n"
-              "      rd_mst_rdat_valid          : in  std_logic;\n"
-              "      rd_mst_rdat_ready          : out std_logic;\n"
-              "      rd_mst_rdat_data           : in  std_logic_vector(BUS_DATA_WIDTH-1 downto 0);\n"
-              "      rd_mst_rdat_last           : in  std_logic;\n");
+              "      rd_mst_rreq_valid         : out std_logic;\n"
+              "      rd_mst_rreq_ready         : in  std_logic;\n"
+              "      rd_mst_rreq_addr          : out std_logic_vector(BUS_ADDR_WIDTH-1 downto 0);\n"
+              "      rd_mst_rreq_len           : out std_logic_vector(BUS_LEN_WIDTH-1 downto 0);\n"
+              "      rd_mst_rdat_valid         : in  std_logic;\n"
+              "      rd_mst_rdat_ready         : out std_logic;\n"
+              "      rd_mst_rdat_data          : in  std_logic_vector(BUS_DATA_WIDTH-1 downto 0);\n"
+              "      rd_mst_rdat_last          : in  std_logic;\n");
 
     t.Replace("MST_RREQ_INSTANTIATE",
-              "      rd_mst_rreq_valid          => bus_rreq_valid,\n"
-              "      rd_mst_rreq_ready          => bus_rreq_ready,\n"
-              "      rd_mst_rreq_addr           => bus_rreq_addr,\n"
-              "      rd_mst_rreq_len            => bus_rreq_len,\n"
-              "      rd_mst_rdat_valid          => bus_rdat_valid,\n"
-              "      rd_mst_rdat_ready          => bus_rdat_ready,\n"
-              "      rd_mst_rdat_data           => bus_rdat_data,\n"
-              "      rd_mst_rdat_last           => bus_rdat_last,\n");
+              "      rd_mst_rreq_valid         => bus_rreq_valid,\n"
+              "      rd_mst_rreq_ready         => bus_rreq_ready,\n"
+              "      rd_mst_rreq_addr          => bus_rreq_addr,\n"
+              "      rd_mst_rreq_len           => bus_rreq_len,\n"
+              "      rd_mst_rdat_valid         => bus_rdat_valid,\n"
+              "      rd_mst_rdat_ready         => bus_rdat_ready,\n"
+              "      rd_mst_rdat_data          => bus_rdat_data,\n"
+              "      rd_mst_rdat_last          => bus_rdat_last,\n");
   } else {
     t.Replace("BUS_READ_SLAVE_MOCK", "");
     t.Replace("MST_RREQ_DECLARE", "");
@@ -202,26 +202,26 @@ std::string GenerateSimTop(const Mantle &mantle,
                     "  );");
 
     t.Replace("MST_WREQ_DECLARE",
-              "      wr_mst_wreq_valid          : out std_logic;\n"
-              "      wr_mst_wreq_ready          : in std_logic;\n"
-              "      wr_mst_wreq_addr           : out std_logic_vector(BUS_ADDR_WIDTH-1 downto 0);\n"
-              "      wr_mst_wreq_len            : out std_logic_vector(BUS_LEN_WIDTH-1 downto 0);\n"
-              "      wr_mst_wdat_valid          : out std_logic;\n"
-              "      wr_mst_wdat_ready          : in std_logic;\n"
-              "      wr_mst_wdat_data           : out std_logic_vector(BUS_DATA_WIDTH-1 downto 0);\n"
-              "      wr_mst_wdat_strobe         : out std_logic_vector(BUS_STROBE_WIDTH-1 downto 0);\n"
-              "      wr_mst_wdat_last           : out std_logic;");
+              "      wr_mst_wreq_valid         : out std_logic;\n"
+              "      wr_mst_wreq_ready         : in std_logic;\n"
+              "      wr_mst_wreq_addr          : out std_logic_vector(BUS_ADDR_WIDTH-1 downto 0);\n"
+              "      wr_mst_wreq_len           : out std_logic_vector(BUS_LEN_WIDTH-1 downto 0);\n"
+              "      wr_mst_wdat_valid         : out std_logic;\n"
+              "      wr_mst_wdat_ready         : in std_logic;\n"
+              "      wr_mst_wdat_data          : out std_logic_vector(BUS_DATA_WIDTH-1 downto 0);\n"
+              "      wr_mst_wdat_strobe        : out std_logic_vector(BUS_STROBE_WIDTH-1 downto 0);\n"
+              "      wr_mst_wdat_last          : out std_logic;");
 
     t.Replace("MST_WREQ_INSTANTIATE",
-              "      wr_mst_wreq_valid          => bus_wreq_valid,\n"
-              "      wr_mst_wreq_ready          => bus_wreq_ready,\n"
-              "      wr_mst_wreq_addr           => bus_wreq_addr,\n"
-              "      wr_mst_wreq_len            => bus_wreq_len,\n"
-              "      wr_mst_wdat_valid          => bus_wdat_valid,\n"
-              "      wr_mst_wdat_ready          => bus_wdat_ready,\n"
-              "      wr_mst_wdat_data           => bus_wdat_data,\n"
-              "      wr_mst_wdat_strobe         => bus_wdat_strobe,\n"
-              "      wr_mst_wdat_last           => bus_wdat_last,");
+              "      wr_mst_wreq_valid         => bus_wreq_valid,\n"
+              "      wr_mst_wreq_ready         => bus_wreq_ready,\n"
+              "      wr_mst_wreq_addr          => bus_wreq_addr,\n"
+              "      wr_mst_wreq_len           => bus_wreq_len,\n"
+              "      wr_mst_wdat_valid         => bus_wdat_valid,\n"
+              "      wr_mst_wdat_ready         => bus_wdat_ready,\n"
+              "      wr_mst_wdat_data          => bus_wdat_data,\n"
+              "      wr_mst_wdat_strobe        => bus_wdat_strobe,\n"
+              "      wr_mst_wdat_last          => bus_wdat_last,");
   } else {
     t.Replace("BUS_WRITE_SLAVE_MOCK", "");
     t.Replace("MST_WREQ_DECLARE", "");

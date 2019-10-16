@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 #include <cerata/api.h>
 
 #include <string>
-#include <deque>
+#include <vector>
 #include <regex>
 #include <algorithm>
 
@@ -82,9 +82,9 @@ void Design::AnalyzeRecordBatches() {
 
 static std::vector<MmioReg> GetDefaultRegs() {
   std::vector<MmioReg> result;
-  result.push_back(MmioReg{F::DEFAULT, B::CONTROL, "start", "Start the kernel.", 1, 0, 0});
-  result.push_back(MmioReg{F::DEFAULT, B::CONTROL, "stop", "Stop the kernel.", 1, 0, 1});
-  result.push_back(MmioReg{F::DEFAULT, B::CONTROL, "reset", "Reset the kernel.", 1, 0, 2});
+  result.push_back(MmioReg{F::DEFAULT, B::STROBE, "start", "Start the kernel.", 1, 0, 0});
+  result.push_back(MmioReg{F::DEFAULT, B::STROBE, "stop", "Stop the kernel.", 1, 0, 1});
+  result.push_back(MmioReg{F::DEFAULT, B::STROBE, "reset", "Reset the kernel.", 1, 0, 2});
   result.push_back(MmioReg{F::DEFAULT, B::STATUS, "idle", "Kernel idle status.", 1, 4, 0});
   result.push_back(MmioReg{F::DEFAULT, B::STATUS, "busy", "Kernel busy status.", 1, 4, 1});
   result.push_back(MmioReg{F::DEFAULT, B::STATUS, "done", "Kernel done status.", 1, 4, 2});
@@ -190,6 +190,12 @@ Design::Design(const std::shared_ptr<Options> &opts) {
   ofs << GenerateVhdmmioYaml(&regs);
   ofs.close();
 
+  // Run vhdmmio
+  auto vhdmmio_result = system("vhdmmio -V vhdl -H -P vhdl > vhdmmio.log");
+  if (vhdmmio_result != 0) {
+    FLETCHER_LOG(FATAL, "vhdmmio exited with status " << vhdmmio_result);
+  }
+
   // Generate the MMIO component.
   mmio_comp = mmio(batch_desc, regs);
   // Generate the kernel.
@@ -198,16 +204,10 @@ Design::Design(const std::shared_ptr<Options> &opts) {
   nucleus_comp = nucleus(opts->kernel_name + "_Nucleus", recordbatches, kernel_comp, mmio_comp);
   // Generate the mantle.
   mantle_comp = mantle(opts->kernel_name + "_Mantle", recordbatches, nucleus_comp);
-
-  // Run vhdmmio
-  auto vhdmmio_result = system("vhdmmio -V vhdl -H -P vhdl");
-  if (vhdmmio_result != 0) {
-    FLETCHER_LOG(FATAL, "vhdmmio exited with status " << vhdmmio_result);
-  }
 }
 
-std::deque<cerata::OutputSpec> Design::GetOutputSpec() {
-  std::deque<OutputSpec> result;
+std::vector<cerata::OutputSpec> Design::GetOutputSpec() {
+  std::vector<OutputSpec> result;
   OutputSpec omantle, okernel, onucleus;
 
   std::string backup = options->backup ? "true" : "false";

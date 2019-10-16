@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 #include <optional>
 #include <utility>
 #include <memory>
-#include <deque>
+#include <vector>
 #include <string>
 #include <iomanip>
 #include <iostream>
@@ -46,7 +46,7 @@ std::string FlatType::name(const NamePart &root, const std::string &sep) const {
   return ret.str();
 }
 
-FlatType::FlatType(Type *t, std::deque<NamePart> prefix, const std::string &name, int level, bool invert)
+FlatType::FlatType(Type *t, std::vector<NamePart> prefix, const std::string &name, int level, bool invert)
     : type_(t), invert_(invert) {
   name_parts_ = std::move(prefix);
   name_parts_.emplace_back(name, true);
@@ -60,7 +60,7 @@ bool operator<(const FlatType &a, const FlatType &b) {
   }
 }
 
-void FlattenRecord(std::deque<FlatType> *list,
+void FlattenRecord(std::vector<FlatType> *list,
                    const Record *record,
                    const std::optional<FlatType> &parent,
                    bool invert) {
@@ -69,14 +69,14 @@ void FlattenRecord(std::deque<FlatType> *list,
   }
 }
 
-void FlattenStream(std::deque<FlatType> *list,
+void FlattenStream(std::vector<FlatType> *list,
                    const Stream *stream,
                    const std::optional<FlatType> &parent,
                    bool invert) {
   Flatten(list, stream->element_type().get(), parent, "", invert);
 }
 
-void Flatten(std::deque<FlatType> *list,
+void Flatten(std::vector<FlatType> *list,
              Type *type,
              const std::optional<FlatType> &parent,
              const std::string &name,
@@ -103,13 +103,13 @@ void Flatten(std::deque<FlatType> *list,
   }
 }
 
-std::deque<FlatType> Flatten(Type *type) {
-  std::deque<FlatType> result;
+std::vector<FlatType> Flatten(Type *type) {
+  std::vector<FlatType> result;
   Flatten(&result, type, {}, "", false);
   return result;
 }
 
-std::string ToString(std::deque<FlatType> flat_type_list) {
+std::string ToString(std::vector<FlatType> flat_type_list) {
   std::stringstream ret;
   for (size_t i = 0; i < flat_type_list.size(); i++) {
     const auto &ft = flat_type_list[i];
@@ -124,7 +124,7 @@ std::string ToString(std::deque<FlatType> flat_type_list) {
   return ret.str();
 }
 
-bool ContainsFlatType(const std::deque<FlatType> &flat_types_list, const Type *type) {
+bool ContainsFlatType(const std::vector<FlatType> &flat_types_list, const Type *type) {
   for (const auto &ft : flat_types_list) {
     if (ft.type_ == type) {
       return true;
@@ -133,7 +133,7 @@ bool ContainsFlatType(const std::deque<FlatType> &flat_types_list, const Type *t
   return false;
 }
 
-int64_t IndexOfFlatType(const std::deque<FlatType> &flat_types_list, const Type *type) {
+int64_t IndexOfFlatType(const std::vector<FlatType> &flat_types_list, const Type *type) {
   for (size_t i = 0; i < flat_types_list.size(); i++) {
     if (flat_types_list[i].type_ == type) {
       return i;
@@ -218,9 +218,9 @@ std::string TypeMapper::ToString() const {
 
 MappingMatrix<int64_t> TypeMapper::map_matrix() { return matrix_; }
 
-std::deque<FlatType> TypeMapper::flat_a() const { return fa_; }
+std::vector<FlatType> TypeMapper::flat_a() const { return fa_; }
 
-std::deque<FlatType> TypeMapper::flat_b() const { return fb_; }
+std::vector<FlatType> TypeMapper::flat_b() const { return fb_; }
 
 bool TypeMapper::CanConvert(const Type *a, const Type *b) const {
   return ((a_ == a) && (b_ == b));
@@ -233,8 +233,8 @@ std::shared_ptr<TypeMapper> TypeMapper::Inverse() const {
   return result;
 }
 
-std::deque<MappingPair> TypeMapper::GetUniqueMappingPairs() {
-  std::deque<MappingPair> pairs;
+std::vector<MappingPair> TypeMapper::GetUniqueMappingPairs() {
+  std::vector<MappingPair> pairs;
   // Find mappings that are one to one
   for (size_t ia = 0; ia < fa_.size(); ia++) {
     auto maps_a = matrix_.mapping_row(ia);

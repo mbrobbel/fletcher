@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 #include <cerata/api.h>
 #include <fletcher/common.h>
 
-#include <deque>
+#include <vector>
 #include <memory>
 #include <vector>
 
@@ -37,7 +37,7 @@ std::vector<MmioReg> GetRecordBatchRegs(const std::vector<fletcher::RecordBatchD
 /// A structure for all components in a Fletcher design.
 struct Design {
   /// Make a new Design structure based on program options.
-  Design(const std::shared_ptr<Options> &opts);
+  explicit Design(const std::shared_ptr<Options> &opts);
 
   /// @brief Analyze the supplied Schemas.
   void AnalyzeSchemas();
@@ -78,7 +78,7 @@ struct Design {
   std::shared_ptr<Component> mmio_comp;
 
   /// Obtain a Cerata OutputSpec from this design for Cerata back-ends to generate output.
-  std::deque<cerata::OutputSpec> GetOutputSpec();
+  std::vector<cerata::OutputSpec> GetOutputSpec();
 };
 
 }  // namespace fletchgen

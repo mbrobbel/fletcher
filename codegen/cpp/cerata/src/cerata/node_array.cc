@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,11 +16,10 @@
 
 #include <optional>
 #include <utility>
-#include <deque>
+#include <vector>
 #include <memory>
 #include <string>
 
-#include "cerata/utils.h"
 #include "cerata/edge.h"
 #include "cerata/node.h"
 #include "cerata/pool.h"
@@ -41,7 +40,7 @@ static std::shared_ptr<Node> IncrementNode(const Node &node) {
     if (param.parent()) {
       param.parent().value()->Add(new_param);
     } else {
-      // If theres no parent, place it in the default node pool.
+      // If there's no parent, place it in the default node pool.
       // TODO(johanpel): this is a bit ugly.
       default_node_pool()->Add(new_param);
     }
@@ -126,23 +125,30 @@ size_t NodeArray::IndexOf(const Node &n) const {
   CERATA_LOG(FATAL, "Node " + n.ToString() + " is not element of " + this->ToString());
 }
 
+void NodeArray::SetType(const std::shared_ptr<Type> &type) {
+  base_->SetType(type);
+  for (auto &n : nodes_) {
+    n->SetType(type);
+  }
+}
+
 PortArray::PortArray(const std::shared_ptr<Port> &base,
                      std::shared_ptr<Node> size,
                      Term::Dir dir) :
     NodeArray(base->name(), Node::NodeID::PORT, base, std::move(size)), Term(base->dir()) {}
 
-std::shared_ptr<PortArray> PortArray::Make(const std::string &name,
-                                           const std::shared_ptr<Type> &type,
-                                           std::shared_ptr<Node> size,
-                                           Port::Dir dir,
-                                           const std::shared_ptr<ClockDomain> &domain) {
+std::shared_ptr<PortArray> port_array(const std::string &name,
+                                      const std::shared_ptr<Type> &type,
+                                      std::shared_ptr<Node> size,
+                                      Port::Dir dir,
+                                      const std::shared_ptr<ClockDomain> &domain) {
   auto base_node = port(name, type, dir, domain);
   auto *port_array = new PortArray(base_node, std::move(size), dir);
   return std::shared_ptr<PortArray>(port_array);
 }
 
-std::shared_ptr<PortArray> PortArray::Make(const std::shared_ptr<Port> &base_node,
-                                           std::shared_ptr<Node> size) {
+std::shared_ptr<PortArray> port_array(const std::shared_ptr<Port> &base_node,
+                                      std::shared_ptr<Node> size) {
   auto *port_array = new PortArray(base_node, std::move(size), base_node->dir());
   return std::shared_ptr<PortArray>(port_array);
 }
@@ -158,10 +164,10 @@ std::shared_ptr<Object> PortArray::Copy() const {
   return std::shared_ptr<PortArray>(port_array);
 }
 
-std::shared_ptr<NodeArray> SignalArray::Make(const std::string &name,
-                                             const std::shared_ptr<Type> &type,
-                                             std::shared_ptr<Node> size,
-                                             const std::shared_ptr<ClockDomain> &domain) {
+std::shared_ptr<NodeArray> signal_array(const std::string &name,
+                                        const std::shared_ptr<Type> &type,
+                                        std::shared_ptr<Node> size,
+                                        const std::shared_ptr<ClockDomain> &domain) {
   auto base_node = signal(name, type, domain);
   auto *sig_array = new SignalArray(base_node, std::move(size));
   return std::shared_ptr<SignalArray>(sig_array);

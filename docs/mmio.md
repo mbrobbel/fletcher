@@ -80,15 +80,18 @@ the default registers will look as follows:
 
 ## Custom registers
 
-Through Fletchgen (through meta data supplied with the schema or through command-line parameters) or through hardware 
-generics, a user may request more custom registers to be mapped to be used for their accelerator implementation. These
-custom registers follow the indices of the schema-derived registers.
+Through Fletchgen (using command-line parameters) a user may request more custom registers to be mapped to be used for 
+their accelerator implementation. These custom registers follow the indices of the schema-derived registers.
 
 | Index         | Name     | Read/Write   | Description       |
 |---------------|----------|--------------|-------------------|
 | 4 + 2N+2M     | custom0  | User defined | Custom register 0 |
 | 4 + 2N+2M + 1 | custom1  | User defined | Custom register 1 |
 | ...           | ...      | ...          | ...               |
+
+## Profiling registers
+Through Fletchgen (through meta data supplied with schema fields) it is possible to profile streams to the kernel.
+The profile information is appended at the end of the register map. (more info will follow).
 
 ## Possible future improvements
 

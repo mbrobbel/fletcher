@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,18 +18,20 @@
 #include <cmath>
 #include <memory>
 #include <vector>
-#include <unordered_map>
+#include <tuple>
 
 #include "fletchgen/basic_types.h"
 #include "fletchgen/nucleus.h"
 
 namespace fletchgen {
 
-using cerata::Component;
-using cerata::Parameter;
-using cerata::Port;
-using cerata::Stream;
-using cerata::Vector;
+using cerata::component;
+using cerata::parameter;
+using cerata::port;
+using cerata::stream;
+using cerata::vector;
+using cerata::record;
+using cerata::field;
 using cerata::integer;
 using cerata::bit;
 using cerata::nul;
@@ -70,35 +72,40 @@ std::vector<MmioReg> GetProfilingRegs(const std::vector<std::shared_ptr<RecordBa
       }
     }
   }
+  profile_regs.push_back(MmioReg{MmioReg::Function::PROFILE, MmioReg::Behavior::CONTROL, "profile_enable",
+                                 "Activates profiler counting when this bit is high.", 1});
+  profile_regs.push_back(MmioReg{MmioReg::Function::PROFILE, MmioReg::Behavior::STROBE, "profile_clear",
+                                 "Resets profiler counters when this bit is asserted.", 1});
   return profile_regs;
 }
 
-std::shared_ptr<cerata::Type> stream_probe() {
-  auto result = Stream::Make("", nul());
+std::shared_ptr<cerata::Type> stream_probe(const std::shared_ptr<Node> &count_width) {
+  auto result = stream("", record("probe_rec", {field("count", vector("count_width", count_width))}));
   return result;
 }
 
 static std::shared_ptr<Component> Profiler() {
   // Parameters
-  auto out_count_max = Parameter::Make("OUT_COUNT_MAX", integer(), cerata::intl(1023));
-  auto out_count_width = Parameter::Make("OUT_COUNT_WIDTH", integer(), cerata::intl(COUNT_WIDTH));
-  auto out_count_type = Vector::Make("out_count_type", out_count_width);
+  auto in_count_width = parameter("PROBE_COUNT_WIDTH", integer(), cerata::intl(1));
+  auto out_count_width = parameter("OUT_COUNT_WIDTH", integer(), cerata::intl(32));
+  auto out_count_type = vector("out_count_type", out_count_width);
 
-  auto pcr = Port::Make("pcd", cr(), Port::Dir::IN);
-  auto probe = Port::Make("probe", stream_probe(), Port::Dir::IN);
-  auto enable = Port::Make("enable", bit(), Port::Dir::IN);
-  auto ecount = Port::Make("ecount", out_count_type, Port::Dir::OUT);
-  auto vcount = Port::Make("rcount", out_count_type, Port::Dir::OUT);
-  auto rcount = Port::Make("vcount", out_count_type, Port::Dir::OUT);
-  auto tcount = Port::Make("tcount", out_count_type, Port::Dir::OUT);
-  auto pcount = Port::Make("pcount", out_count_type, Port::Dir::OUT);
+  auto pcr = port("pcd", cr(), Port::Dir::IN);
+  auto probe = port("probe", stream_probe(in_count_width), Port::Dir::IN);
+  auto enable = port("enable", bit(), Port::Dir::IN);
+  auto clear = port("clear", bit(), Port::Dir::IN);
+  auto e = port("ecount", out_count_type, Port::Dir::OUT);
+  auto v = port("rcount", out_count_type, Port::Dir::OUT);
+  auto r = port("vcount", out_count_type, Port::Dir::OUT);
+  auto t = port("tcount", out_count_type, Port::Dir::OUT);
+  auto p = port("pcount", out_count_type, Port::Dir::OUT);
 
   // Component & ports
-  auto ret = Component::Make("ProfilerStreams", {out_count_max, out_count_width,
-                                                 pcr,
-                                                 probe,
-                                                 enable,
-                                                 ecount, vcount, rcount, tcount, pcount});
+  auto ret = component("ProfilerStreams", {in_count_width, out_count_width,
+                                           pcr,
+                                           probe,
+                                           enable, clear,
+                                           e, v, r, t, p});
 
   // VHDL metadata
   ret->SetMeta(cerata::vhdl::metakeys::PRIMITIVE, "true");
@@ -120,32 +127,41 @@ std::unique_ptr<cerata::Instance> ProfilerInstance(const std::string &name,
     profiler_component = Profiler().get();
   }
   // Create and return an instance of the Array component.
-  result = cerata::Instance::Make(profiler_component, name);
-  result->port("pcd")->SetDomain(domain);
+  result = cerata::instance(profiler_component, name);
+
   // Because we can have multiple probes mapping to multiple stream types, each probe type should be unique.
-  auto probe = result->port("probe");
-  probe->SetType(stream_probe());
-  probe->SetDomain(domain);
+  auto probe = result->prt("probe");
+  probe->SetType(stream_probe((*result->GetNode("PROBE_COUNT_WIDTH"))->shared_from_this()));
+
+  for (auto &n : result->GetNodes()) {
+    auto s = dynamic_cast<cerata::Synchronous *>(n);
+    if (s != nullptr) {
+      s->SetDomain(domain);
+    }
+  }
+
   return result;
 }
 
-std::unordered_map<Node *, std::vector<Port *>> EnableStreamProfiling(cerata::Component *comp,
-                                                                      const std::vector<Node *> &profile_nodes) {
-  std::unordered_map<Node *, std::vector<Port *>> result;
+NodeProfilerPorts EnableStreamProfiling(cerata::Component *comp,
+                                        const std::vector<Node *> &profile_nodes) {
+  NodeProfilerPorts result;
   // Get all nodes and check if their type contains a stream, then check if they should be profiled.
   for (auto node : profile_nodes) {
-    // Flatten the types
-    auto fts = Flatten(node->type());
+    // Flatten the type
+    auto flat_types = Flatten(node->type());
     int s = 0;
-    for (size_t f = 0; f < fts.size(); f++) {
-      if (fts[f].type_->Is(Type::STREAM)) {
-        FLETCHER_LOG(INFO, "Inserting profiler for stream node " + node->name()
+    // Iterate over all flattened types. If we encounter a stream, we must profile it.
+    size_t fti = 0;
+    while (fti < flat_types.size()) {
+      if (flat_types[fti].type_->Is(Type::STREAM)) {
+        FLETCHER_LOG(DEBUG, "Inserting profiler for stream node " + node->name()
             + ", sub-stream " + std::to_string(s)
             + " of flattened type " + node->type()->name()
-            + " index " + std::to_string(f) + ".");
+            + " index " + std::to_string(fti) + ".");
         auto domain = GetDomain(*node);
         if (!domain) {
-          throw std::runtime_error("No clock domain specified for stream node ["
+          throw std::runtime_error("No clock domain specified for stream of node ["
                                        + node->name() + "] on component ["
                                        + comp->name() + ".");
         }
@@ -157,43 +173,84 @@ std::unordered_map<Node *, std::vector<Port *>> EnableStreamProfiling(cerata::Co
         }
 
         // Instantiate a profiler.
-        std::string name = fts[f].name(cerata::NamePart(node->name(), true));
+        std::string name = flat_types[fti].name(cerata::NamePart(node->name(), true));
 
         auto profiler_inst_unique = ProfilerInstance(name + "_inst", *domain);
         auto profiler_inst = profiler_inst_unique.get();
         comp->AddChild(std::move(profiler_inst_unique));
 
-        // Obtain the profiler probe port.
-        auto p_probe = profiler_inst->port("probe");
+        // Obtain profiler ports.
+        auto p_probe = profiler_inst->prt("probe");
+        auto p_cr = profiler_inst->prt("pcd");
+        auto p_in_count_width = profiler_inst->par("PROBE_COUNT_WIDTH");
+
+        // Set clock domain.
+        p_probe->SetDomain(*domain);
+        p_cr->SetDomain(*domain);
+
         // Set up a type mapper.
         auto mapper = TypeMapper::Make(node->type(), p_probe->type());
         auto matrix = mapper->map_matrix().Empty();
-        matrix(f, 0) = 1;
+        matrix(fti, 0) = 1;  // Connect the stream
+
+        // Now we need to find field marked with "count" metadata for EPC streams, if it exists.
+        // Increase the flat type field index, until we hit the next stream, or we see a field with metadata meant for
+        // this function.
+
+        // TODO(johanpel): do this properly through a new stream type that includes the count properly through epc.
+        //  or just get rid of the stream type and create something like parameterizable bundles.
+
+        // Go the next flat type index.
+        // If there is any flat types left, figure out if there is a count field.
+        fti++;
+        while (fti < flat_types.size()) {
+          auto ft = flat_types[fti];
+          if (ft.type_->Is(Type::STREAM)) {
+            // We've found the next stream, continue the function.
+            break;
+          }
+          if (ft.type_->meta.count(metakeys::COUNT) > 0) {
+            auto width = std::strtol(flat_types[fti].type_->meta.at(metakeys::COUNT).c_str(), nullptr, 10);
+            p_in_count_width <<= intl(static_cast<int>(width));
+            // We've found the count field.
+            matrix(fti, 2) = 2;  // Connect the count.
+            break;
+          }
+          fti++;
+        }
+
+        // Set the mapping matrix of the new mapper, and add it to the probe.
         mapper->SetMappingMatrix(matrix);
         node->type()->AddMapper(mapper);
 
-        // Connect the probe, clock/reset, count and enable
+        // Connect the clock/reset, probe and profile output.
+        Connect(p_cr, *cr_node);
         Connect(p_probe, node);
-        Connect(profiler_inst->port("pcd"), *cr_node);
 
         // Create an entry in the map.
-        auto new_ports = std::vector<Port *>({profiler_inst->port("ecount"),
-                                              profiler_inst->port("rcount"),
-                                              profiler_inst->port("vcount"),
-                                              profiler_inst->port("tcount"),
-                                              profiler_inst->port("pcount")
-                                             });
-        if (result.count(node) == 0) {
-          // We need to create a new entry.
-          result[node] = new_ports;
-        } else {
-          // Insert the ports into the old entry.
-          auto vec = result[node];
-          vec.insert(vec.end(), new_ports.begin(), new_ports.end());
+        auto new_ports = std::vector<Port *>({profiler_inst->prt("ecount"),
+                                              profiler_inst->prt("rcount"),
+                                              profiler_inst->prt("vcount"),
+                                              profiler_inst->prt("tcount"),
+                                              profiler_inst->prt("pcount")});
+        for (auto &p : new_ports) {
+          p->SetDomain(*domain);
         }
 
+        if (result.count(node) == 0) {
+          // We need to create a new entry.
+          result[node] = {{profiler_inst}, new_ports};
+        } else {
+          // Insert the ports into the old entry.
+          result[node].first.push_back(profiler_inst);
+          auto vec = result[node].second;
+          vec.insert(vec.end(), new_ports.begin(), new_ports.end());
+        }
         // Increase the s-th stream index in the flattened type.
         s++;
+      } else {
+        // Not a stream, just continue.
+        fti++;
       }
     }
   }

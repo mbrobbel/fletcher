@@ -18,7 +18,7 @@
 #include <optional>
 #include <string>
 #include <memory>
-#include <deque>
+#include <vector>
 #include <unordered_map>
 
 #include "cerata/object.h"
@@ -84,18 +84,18 @@ class Node : public Object, public std::enable_shared_from_this<Node> {
   /// @brief Remove an edge of this node.
   virtual bool RemoveEdge(Edge *edge) = 0;
   /// @brief Return all edges this Node is on.
-  virtual std::deque<Edge *> edges() const;
+  virtual std::vector<Edge *> edges() const;
   /// @brief Get the input edges of this Node.
-  virtual std::deque<Edge *> sources() const { return {}; }
+  virtual std::vector<Edge *> sources() const { return {}; }
   /// @brief Get the output edges of this Node.
-  virtual std::deque<Edge *> sinks() const { return {}; }
+  virtual std::vector<Edge *> sinks() const { return {}; }
   /// @brief Recursively list any nodes that this node owns.
-  virtual std::deque<const Node *> ownees() const { return {}; }
+  virtual std::vector<const Node *> ownees() const { return {}; }
 
   /// @brief Set parent array.
-  void SetArray(const NodeArray *array) { array_ = array; }
+  void SetArray(NodeArray *array) { array_ = array; }
   /// @brief Return parent array, if any.
-  std::optional<const NodeArray *> array() const { return array_; }
+  std::optional<NodeArray *> array() const { return array_; }
 
   /// @brief Return a human-readable string of this node.
   virtual std::string ToString() const;
@@ -106,7 +106,7 @@ class Node : public Object, public std::enable_shared_from_this<Node> {
   /// The Type of this Node.
   std::shared_ptr<Type> type_;
   /// Parent if this belongs to an array
-  std::optional<const NodeArray *> array_ = {};
+  std::optional<NodeArray *> array_ = {};
 };
 
 /**
@@ -114,7 +114,7 @@ class Node : public Object, public std::enable_shared_from_this<Node> {
  */
 struct MultiOutputNode : public Node {
   /// @brief The outgoing Edges that sink this Node.
-  std::deque<std::shared_ptr<Edge>> outputs_;
+  std::vector<std::shared_ptr<Edge>> outputs_;
 
   /// @brief MultiOutputNode constructor.
   MultiOutputNode(std::string name, Node::NodeID id, std::shared_ptr<Type> type) : Node(std::move(name),
@@ -122,9 +122,9 @@ struct MultiOutputNode : public Node {
                                                                                         std::move(type)) {}
 
   /// @brief Return the incoming edges (in this case just the single input edge) that sources this Node.
-  std::deque<Edge *> sources() const override { return {}; }
+  std::vector<Edge *> sources() const override { return {}; }
   /// @brief The outgoing Edges that this Node sinks.
-  std::deque<Edge *> sinks() const override { return ToRawPointers(outputs_); }
+  std::vector<Edge *> sinks() const override { return ToRawPointers(outputs_); }
 
   /// @brief Add an output edge to this node.
   std::shared_ptr<Edge> AddSink(Node *sink) override;
@@ -152,7 +152,7 @@ struct NormalNode : public MultiOutputNode {
                                                                                               std::move(type)) {}
 
   /// @brief Return the incoming edges (in this case just the single input edge).
-  std::deque<Edge *> sources() const override;
+  std::vector<Edge *> sources() const override;
 
   /// @brief Return the single incoming edge.
   std::optional<Edge *> input() const;
@@ -219,6 +219,8 @@ class Parameter : public NormalNode {
   std::shared_ptr<Object> Copy() const override;
   /// @brief Short hand to get value node.
   std::optional<Node *> GetValue() const;
+  /// @brief Obtain all nodes that source this parameter and append it to output.
+  void GetSourceTrace(std::vector<Node *> *out) const;
  protected:
   /// @brief An optional default value.
   std::optional<std::shared_ptr<Literal>> default_value_;

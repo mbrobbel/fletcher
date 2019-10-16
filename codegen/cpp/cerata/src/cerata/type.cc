@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,28 +29,11 @@ bool Type::Is(Type::ID type_id) const {
   return type_id == id_;
 }
 
-Type::Type(std::string name, Type::ID id)
-    : Named(std::move(name)), id_(id) {}
-
-bool Type::IsAbstract() const {
-  return Is(STRING) || Is(BOOLEAN) || Is(RECORD) || Is(STREAM) || Is(NUL);
-}
-
-bool Type::IsPhysical() const {
-  return Is(CLOCK) || Is(RESET) || Is(BIT) || Is(VECTOR);
-}
-
-bool Type::IsNested() const {
-  return (id_ == Type::STREAM) || (id_ == Type::RECORD);
-}
+Type::Type(std::string name, Type::ID id) : Named(std::move(name)), id_(id) {}
 
 std::string Type::ToString(bool show_meta, bool show_mappers) const {
   std::string ret;
   switch (id_) {
-    case CLOCK  : ret = name() + ":Clk";
-      break;
-    case RESET  : ret = name() + ":Rec";
-      break;
     case BIT    : ret = name() + ":Bit";
       break;
     case VECTOR : ret = name() + ":Vec";
@@ -94,7 +77,7 @@ std::string Type::ToString(bool show_meta, bool show_mappers) const {
   return ret;
 }
 
-std::deque<std::shared_ptr<TypeMapper>> Type::mappers() const {
+std::vector<std::shared_ptr<TypeMapper>> Type::mappers() const {
   return mappers_;
 }
 
@@ -179,8 +162,8 @@ bool Type::IsEqual(const Type &other) const {
   return other.id() == id_;
 }
 
-Vector::Vector(std::string name, std::shared_ptr<Type> element_type, const OptionalNode &width)
-    : Type(std::move(name), Type::VECTOR), element_type_(std::move(element_type)) {
+Vector::Vector(std::string name, const OptionalNode &width)
+    : Type(std::move(name), Type::VECTOR) {
   // Check if width is parameter or literal node
   if (width) {
     if (!(width.value()->IsParameter() || width.value()->IsLiteral() || width.value()->IsExpression())) {
@@ -190,13 +173,8 @@ Vector::Vector(std::string name, std::shared_ptr<Type> element_type, const Optio
   width_ = width;
 }
 
-std::shared_ptr<Type> vector(const std::string &name,
-                             const std::shared_ptr<Type> &element_type, const OptionalNode &width) {
-  return std::make_shared<Vector>(name, element_type, width);
-}
-
 std::shared_ptr<Type> vector(const std::string &name, const OptionalNode &width) {
-  return std::make_shared<Vector>(name, bit(), width);
+  return std::make_shared<Vector>(name, width);
 }
 
 std::shared_ptr<Type> vector(unsigned int width) {
@@ -229,7 +207,7 @@ bool Vector::IsEqual(const Type &other) const {
   return false;
 }
 
-std::vector<Node *> Vector::GetParameters() const {
+std::vector<Node *> Vector::GetGenerics() const {
   if (width_) {
     return std::vector({width_.value().get()});
   } else {
@@ -301,15 +279,15 @@ std::optional<Node *> Bit::width() const {
   return rintl(1);
 }
 
-Field::Field(std::string name, std::shared_ptr<Type> type, bool invert)
-    : Named(std::move(name)), type_(std::move(type)), invert_(invert), sep_(true) {}
+Field::Field(std::string name, std::shared_ptr<Type> type, bool invert, bool sep)
+    : Named(std::move(name)), type_(std::move(type)), invert_(invert), sep_(sep) {}
 
-std::shared_ptr<Field> field(const std::string &name, const std::shared_ptr<Type> &type, bool invert) {
-  return std::make_shared<Field>(name, type, invert);
+std::shared_ptr<Field> field(const std::string &name, const std::shared_ptr<Type> &type, bool invert, bool sep) {
+  return std::make_shared<Field>(name, type, invert, sep);
 }
 
-std::shared_ptr<Field> field(const std::shared_ptr<Type> &type, bool invert) {
-  return std::make_shared<Field>(type->name(), type, invert);
+std::shared_ptr<Field> field(const std::shared_ptr<Type> &type, bool invert, bool sep) {
+  return std::make_shared<Field>(type->name(), type, invert, sep);
 }
 
 std::shared_ptr<Field> NoSep(std::shared_ptr<Field> field) {
@@ -396,6 +374,18 @@ std::shared_ptr<TypeMapper> Stream::GenerateMapper(Type *other) {
   return nullptr;
 }
 
+bool Stream::IsPhysical() const { return element_type_->IsPhysical(); }
+bool Stream::IsGeneric() const { return element_type_->IsGeneric(); }
+
+std::vector<Type *> Stream::GetNested() const {
+  std::vector<Type *> result;
+  result.push_back(element_type().get());
+  // Push back any nested types.
+  auto nested = element_type()->GetNested();
+  result.insert(result.end(), nested.begin(), nested.end());
+  return result;
+}
+
 bool Record::IsEqual(const Type &other) const {
   if (&other == this) {
     return true;
@@ -421,12 +411,124 @@ bool Record::IsEqual(const Type &other) const {
   return true;
 }
 
-std::vector<Node *> Record::GetParameters() const {
+std::vector<Node *> Record::GetGenerics() const {
   std::vector<Node *> result;
   for (const auto &field : fields_) {
-    auto field_params = field->type()->GetParameters();
+    auto field_params = field->type()->GetGenerics();
     result.insert(result.end(), field_params.begin(), field_params.end());
   }
+  return result;
+}
+
+std::vector<Type *> Record::GetNested() const {
+  std::vector<Type *> result;
+  for (const auto &field : fields_) {
+    // Push back the field type itself.
+    result.push_back(field->type().get());
+    // Push back any nested types.
+    auto nested = field->type()->GetNested();
+    result.insert(result.end(), nested.begin(), nested.end());
+  }
+  return result;
+}
+
+bool Record::IsPhysical() const {
+  for (const auto &f : fields_) {
+    if (!f->type()->IsPhysical()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool Record::IsGeneric() const {
+  for (const auto &f : fields_) {
+    if (f->type()->IsGeneric()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::shared_ptr<Type> Bit::Copy(std::unordered_map<Node *, Node *> rebinding) const {
+  std::shared_ptr<Type> result;
+  result = bit(name());
+
+  result->meta = meta;
+
+  for (const auto& mapper : mappers_) {
+    auto new_mapper = mapper->Make(result.get(), mapper->b());
+    new_mapper->SetMappingMatrix(mapper->map_matrix());
+    result->AddMapper(new_mapper);
+  }
+
+  return result;
+}
+
+std::shared_ptr<Type> Vector::Copy(std::unordered_map<Node *, Node *> rebinding) const {
+  std::shared_ptr<Type> result;
+  std::optional<std::shared_ptr<Node>> new_width = width_;
+  if (width_) {
+    auto w = width_.value().get();
+    if (rebinding.count(w) > 0) {
+      new_width = rebinding.at(w)->shared_from_this();
+    }
+  }
+  result = vector(name(), new_width);
+
+  result->meta = meta;
+
+  for (const auto& mapper : mappers_) {
+    auto new_mapper = mapper->Make(result.get(), mapper->b());
+    new_mapper->SetMappingMatrix(mapper->map_matrix());
+    result->AddMapper(new_mapper);
+  }
+
+  return result;
+}
+
+std::shared_ptr<Field> Field::Copy(std::unordered_map<Node *, Node *> rebinding) const {
+  std::shared_ptr<Field> result;
+  auto type = type_;
+  if (type_->IsGeneric()) {
+    type = type_->Copy(std::move(rebinding));
+  }
+  result = field(name(), type, invert_, sep_);
+  result->meta = meta;
+  return result;
+}
+
+std::shared_ptr<Type> Record::Copy(std::unordered_map<Node *, Node *> rebinding) const {
+  std::shared_ptr<Type> result;
+  std::vector<std::shared_ptr<Field>> fields;
+  for (const auto &f : fields_) {
+    fields.push_back(f->Copy(rebinding));
+  }
+  result = record(name(), fields);
+
+  result->meta = meta;
+
+  for (const auto& mapper : mappers_) {
+    auto new_mapper = mapper->Make(result.get(), mapper->b());
+    new_mapper->SetMappingMatrix(mapper->map_matrix());
+    result->AddMapper(new_mapper);
+  }
+
+  return result;
+}
+
+std::shared_ptr<Type> Stream::Copy(std::unordered_map<Node *, Node *> rebinding) const {
+  std::shared_ptr<Type> result;
+  result = stream(name(), element_type()->Copy(rebinding), element_name(), epc_);
+
+  result->meta = meta;
+
+  for (const auto& mapper : mappers_) {
+    auto new_mapper = mapper->Make(result.get(), mapper->b());
+    new_mapper->SetMappingMatrix(mapper->map_matrix());
+    result->AddMapper(new_mapper);
+  }
+
   return result;
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 #include <optional>
 #include <string>
 #include <memory>
-#include <deque>
+#include <vector>
 
 #include "cerata/node.h"
 #include "cerata/port.h"
@@ -39,15 +39,16 @@ class NodeArray : public Object {
     base_->SetArray(this);
   }
 
-  /// @brief Set the parent of this NodeArray.
-  void SetParent(Graph *parent) override;
+  /// @brief Set the parent of this NodeArray base node and array nodes.
+  void SetParent(Graph *new_parent) override;
 
   /// @brief Return the size node.
   inline Node *size() const { return size_.get(); }
 
   /// @brief Set the size node.
   void SetSize(const std::shared_ptr<Node> &size);
-
+  /// @brief Set the type of the base node and array nodes.
+  void SetType(const std::shared_ptr<Type> &type);
   /// @brief Return the type of the nodes in the NodeArray.
   Type *type() const { return base_->type(); }
 
@@ -57,7 +58,7 @@ class NodeArray : public Object {
   /// @brief Append a node to this array, optionally incrementing the size node. Returns a pointer to that node.
   Node *Append(bool increment_size = true);
   /// @brief Return all nodes of this NodeArray.
-  std::deque<Node *> nodes() const { return ToRawPointers(nodes_); }
+  std::vector<Node *> nodes() const { return ToRawPointers(nodes_); }
   /// @brief Return element node i.
   Node *node(size_t i) const;
   /// @brief Return element node i.
@@ -71,7 +72,7 @@ class NodeArray : public Object {
   std::string ToString() const { return name(); }
 
   /// @brief Return the base node of this NodeArray.
-  std::shared_ptr<Node> base() { return base_; }
+  std::shared_ptr<Node> base() const { return base_; }
 
  protected:
   /// The type ID of the nodes in this NodeArray.
@@ -83,52 +84,50 @@ class NodeArray : public Object {
   /// A node representing the number of concatenated edges.
   std::shared_ptr<Node> size_;
   /// The nodes contained by this array
-  std::deque<std::shared_ptr<Node>> nodes_;
+  std::vector<std::shared_ptr<Node>> nodes_;
 };
 
 /// An array of signal nodes.
 class SignalArray : public NodeArray {
  public:
-  /**
-   * @brief Construct a new node array and return a shared pointer to it.
-   * @param name    The name of the node array.
-   * @param type    The type of the nodes in the node array.
-   * @param size    The size node of the node array.
-   * @param domain  The clock domain of the nodes in the node array.
-   * @return        A shared pointer to the new node array.
-   */
-  static std::shared_ptr<NodeArray> Make(const std::string &name,
-                                         const std::shared_ptr<Type> &type,
-                                         std::shared_ptr<Node> size,
-                                         const std::shared_ptr<ClockDomain> &domain = default_domain());
- protected:
   /// SignalArray constructor.
   SignalArray(const std::shared_ptr<Signal> &base, std::shared_ptr<Node> size) :
       NodeArray(base->name(), Node::NodeID::SIGNAL, std::dynamic_pointer_cast<Node>(base), std::move(size)) {}
 };
 
 /**
+ * @brief Construct a new node array and return a shared pointer to it.
+ * @param name    The name of the node array.
+ * @param type    The type of the nodes in the node array.
+ * @param size    The size node of the node array.
+ * @param domain  The clock domain of the nodes in the node array.
+ * @return        A shared pointer to the new node array.
+ */
+std::shared_ptr<NodeArray> signal_array(const std::string &name,
+                                        const std::shared_ptr<Type> &type,
+                                        std::shared_ptr<Node> size,
+                                        const std::shared_ptr<ClockDomain> &domain = default_domain());
+
+/**
  * @brief An array of port nodes
  */
 class PortArray : public NodeArray, public Term {
  public:
-  /// @brief Get a smart pointer to a new ArrayPort.
-  static std::shared_ptr<PortArray> Make(const std::string &name,
-                                         const std::shared_ptr<Type> &type,
-                                         std::shared_ptr<Node> size,
-                                         Port::Dir dir = Port::Dir::IN,
-                                         const std::shared_ptr<ClockDomain> &domain = default_domain());
-
-  /// @brief Get a smart pointer to a new ArrayPort with a base type other than the default Port.
-  static std::shared_ptr<PortArray> Make(const std::shared_ptr<Port> &base_node,
-                                         std::shared_ptr<Node> size);
-
-  /// @brief Make a copy of this port array
-  std::shared_ptr<Object> Copy() const override;
-
- protected:
   /// @brief Construct a new port array.
   PortArray(const std::shared_ptr<Port> &base, std::shared_ptr<Node> size, Term::Dir dir);
+  /// @brief Make a copy of this port array
+  std::shared_ptr<Object> Copy() const override;
 };
+
+/// @brief Get a smart pointer to a new ArrayPort.
+std::shared_ptr<PortArray> port_array(const std::string &name,
+                                      const std::shared_ptr<Type> &type,
+                                      std::shared_ptr<Node> size,
+                                      Port::Dir dir = Port::Dir::IN,
+                                      const std::shared_ptr<ClockDomain> &domain = default_domain());
+
+/// @brief Get a smart pointer to a new ArrayPort with a base type other than the default Port.
+std::shared_ptr<PortArray> port_array(const std::shared_ptr<Port> &base_node,
+                                      std::shared_ptr<Node> size);
 
 }  // namespace cerata

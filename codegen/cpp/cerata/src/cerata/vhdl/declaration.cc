@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 #include <memory>
 #include <string>
-#include <deque>
+#include <vector>
 
 #include "cerata/node.h"
 #include "cerata/expression.h"
@@ -79,7 +79,7 @@ static std::string GenerateTypeDecl(const Type &type,
 Block Decl::Generate(const Parameter &par, int depth) {
   Block ret(depth);
   Line l;
-  l << to_upper(par.name()) << " : " << GenerateTypeDecl(*par.type());
+  l << ToUpper(par.name()) << " : " << GenerateTypeDecl(*par.type());
   if (par.GetValue()) {
     Node *val = par.GetValue().value();
     l << " := " << val->ToString();
@@ -143,16 +143,16 @@ Block Decl::Generate(const PortArray &porta, int depth) {
   return ret;
 }
 
-Block Decl::Generate(const SignalArray &siga, int depth) {
+Block Decl::Generate(const SignalArray &sig_array, int depth) {
   Block ret(depth);
   // Flatten the type of this port
-  auto flat_types = FilterForVHDL(Flatten(siga.type()));
+  auto flat_types = FilterForVHDL(Flatten(sig_array.type()));
 
   for (const auto &ft : flat_types) {
     Line l;
-    auto port_name_prefix = siga.name();
+    auto port_name_prefix = sig_array.name();
     l << "signal " + ft.name(NamePart(port_name_prefix, true)) << " : ";
-    l << GenerateTypeDecl(*ft.type_, std::dynamic_pointer_cast<Node>(siga.size()->Copy()));
+    l << GenerateTypeDecl(*ft.type_, std::dynamic_pointer_cast<Node>(sig_array.size()->Copy())) + ";";
     ret << l;
   }
   return ret;
@@ -177,7 +177,7 @@ MultiBlock Decl::Generate(const Component &comp, bool entity) {
   ret << h;
 
   // Generics
-  std::deque<Parameter *> parameters = comp.GetAll<Parameter>();
+  std::vector<Parameter *> parameters = comp.GetAll<Parameter>();
   if (!parameters.empty()) {
     Block gdh(ret.indent + 1);
     Block gd(ret.indent + 2);

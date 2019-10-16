@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,7 +59,8 @@ struct MmioReg {
   /// Register access behavior enumeration.
   enum class Behavior {
     CONTROL,   ///< Register contents is controlled by host software.
-    STATUS     ///< Register contents is controlled by hardware kernel.
+    STATUS,    ///< Register contents is controlled by hardware kernel.
+    STROBE,    ///< Register contents is asserted for one cycle by host software.
   } behavior;  ///< Register access behavior.
 
   /// Name.
@@ -82,12 +83,12 @@ bool ExposeToKernel(MmioReg::Function fun);
  * @brief A port on the vhdmmio component. Remembers what register spec it came from.
  */
 struct MmioPort : public Port {
+  /// MmioPort constructor.
   MmioPort(const std::string &name, Port::Dir dir, const MmioReg &reg = {},
            const std::shared_ptr<ClockDomain> &domain = cerata::default_domain());
+  /// The Mmio register this port will represent.
   MmioReg reg;
-  std::shared_ptr<Object> Copy() const override {
-    return std::make_shared<MmioPort>(name(), dir_, reg, domain_);
-  }
+  std::shared_ptr<Object> Copy() const override;
 };
 
 /// @brief Create an mmio port.

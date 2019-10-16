@@ -20,10 +20,11 @@
 
 namespace fletchgen {
 
-using cerata::Record;
-using cerata::Stream;
-using cerata::Vector;
-using cerata::RecField;
+using cerata::record;
+using cerata::field;
+using cerata::stream;
+using cerata::vector;
+using cerata::Object;
 
 std::shared_ptr<Type> axi4_lite_type(Axi4LiteSpec spec) {
   auto axi_typename = spec.ToAxiTypeName();
@@ -32,21 +33,21 @@ std::shared_ptr<Type> axi4_lite_type(Axi4LiteSpec spec) {
     // AXI-lite type already exists in type pool, just return that.
     return opt_existing_axi_typename.value()->shared_from_this();
   } else {
-    auto new_axi_lite_type = Record::Make(axi_typename, {
-        NoSep(RecField::Make("aw", Stream::Make(Record::Make("aw", {
-            RecField::Make("addr", Vector::Make(spec.addr_width))})))),
-        NoSep(RecField::Make("w", Stream::Make(Record::Make("w", {
-            RecField::Make("data", Vector::Make(spec.data_width)),
-            RecField::Make("strb", Vector::Make(spec.data_width / 8))
+    auto new_axi_lite_type = record(axi_typename, {
+        NoSep(field("aw", stream(record("aw", {
+            field("addr", vector(spec.addr_width))})))),
+        NoSep(field("w", stream(record("w", {
+            field("data", vector(spec.data_width)),
+            field("strb", vector(spec.data_width / 8))
         })))),
-        NoSep(RecField::Make("b", Stream::Make(Record::Make("b", {
-            RecField::Make("resp", Vector::Make(2))})), true)),
-        NoSep(RecField::Make("ar", Stream::Make(Record::Make("ar", {
-            RecField::Make("addr", Vector::Make(spec.addr_width))
+        NoSep(field("b", stream(record("b", {
+            field("resp", vector(2))})), true)),
+        NoSep(field("ar", stream(record("ar", {
+            field("addr", vector(spec.addr_width))
         })))),
-        NoSep(RecField::Make("r", Stream::Make(Record::Make("r", {
-            RecField::Make("data", Vector::Make(spec.data_width)),
-            RecField::Make("resp", Vector::Make(2))})), true)),
+        NoSep(field("r", stream(record("r", {
+            field("data", vector(spec.data_width)),
+            field("resp", vector(2))})), true)),
     });
     cerata::default_type_pool()->Add(new_axi_lite_type);
     return new_axi_lite_type;
@@ -70,12 +71,14 @@ std::string Axi4LiteSpec::ToAxiTypeName() const {
   return str.str();
 }
 
-std::shared_ptr<Axi4LitePort> axi4_lite(Port::Dir dir,
-                                        const std::shared_ptr<ClockDomain> &domain,
-                                        Axi4LiteSpec spec) {
+std::shared_ptr<Axi4LitePort> axi4_lite(Port::Dir dir, const std::shared_ptr<ClockDomain> &domain, Axi4LiteSpec spec) {
   return std::make_shared<Axi4LitePort>(dir, spec, "mmio", domain);
 }
 
 Axi4LitePort::Axi4LitePort(Port::Dir dir, Axi4LiteSpec spec, std::string name, std::shared_ptr<ClockDomain> domain) :
     Port(std::move(name), axi4_lite_type(spec), dir, std::move(domain)), spec_(spec) {}
+
+std::shared_ptr<Object> Axi4LitePort::Copy() const {
+  return axi4_lite(dir_, domain_, spec_);
+}
 }  // namespace fletchgen

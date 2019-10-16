@@ -16,7 +16,7 @@
 
 #include <optional>
 #include <utility>
-#include <deque>
+#include <vector>
 #include <memory>
 #include <string>
 
@@ -35,10 +35,10 @@ std::string Node::ToString() const {
   return name();
 }
 
-std::deque<Edge *> Node::edges() const {
+std::vector<Edge *> Node::edges() const {
   auto snk = sinks();
   auto src = sources();
-  std::deque<Edge *> edges;
+  std::vector<Edge *> edges;
   edges.insert(edges.end(), snk.begin(), snk.end());
   edges.insert(edges.end(), src.begin(), src.end());
   return edges;
@@ -99,7 +99,7 @@ std::optional<Edge *> NormalNode::input() const {
   return {};
 }
 
-std::deque<Edge *> NormalNode::sources() const {
+std::vector<Edge *> NormalNode::sources() const {
   if (input_ != nullptr) {
     return {input_.get()};
   } else {
@@ -176,6 +176,15 @@ std::optional<Node *> Parameter::GetValue() const {
     return default_value_->get();
   }
   return std::nullopt;
+}
+
+void Parameter::GetSourceTrace(std::vector<Node *>* out) const {
+  if (input()) {
+    out->push_back(input().value()->src());
+    if (input().value()->src()->IsParameter()) {
+      input().value()->src()->AsParameter().GetSourceTrace(out);
+    }
+  }
 }
 
 Signal::Signal(std::string name, std::shared_ptr<Type> type, std::shared_ptr<ClockDomain> domain)

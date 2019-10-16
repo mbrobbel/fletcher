@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 namespace cerata::vhdl {
 
 /// @brief Return the upper-case version of a string.
-std::string to_upper(std::string str);
+std::string ToUpper(std::string str);
 
 /**
  * @brief A VHDL Identifier convenience structure.

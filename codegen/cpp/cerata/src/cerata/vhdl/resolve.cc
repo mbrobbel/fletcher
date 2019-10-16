@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 #include "cerata/vhdl/resolve.h"
 
 #include <memory>
-#include <deque>
+#include <vector>
 #include <string>
 #include <unordered_map>
 
@@ -29,130 +29,231 @@
 
 namespace cerata::vhdl {
 
-static void InsertSignal(Component *comp, Edge *edge, std::deque<Object *> *resolved) {
-  CERATA_LOG(DEBUG, "VHDL:   Resolving " + edge->src()->ToString() + " --> " + edge->dst()->ToString());
-  std::string prefix;
-  if (edge->src()->parent()) {
-    prefix = edge->src()->parent().value()->name();
-  } else if (edge->dst()->parent()) {
-    prefix = edge->dst()->parent().value()->name();
+static std::shared_ptr<ClockDomain> DomainOf(NodeArray *node_array) {
+  std::shared_ptr<ClockDomain> result;
+  auto base = node_array->base();
+  if (base->IsSignal()) {
+    result = std::dynamic_pointer_cast<Signal>(base)->domain();
+  } else if (base->IsPort()) {
+    result = std::dynamic_pointer_cast<Port>(base)->domain();
+  } else {
+    throw std::runtime_error("Base node is not a signal or port.");
   }
-  // Remember we've touched these nodes already
-  resolved->push_back(edge->src());
-  resolved->push_back(edge->dst());
-  // Insert a new signal, after this, the original edge may potentially be destroyed.
-  auto sig = insert(edge, prefix, comp);
+  return result;
 }
 
-static void ResolvePorts(Component *comp, Instance *inst, std::deque<Object *> *resolved) {
-  // First get all normal ports.
-  for (const auto &port : inst->GetAll<Port>()) {
-    // Iterate over all edges that are sinks or sources of this port.
-    for (const auto &edge : port->sinks()) {
-      // If the destination is not a port, continue
-      if (!edge->dst()->IsPort()) { continue; }
-      // If the source or destination is a component node on the component we're working on,
-      // rather than an instance node, continue.
-      if ((edge->src()->parent() == comp) || (edge->dst()->parent() == comp)) { continue; }
-      // If the destination is already resolved, continue.
-      if (Contains(*resolved, dynamic_cast<Object *>(edge->dst()))) { continue; }
-      // We are now sure to be dealing with a port-to-port connection on two instances.
-      // VHDL cannot handle port-to-port connections of instances.
-      // Insert a signal in between and add it to the component.
-      InsertSignal(comp, edge, resolved);
+/**
+ * @brief Insert a signal based on a node and reconnect every edge.
+ */
+static void AttachSignalToNode(Component *comp,
+                               NormalNode *node,
+                               std::vector<Object *> *resolved,
+                               std::unordered_map<Node *, Node *> *rebinding) {
+  std::shared_ptr<Type> type = node->type()->shared_from_this();
+  // Figure out if the type is a generic type.
+  if (type->IsGeneric()) {
+    // In that case, obtain the type generic nodes.
+    auto generics = type->GetGenerics();
+    // We need to copy over any type generic nodes that are not on the component yet.
+    // Potentially produce new generics in the rebind map.
+    for (const auto &g : generics) {
+      RebindGeneric(comp, g, rebinding);
+    }
+    // Now we must rebind the type generics to the nodes on the component graph.
+    // Copy the type and provide the rebind map.
+    type = type->Copy(*rebinding);
+  }
+
+  // Get the clock domain of the node.
+  auto domain = default_domain();
+  if (node->IsSignal()) domain = node->AsSignal().domain();
+  if (node->IsPort()) domain = node->AsPort().domain();
+
+  // Get the name of the node.
+  auto name = node->name();
+  // Check if the node is on an instance, and prepend that.
+  if (node->parent()) {
+    if (node->parent().value()->IsInstance()) {
+      name = node->parent().value()->name() + "_" + name;
     }
   }
+  auto new_name = name;
+  // Check if a node with this name already exists, generate a new name suffixed with a number if it does.
+  int i = 0;
+  while (comp->Has(new_name)) {
+    i++;
+    new_name = name + "_" + std::to_string(i);
+  }
+
+  // Create the new signal.
+  auto new_signal = signal(new_name, type, domain);
+  comp->Add(new_signal);
+  resolved->push_back(new_signal.get());
+
+  // Iterate over any existing edges that are sinked by the original node.
+  for (auto &e : node->sinks()) {
+    // Figure out the original destination of this edge.
+    auto dst = e->dst();
+    // Remove the edge from the original node and the destination node.
+    node->RemoveEdge(e);
+    dst->RemoveEdge(e);
+    // Create a new edge, driving the destination with the new signal.
+    Connect(dst, new_signal);
+    Connect(new_signal, node);
+  }
+
+  // Iterate over any existing edges that source the original node.
+  for (auto &e : node->sources()) {
+    // Get the destination node.
+    auto src = e->src();
+    // Remove the original edge from the port array child node and source node.
+    node->RemoveEdge(e);
+    src->RemoveEdge(e);
+    // Create a new edge, driving the new signal with the original sourc.
+    Connect(new_signal, src);
+    Connect(node, new_signal);
+  }
 }
 
-static void InsertSignalArray(Component *comp, Edge *edge, std::deque<Object *> *resolved) {
-  auto port = dynamic_cast<Port *>(edge->src());
-  if (!port->array()) {
-    throw std::runtime_error("Expected edge source to be child of NodeArray.");
+/**
+ * @brief Insert a signal array based on a node array and connect every node.
+ */
+static void AttachSignalArrayToNodeArray(Component *comp,
+                                         NodeArray *array,
+                                         std::vector<Object *> *resolved,
+                                         std::unordered_map<Node *, Node *> *rebinding) {
+  // Get the base node.
+  auto base = array->base();
+
+  std::shared_ptr<Type> type = base->type()->shared_from_this();
+  // Figure out if the type is a generic type.
+  if (type->IsGeneric()) {
+    // In that case, obtain the type generic nodes.
+    auto generics = base->type()->GetGenerics();
+    // We need to copy over any type generic nodes that are not on the component yet.
+    // Potentially produce new generics in the rebind map.
+    for (const auto &g : generics) {
+      RebindGeneric(comp, g, rebinding);
+    }
+    // Now we must rebind the type generics to the nodes on the component graph.
+    // Copy the type and provide the rebind map.
+    type = array->type()->Copy(*rebinding);
   }
-  auto na = port->array().value();
-  auto pa = dynamic_cast<const PortArray *>(na);
-  if (pa == nullptr) {
-    throw std::runtime_error("Edge source is child of NodeArray, but not PortArray.");
+
+  // The size parameter must potentially be "rebound" as well.
+  RebindGeneric(comp, array->size(), rebinding);
+  auto size = rebinding->at(array->size())->shared_from_this();
+
+  // Get the clock domain of the array node
+  auto domain = DomainOf(array);
+  auto name = array->name();
+  // Check if the array is on an instance, and prepend that.
+  if (array->parent()) {
+    if (array->parent().value()->IsInstance()) {
+      name = array->parent().value()->name() + "_" + name;
+    }
   }
-  if (!pa->parent()) {
-    throw std::runtime_error("PortArray has no parent.");
+  auto new_name = name;
+  // Check if a node with this name already exists, generate a new name suffixed with a number if it does.
+  int i = 0;
+  while (comp->Has(new_name)) {
+    i++;
+    new_name = name + "_" + std::to_string(i);
   }
 
-  CERATA_LOG(DEBUG, "VHDL:   Resolving port array " + pa->name() + " --> " + edge->dst()->ToString());
+  // Create the new array.
+  auto new_array = signal_array(new_name, type, size, domain);
+  comp->Add(new_array);
+  resolved->push_back(new_array.get());
 
-  std::string prefix;
-  if (edge->src()->parent()) {
-    prefix = edge->src()->parent().value()->name() + "_";
-  } else if (edge->dst()->parent()) {
-    prefix = edge->dst()->parent().value()->name() + "_";
-  }
+  // Now iterate over all original nodes on the NodeArray and reconnect them.
+  for (size_t n = 0; n < array->num_nodes(); n++) {
+    // Create a new child node inside the array, but don't increment the size.
+    // We've already (potentially) rebound the size from some other source and it should be set properly already.
+    auto new_sig = new_array->Append(false);
+    resolved->push_back(new_sig);
 
-  auto sig_name = prefix + port->name();
-  auto size_name = sig_name + "_" + pa->size()->name();
+    bool has_sinks = false;
+    bool has_sources = false;
 
-  // Make a copy of the size node.
-  auto size_node = std::dynamic_pointer_cast<Node>(pa->size()->Copy());
-  size_node->SetName(size_name);
+    // Iterate over any existing edges that are sinked by the original array node.
+    for (auto &e : array->node(n)->sinks()) {
+      // Figure out the original destination.
+      auto dst = e->dst();
+      // Source the destination with the new signal.
+      Connect(dst, new_sig);
+      // Remove the original edge from the port array child node and destination node.
+      array->node(n)->RemoveEdge(e);
+      dst->RemoveEdge(e);
+      has_sinks = true;
+    }
 
-  // Create a new SignalArray.
-  // This array is going to live on the component graph, so we also need a copy of the size node, since the current
-  // size node lives on the instance graph only. We can only use an instance parameter from top to bottom, not vice
-  // versa in VHDL.
-  auto sa = SignalArray::Make(sig_name, port->type()->shared_from_this(), size_node, port->domain());
-
-  // Add the SignalArray to the component.
-  comp->Add(sa);
-
-  // Now for all nodes on the PortArray.
-  for (size_t n = 0; n < pa->num_nodes(); n++) {
-    // Create a new child node inside the signal array.
-    // Don't increment the size, since we can just share the existing size node.
-    auto sn = sa->Append();
-    // All sinks of this port should now be sourced by the signal array child node.
-    for (auto &e : pa->node(n)->sinks()) {
+    // Iterate over any existing edges that source the original array node.
+    for (auto &e : array->node(n)->sources()) {
       // Get the destination node.
-      auto dn = e->dst();
-      Connect(dn, sn);
-      // Mark both ends as resolved.
-      resolved->push_back(dn);
-      resolved->push_back(sn);
-      // Remove the original edge from the port array child node.
-      pa->node(n)->RemoveEdge(e);
+      auto src = e->src();
+      Connect(new_sig, src);
+      // Remove the original edge from the port array child node and source node.
+      array->node(n)->RemoveEdge(e);
+      src->RemoveEdge(e);
+      has_sources = true;
     }
-    // Connect the port array node as source to destination signal array node.
-    Connect(sn, pa->node(n));
+
+    // Source the new signal node with the original node, depending on whether it had any sinks or sources.
+    if (has_sinks) {
+      Connect(new_sig, array->node(n));
+    }
+    if (has_sources) {
+      Connect(array->node(n), new_sig);
+    }
   }
 }
 
-static void ResolvePortArrays(Component *comp, Instance *inst, std::deque<Object *> *resolved) {
-  // First get all port arrays.
+static void ResolvePorts(Component *comp,
+                         Instance *inst,
+                         std::vector<Object *> *resolved,
+                         std::unordered_map<Node *, Node *> *rebinding) {
+  for (const auto &port : inst->GetAll<Port>()) {
+    AttachSignalToNode(comp, port, resolved, rebinding);
+  }
+}
+
+/**
+ * @brief Resolve VHDL-specific limitations in a Cerata graph related to ports.
+ * @param comp      The component to resolve the limitations for.
+ * @param inst      The instance to resolve it for.
+ * @param resolved  A vector to append resolved objects to.
+ * @param rebinding A map with type generic node rebindings.
+ */
+static void ResolvePortArrays(Component *comp,
+                              Instance *inst,
+                              std::vector<Object *> *resolved,
+                              std::unordered_map<Node *, Node *> *rebinding) {
+  // There is something utterly annoying in VHDL; range expressions must be "locally static" in port map
+  // associativity lists on the left hand side. This means we can't use any type generic nodes.
+  // Thanks, VHDL.
+
+  // To solve this, we're just going to insert a signal array for every port array.
   for (const auto &pa : inst->GetAll<PortArray>()) {
-    // We first figure out if a port array child node has a connection to another instance port.
-    for (const auto &pac : pa->nodes()) {
-      for (const auto &edge : pac->sinks()) {
-        // If either side is not a port, continue with the next edge.
-        if (!edge->dst()->IsPort()) { continue; }
-        // If either sides of the edges are a port node on this component, continue, since this is allowed in VHDL.
-        if ((edge->src()->parent() == comp) || (edge->dst()->parent() == comp)) { continue; }
-        // If the destination is already resolved, continue.
-        if (Contains(*resolved, dynamic_cast<Object *>(edge->src()))) { continue; }
-        if (Contains(*resolved, dynamic_cast<Object *>(edge->dst()))) { continue; }
-        // We are now sure we are dealing with a PortArray child - to - port.
-        // InsertSignalArray will solve this for us.
-        InsertSignalArray(comp, edge, resolved);
-      }
-    }
+    AttachSignalArrayToNodeArray(comp, pa, resolved, rebinding);
   }
 }
 
-Component *Resolve::ResolvePortToPort(Component *comp) {
-  std::deque<Object *> resolved;
-  CERATA_LOG(DEBUG, "VHDL: Resolving port-to-port connections...");
-  for (const auto &inst : comp->children()) {
-    ResolvePorts(comp, inst, &resolved);
-    ResolvePortArrays(comp, inst, &resolved);
+Component *Resolve::SignalizePorts(Component *comp) {
+  // Remember which nodes we've already resolved.
+  std::vector<Object *> resolved;
+  // We are potentially going to make a bunch of copies of type generic nodes and array sizes.
+  // Remember which ones we did already and where we left their copy through a map.
+  std::unordered_map<Node *, Node *> rebinding;
+
+  CERATA_LOG(DEBUG, "VHDL: Resolving a whole bunch of ridiculous VHDL restrictions.");
+  auto children = comp->children();
+  for (const auto &inst : children) {
+    ResolvePorts(comp, inst, &resolved, &rebinding);
+    ResolvePortArrays(comp, inst, &resolved, &rebinding);
   }
-  CERATA_LOG(DEBUG, "VHDL: Resolved " + std::to_string(resolved.size()) + " port-to-port connections...");
+  CERATA_LOG(DEBUG, "VHDL: Resolved " + std::to_string(resolved.size()) + " port-to-port connections ...");
+  CERATA_LOG(DEBUG, "VHDL: Rebound " + std::to_string(rebinding.size()) + " nodes ...");
   return comp;
 }
 
@@ -167,7 +268,7 @@ static bool IsExpandType(const Type *t, const std::string &str = "") {
   return false;
 }
 
-static bool HasStream(const std::deque<FlatType> &fts) {
+static bool HasStream(const std::vector<FlatType> &fts) {
   for (const auto &ft : fts) {
     if (ft.type_->Is(Type::STREAM)) {
       return true;
@@ -218,7 +319,7 @@ static void ExpandStreamType(Type *type) {
   }
 }
 
-static void ExpandMappers(Type *type, const std::deque<std::shared_ptr<TypeMapper>> &mappers) {
+static void ExpandMappers(Type *type, const std::vector<std::shared_ptr<TypeMapper>> &mappers) {
   // TODO(johanpel): Generalize this type expansion functionality and add it to Cerata.
   // Iterate over all previously existing mappers.
   for (const auto &mapper : mappers) {
@@ -303,9 +404,9 @@ static void ExpandMappers(Type *type, const std::deque<std::shared_ptr<TypeMappe
 Component *Resolve::ExpandStreams(Component *comp) {
   CERATA_LOG(DEBUG, "VHDL: Materialize stream abstraction...");
   // List of types.
-  std::deque<Type *> types;
+  std::vector<Type *> types;
   // List of mappers. Takes ownership of existing mappers before expansion.
-  std::unordered_map<Type *, std::deque<std::shared_ptr<TypeMapper>>> mappers;
+  std::unordered_map<Type *, std::vector<std::shared_ptr<TypeMapper>>> mappers;
 
   // Populate the list.
   GetAllTypes(comp, &types, true);

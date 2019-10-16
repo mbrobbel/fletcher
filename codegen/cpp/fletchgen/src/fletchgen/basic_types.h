@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,9 @@ namespace metakeys {
   /// Key for automated type mapping.
   constexpr char ARRAY_DATA[] = "fletchgen_array_data";
 
+  /// Key to mark the count field in Arrow streams.
+  constexpr char COUNT[] = "fletchgen_count";
+
   /// Key for elements-per-cycle on streams.
   constexpr char EPC[] = "fletcher_epc";
 
@@ -38,6 +41,7 @@ using cerata::Type;
 using cerata::Node;
 using cerata::ClockDomain;
 using cerata::TypeMapper;
+using cerata::Parameter;
 
 // Generate declaration for basic types corresponding to and in the manner of Arrow's types
 #define BIT_DECL_FACTORY(NAME)        std::shared_ptr<Type> NAME();
@@ -65,7 +69,7 @@ VEC_DECL_FACTORY(byte, 8)
 VEC_DECL_FACTORY(offset, 32)
 
 /// Generate declaration for generic Fletcher parameters.
-#define PARAM_DECL_FACTORY(NAME) std::shared_ptr<Node> NAME();
+#define PARAM_DECL_FACTORY(NAME) std::shared_ptr<Parameter> NAME();
 
 PARAM_DECL_FACTORY(bus_addr_width)
 PARAM_DECL_FACTORY(bus_data_width)
@@ -74,6 +78,7 @@ PARAM_DECL_FACTORY(bus_len_width)
 PARAM_DECL_FACTORY(bus_burst_step_len)
 PARAM_DECL_FACTORY(bus_burst_max_len)
 PARAM_DECL_FACTORY(index_width)
+PARAM_DECL_FACTORY(tag_width)
 
 /// @brief Fletcher accelerator clock domain
 std::shared_ptr<ClockDomain> kernel_cd();

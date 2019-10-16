@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 #include <arrow/api.h>
 #include <cerata/api.h>
 #include <gtest/gtest.h>
-#include <deque>
+#include <vector>
 #include <memory>
 #include <vector>
 

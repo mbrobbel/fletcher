@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 #include <cerata/api.h>
 
 #include <memory>
-#include <deque>
+#include <vector>
 #include <optional>
 #include <string>
 
@@ -82,17 +82,17 @@ class SchemaSet : public cerata::Named {
   /// @brief Append a schema
   void AppendSchema(const std::shared_ptr<arrow::Schema>& schema);
   /// @brief Return all schemas of this schemaset.
-  [[nodiscard]] std::deque<std::shared_ptr<FletcherSchema>> schemas() const { return schemas_; }
+  [[nodiscard]] std::vector<std::shared_ptr<FletcherSchema>> schemas() const { return schemas_; }
   /// @brief Return all schemas with read mode.
-  [[nodiscard]] std::deque<std::shared_ptr<FletcherSchema>> read_schemas() const;
+  [[nodiscard]] std::vector<std::shared_ptr<FletcherSchema>> read_schemas() const;
   /// @brief Return all schemas with write mode.
-  [[nodiscard]] std::deque<std::shared_ptr<FletcherSchema>> write_schemas() const;
+  [[nodiscard]] std::vector<std::shared_ptr<FletcherSchema>> write_schemas() const;
   /// @brief Sort the schemas by name, then by read/write mode.
   void Sort();
 
  private:
   /// @brief Schemas of RecordBatches.
-  std::deque<std::shared_ptr<FletcherSchema>> schemas_;
+  std::vector<std::shared_ptr<FletcherSchema>> schemas_;
 };
 
 }  // namespace fletchgen

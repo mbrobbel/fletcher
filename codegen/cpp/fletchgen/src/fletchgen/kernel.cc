@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ Kernel::Kernel(std::string name,
     : Component(std::move(name)) {
 
   // Add clock/reset
-  Add(Port::Make("kcd", cr(), Port::Dir::IN, kernel_cd()));
+  Add(port("kcd", cr(), Port::Dir::IN, kernel_cd()));
 
   // Add ports going to/from RecordBatches.
   for (const auto &r : recordbatches) {
@@ -57,7 +57,7 @@ Kernel::Kernel(std::string name,
     auto rb_cmds = r->GetFieldPorts(FieldPort::Function::COMMAND);
     for (auto &rb_cmd : rb_cmds) {
       // Next, make an abstracted version of the command stream for the kernel user.
-      auto kernel_cmd = FieldPort::MakeCommandPort(rb_cmd->fletcher_schema_, rb_cmd->field_, false, kernel_cd());
+      auto kernel_cmd = command_port(rb_cmd->fletcher_schema_, rb_cmd->field_, false, kernel_cd());
       kernel_cmd->InvertDirection();
       Add(kernel_cmd);
     }

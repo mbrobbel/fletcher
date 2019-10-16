@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ int fletchgen(int argc, char **argv) {
     srec_out.close();
   }
 
-  // Generate DOT output
+  // Generate DOT output first.
   if (options->MustGenerateDOT()) {
     FLETCHER_LOG(INFO, "Generating DOT output.");
     auto dot = cerata::dot::DOTOutputGenerator(options->output_dir, design.GetOutputSpec());

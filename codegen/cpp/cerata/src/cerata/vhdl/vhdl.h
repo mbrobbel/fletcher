@@ -1,6 +1,4 @@
-#include <utility>
-
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +14,9 @@
 
 #pragma once
 
-#include <deque>
+#include <vector>
 #include <string>
+#include <utility>
 
 #include "cerata/vhdl/architecture.h"
 #include "cerata/vhdl/block.h"
@@ -64,7 +63,7 @@ class VHDLOutputGenerator : public OutputGenerator {
 
   /// @brief Construct a new VHDLOutputGenerator.
   explicit VHDLOutputGenerator(std::string root_dir,
-                               std::deque<OutputSpec> outputs = {},
+                               std::vector<OutputSpec> outputs = {},
                                std::string notice = "")
       : OutputGenerator(std::move(root_dir), std::move(outputs)), notice_(std::move(notice)) {}
 

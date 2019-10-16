@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ TEST(VHDL_DESIGN, Simple) {
   auto param_vec = vector("param_vec_type", param);
   auto veca = port("static_vec", static_vec);
   auto vecb = port("param_vec", param_vec);
-  auto comp = component("simple", {veca, vecb});
+  auto comp = component("simple", {param, veca, vecb});
   auto design = vhdl::Design(comp);
   auto design_source = design.Generate().ToString();
   auto expected =
@@ -76,6 +76,11 @@ TEST(VHDL_DESIGN, CompInst) {
   Connect(ia->prt("a"), ib->prt("b"));
   auto design = vhdl::Design(top);
   auto design_source = design.Generate().ToString();
+
+  dot::Grapher dot;
+  dot.style.config = dot::Config::all();
+  dot.GenFile(*top, "VHDL_CompInst.dot");
+
   std::cout << design_source;
   auto expected =
       "library ieee;\n"
@@ -98,11 +103,15 @@ TEST(VHDL_DESIGN, CompInst) {
       "    );\n"
       "  end component;\n"
       "\n"
+      "  signal comp_a_inst_a : std_logic;\n"
       "  signal comp_b_inst_b : std_logic;\n"
+      "\n"
       "begin\n"
+      "  comp_a_inst_a <= comp_b_inst_b;\n"
+      "\n"
       "  comp_a_inst : comp_a\n"
       "    port map (\n"
-      "      a => comp_b_inst_b\n"
+      "      a => comp_a_inst_a\n"
       "    );\n"
       "\n"
       "  comp_b_inst : comp_b\n"
@@ -113,6 +122,7 @@ TEST(VHDL_DESIGN, CompInst) {
       "end architecture;\n";
   ASSERT_EQ(design_source, expected);
   VHDL_DUMP_TEST(expected);
+
 }
 
 }  // namespace cerata

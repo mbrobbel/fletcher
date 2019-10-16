@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ namespace fletchgen::top {
 // TODO(johanpel): Insert this template through resource linking.
 /// AXI top-level template source.
 static char axi_source[] =
-    "-- Copyright 2018 Delft University of Technology\n"
+    "-- Copyright 2018-2019 Delft University of Technology\n"
     "--\n"
     "-- Licensed under the Apache License, Version 2.0 (the \"License\");\n"
     "-- you may not use this file except in compliance with the License.\n"
@@ -58,11 +58,7 @@ static char axi_source[] =
     "    BUS_STROBE_WIDTH            : natural := ${BUS_STROBE_WIDTH};\n"
     "    BUS_LEN_WIDTH               : natural := ${BUS_LEN_WIDTH};\n"
     "    BUS_BURST_MAX_LEN           : natural := ${BUS_BURST_MAX_LEN};\n"
-    "    BUS_BURST_STEP_LEN          : natural := ${BUS_BURST_STEP_LEN};\n"
-    "    \n"
-    "    -- AXI4-lite bus properties for MMIO\n"
-    "    MMIO_ADDR_WIDTH             : natural := ${MMIO_ADDR_WIDTH};\n"
-    "    MMIO_DATA_WIDTH             : natural := ${MMIO_DATA_WIDTH}\n"
+    "    BUS_BURST_STEP_LEN          : natural := ${BUS_BURST_STEP_LEN}\n"
     "  );\n"
     "\n"
     "  port (\n"
@@ -144,7 +140,14 @@ static char axi_source[] =
     "  -----------------------------------------------------------------------------\n"
     "  component ${FLETCHER_WRAPPER_NAME} is\n"
     "    generic(\n"
-    "      BUS_ADDR_WIDTH            : natural\n"
+    "      BUS_ADDR_WIDTH     : integer;\n"
+    "      BUS_DATA_WIDTH     : integer;\n"
+    "      BUS_BURST_STEP_LEN : integer;\n"
+    "      BUS_BURST_MAX_LEN  : integer;\n"
+    "      BUS_STROBE_WIDTH   : integer;\n"
+    "      BUS_LEN_WIDTH      : integer;\n"
+    "      INDEX_WIDTH        : integer;\n"
+    "      TAG_WIDTH          : integer\n"
     "    );\n"
     "    port(\n"
     "      bcd_clk                   : in  std_logic;\n"
@@ -200,14 +203,21 @@ static char axi_source[] =
     "begin\n"
     "\n"
     "  -- Active low reset\n"
-    "  bcd_reset_n <= '0' when bcd_reset = '1' else '0';\n"
+    "  bcd_reset_n <= not bcd_reset;\n"
     "\n"
     "  -----------------------------------------------------------------------------\n"
     "  -- Fletcher generated wrapper\n"
     "  -----------------------------------------------------------------------------\n"
     "  ${FLETCHER_WRAPPER_INST_NAME} : ${FLETCHER_WRAPPER_NAME}\n"
     "    generic map (\n"
-    "      BUS_ADDR_WIDTH            => BUS_ADDR_WIDTH\n"
+    "      BUS_ADDR_WIDTH            => BUS_ADDR_WIDTH,\n"
+    "      BUS_DATA_WIDTH            => BUS_DATA_WIDTH,\n"
+    "      BUS_BURST_STEP_LEN        => BUS_BURST_STEP_LEN,\n"
+    "      BUS_BURST_MAX_LEN         => BUS_ADDR_WIDTH,\n"
+    "      BUS_STROBE_WIDTH          => BUS_STROBE_WIDTH,\n"
+    "      BUS_LEN_WIDTH             => BUS_LEN_WIDTH,\n"
+    "      INDEX_WIDTH               => INDEX_WIDTH,\n"
+    "      TAG_WIDTH                 => TAG_WIDTH\n"
     "    )\n"
     "    port map (\n"
     "      kcd_clk                   => kcd_clk,\n"

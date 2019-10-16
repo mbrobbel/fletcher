@@ -18,7 +18,7 @@
 #include <optional>
 #include <string>
 #include <memory>
-#include <deque>
+#include <vector>
 #include <unordered_map>
 
 #include "cerata/object.h"
@@ -89,9 +89,9 @@ class Literal : public MultiOutputNode {
   std::shared_ptr<Edge> AddSource(Node *source) override;
 
   /// @brief A literal node has no inputs. This function returns an empty list.
-  inline std::deque<Edge *> sources() const override { return {}; }
+  inline std::vector<Edge *> sources() const override { return {}; }
   /// @brief Get the output edges of this Node.
-  inline std::deque<Edge *> sinks() const override { return ToRawPointers(outputs_); }
+  inline std::vector<Edge *> sinks() const override { return ToRawPointers(outputs_); }
 
   /// @brief Convert the Literal value to a human-readable string.
   std::string ToString() const override;

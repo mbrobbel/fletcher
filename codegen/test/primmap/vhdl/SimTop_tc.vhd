@@ -31,7 +31,7 @@ entity SimTop_tc is
 
     -- Host bus properties
     BUS_ADDR_WIDTH              : natural := 64;
-    BUS_DATA_WIDTH              : natural := 512;
+    BUS_DATA_WIDTH              : natural := 64;
     BUS_STROBE_WIDTH            : natural := 64;
     BUS_LEN_WIDTH               : natural := 8;
     BUS_BURST_MAX_LEN           : natural := 64;
@@ -50,31 +50,38 @@ architecture Behavorial of SimTop_tc is
   -----------------------------------------------------------------------------
   component Kernel_Mantle is
     generic(
-      BUS_ADDR_WIDTH            : natural
+      BUS_ADDR_WIDTH     : integer;
+      BUS_DATA_WIDTH     : integer;
+      BUS_BURST_STEP_LEN : integer;
+      BUS_BURST_MAX_LEN  : integer;
+      BUS_STROBE_WIDTH   : integer;
+      BUS_LEN_WIDTH      : integer;
+      INDEX_WIDTH        : integer;
+      TAG_WIDTH          : integer
     );
     port(
       bcd_clk                   : in  std_logic;
       bcd_reset                 : in  std_logic;
       kcd_clk                   : in  std_logic;
       kcd_reset                 : in  std_logic;
-      rd_mst_rreq_valid          : out std_logic;
-      rd_mst_rreq_ready          : in  std_logic;
-      rd_mst_rreq_addr           : out std_logic_vector(BUS_ADDR_WIDTH-1 downto 0);
-      rd_mst_rreq_len            : out std_logic_vector(BUS_LEN_WIDTH-1 downto 0);
-      rd_mst_rdat_valid          : in  std_logic;
-      rd_mst_rdat_ready          : out std_logic;
-      rd_mst_rdat_data           : in  std_logic_vector(BUS_DATA_WIDTH-1 downto 0);
-      rd_mst_rdat_last           : in  std_logic;
+      rd_mst_rreq_valid         : out std_logic;
+      rd_mst_rreq_ready         : in  std_logic;
+      rd_mst_rreq_addr          : out std_logic_vector(BUS_ADDR_WIDTH-1 downto 0);
+      rd_mst_rreq_len           : out std_logic_vector(BUS_LEN_WIDTH-1 downto 0);
+      rd_mst_rdat_valid         : in  std_logic;
+      rd_mst_rdat_ready         : out std_logic;
+      rd_mst_rdat_data          : in  std_logic_vector(BUS_DATA_WIDTH-1 downto 0);
+      rd_mst_rdat_last          : in  std_logic;
 
-      wr_mst_wreq_valid          : out std_logic;
-      wr_mst_wreq_ready          : in std_logic;
-      wr_mst_wreq_addr           : out std_logic_vector(BUS_ADDR_WIDTH-1 downto 0);
-      wr_mst_wreq_len            : out std_logic_vector(BUS_LEN_WIDTH-1 downto 0);
-      wr_mst_wdat_valid          : out std_logic;
-      wr_mst_wdat_ready          : in std_logic;
-      wr_mst_wdat_data           : out std_logic_vector(BUS_DATA_WIDTH-1 downto 0);
-      wr_mst_wdat_strobe         : out std_logic_vector(BUS_STROBE_WIDTH-1 downto 0);
-      wr_mst_wdat_last           : out std_logic;
+      wr_mst_wreq_valid         : out std_logic;
+      wr_mst_wreq_ready         : in std_logic;
+      wr_mst_wreq_addr          : out std_logic_vector(BUS_ADDR_WIDTH-1 downto 0);
+      wr_mst_wreq_len           : out std_logic_vector(BUS_LEN_WIDTH-1 downto 0);
+      wr_mst_wdat_valid         : out std_logic;
+      wr_mst_wdat_ready         : in std_logic;
+      wr_mst_wdat_data          : out std_logic_vector(BUS_DATA_WIDTH-1 downto 0);
+      wr_mst_wdat_strobe        : out std_logic_vector(BUS_STROBE_WIDTH-1 downto 0);
+      wr_mst_wdat_last          : out std_logic;
       mmio_awvalid              : in  std_logic;
       mmio_awready              : out std_logic;
       mmio_awaddr               : in  std_logic_vector(31 downto 0);
@@ -292,7 +299,6 @@ begin
   mmio_sink.rdata   <= mmio_rdata;
   mmio_sink.rresp   <= mmio_rresp;
 
-
   -- Typical stimuli process:
   stimuli_proc : process is
     variable read_data        : std_logic_vector(REG_WIDTH-1 downto 0) := X"DEADBEEF";
@@ -441,31 +447,38 @@ begin
   -----------------------------------------------------------------------------
   Kernel_Mantle_inst : Kernel_Mantle
     generic map (
-      BUS_ADDR_WIDTH            => BUS_ADDR_WIDTH
+      BUS_ADDR_WIDTH            => BUS_ADDR_WIDTH,
+      BUS_DATA_WIDTH            => BUS_DATA_WIDTH,
+      BUS_BURST_STEP_LEN        => BUS_BURST_STEP_LEN,
+      BUS_BURST_MAX_LEN         => BUS_ADDR_WIDTH,
+      BUS_STROBE_WIDTH          => BUS_STROBE_WIDTH,
+      BUS_LEN_WIDTH             => BUS_LEN_WIDTH,
+      INDEX_WIDTH               => INDEX_WIDTH,
+      TAG_WIDTH                 => TAG_WIDTH
     )
     port map (
       kcd_clk                   => kcd_clk,
       kcd_reset                 => kcd_reset,
       bcd_clk                   => bcd_clk,
       bcd_reset                 => bcd_reset,
-      rd_mst_rreq_valid          => bus_rreq_valid,
-      rd_mst_rreq_ready          => bus_rreq_ready,
-      rd_mst_rreq_addr           => bus_rreq_addr,
-      rd_mst_rreq_len            => bus_rreq_len,
-      rd_mst_rdat_valid          => bus_rdat_valid,
-      rd_mst_rdat_ready          => bus_rdat_ready,
-      rd_mst_rdat_data           => bus_rdat_data,
-      rd_mst_rdat_last           => bus_rdat_last,
+      rd_mst_rreq_valid         => bus_rreq_valid,
+      rd_mst_rreq_ready         => bus_rreq_ready,
+      rd_mst_rreq_addr          => bus_rreq_addr,
+      rd_mst_rreq_len           => bus_rreq_len,
+      rd_mst_rdat_valid         => bus_rdat_valid,
+      rd_mst_rdat_ready         => bus_rdat_ready,
+      rd_mst_rdat_data          => bus_rdat_data,
+      rd_mst_rdat_last          => bus_rdat_last,
 
-      wr_mst_wreq_valid          => bus_wreq_valid,
-      wr_mst_wreq_ready          => bus_wreq_ready,
-      wr_mst_wreq_addr           => bus_wreq_addr,
-      wr_mst_wreq_len            => bus_wreq_len,
-      wr_mst_wdat_valid          => bus_wdat_valid,
-      wr_mst_wdat_ready          => bus_wdat_ready,
-      wr_mst_wdat_data           => bus_wdat_data,
-      wr_mst_wdat_strobe         => bus_wdat_strobe,
-      wr_mst_wdat_last           => bus_wdat_last,
+      wr_mst_wreq_valid         => bus_wreq_valid,
+      wr_mst_wreq_ready         => bus_wreq_ready,
+      wr_mst_wreq_addr          => bus_wreq_addr,
+      wr_mst_wreq_len           => bus_wreq_len,
+      wr_mst_wdat_valid         => bus_wdat_valid,
+      wr_mst_wdat_ready         => bus_wdat_ready,
+      wr_mst_wdat_data          => bus_wdat_data,
+      wr_mst_wdat_strobe        => bus_wdat_strobe,
+      wr_mst_wdat_last          => bus_wdat_last,
       mmio_awvalid              => mmio_awvalid,
       mmio_awready              => mmio_awready,
       mmio_awaddr               => mmio_awaddr,

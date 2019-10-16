@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@
 #include <string>
 #include <unordered_map>
 #include <memory>
-#include <deque>
 #include <vector>
+#include <utility>
 
 #include "fletchgen/kernel.h"
 #include "fletchgen/bus.h"
@@ -42,21 +42,21 @@ class Mantle : public Component {
   /// @brief Return the kernel component of this Mantle.
   std::shared_ptr<Nucleus> nucleus() const { return nucleus_; }
   /// @brief Return all RecordBatch(Reader/Writer) instances of this Mantle.
-  std::deque<Instance *> recordbatch_instances() const { return recordbatch_instances_; }
+  std::vector<Instance *> recordbatch_instances() const { return recordbatch_instances_; }
   /// @brief Return all RecordBatch(Reader/Writer) components of this Mantle.
-  std::deque<std::shared_ptr<RecordBatch>> recordbatch_components() const { return recordbatch_components_; }
+  std::vector<std::shared_ptr<RecordBatch>> recordbatch_components() const { return recordbatch_components_; }
 
  protected:
   /// The Nucleus to be instantiated by this Mantle.
   std::shared_ptr<Nucleus> nucleus_;
   /// Shortcut to the instantiated Nucleus.
   Instance *nucleus_inst_;
-  /// The bus arbiters instantiated by this mantle for a specific bus specification.
-  std::unordered_map<BusSpec, Instance *> arbiters_;
   /// The RecordBatch instances.
-  std::deque<Instance *> recordbatch_instances_;
+  std::vector<Instance *> recordbatch_instances_;
   /// The RecordBatch components.
-  std::deque<std::shared_ptr<RecordBatch>> recordbatch_components_;
+  std::vector<std::shared_ptr<RecordBatch>> recordbatch_components_;
+  /// A mapping of bus port (containing the bus parameters and function) to arbiter instances.
+  std::unordered_map<BusPort *, Instance *> arbiters_;
 };
 
 /// @brief Construct a Mantle and return a shared pointer to it.

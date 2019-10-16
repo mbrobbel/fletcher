@@ -6,4 +6,4 @@ vhdmmio-doc/
 *.gen.*
 fletchgen.mmio.yaml
 memory.srec
-
+vhdmmio.log

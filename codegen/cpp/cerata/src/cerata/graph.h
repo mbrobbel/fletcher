@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 #include <string>
 #include <optional>
 #include <utility>
-#include <deque>
+#include <vector>
 #include <unordered_map>
 
 #include "cerata/node.h"
@@ -30,6 +30,21 @@ namespace cerata {
 // Forward Decl.
 class Component;
 class Instance;
+
+/**
+ * @brief Get any sub-objects that are used by an object, e.g. type generic nodes or array size nodes.
+ * @param obj The object from which to derive the required objects.
+ * @param out The output.
+ */
+void GetSubObjects(const Object &obj, std::vector<Object *> *out);
+
+/**
+ * @brief Get generic types.
+ * @param obj The object from which to derive the required objects.
+ * @param out The output.
+ * @param include_literals Whether to include literal nodes.
+ */
+void GetGenericTypes(const Object &obj, std::vector<Type *> *out);
 
 /**
  * @brief A graph representing a hardware structure.
@@ -52,16 +67,16 @@ class Graph : public Named {
   /// @brief Return true if this graph is an instance, false otherwise.
   bool IsInstance() const { return id_ == INSTANCE; }
   /// @brief Add an object to the component.
-  virtual Graph &Add(const std::shared_ptr<Object> &obj);
+  virtual Graph &Add(const std::shared_ptr<Object> &object);
   /// @brief Add a list of objects to the component.
-  virtual Graph &Add(const std::initializer_list<std::shared_ptr<Object>> &objs);
+  virtual Graph &Add(const std::vector<std::shared_ptr<Object>> &objects);
   /// @brief Remove an object from the component
   virtual Graph &Remove(Object *obj);
 
   /// @brief Get all objects of a specific type.
   template<typename T>
-  std::deque<T *> GetAll() const {
-    std::deque<T *> ret;
+  std::vector<T *> GetAll() const {
+    std::vector<T *> ret;
     for (const auto &o : objects_) {
       auto co = std::dynamic_pointer_cast<T>(o);
       if (co != nullptr)
@@ -77,19 +92,19 @@ class Graph : public Named {
   /// @brief Get a Node of a specific type with a specific name
   Node *GetNode(Node::NodeID node_id, const std::string &node_name) const;
   /// @brief Obtain all nodes which ids are in a list of Node::IDs
-  std::deque<Node *> GetNodesOfTypes(std::initializer_list<Node::NodeID> ids) const;
+  std::vector<Node *> GetNodesOfTypes(std::initializer_list<Node::NodeID> ids) const;
   /// @brief Count nodes of a specific node type
   size_t CountNodes(Node::NodeID id) const;
   /// @brief Count nodes of a specific array type
   size_t CountArrays(Node::NodeID id) const;
   /// @brief Get all nodes.
-  std::deque<Node *> GetNodes() const { return GetAll<Node>(); }
+  std::vector<Node *> GetNodes() const { return GetAll<Node>(); }
   /// @brief Get all nodes of a specific type.
-  std::deque<Node *> GetNodesOfType(Node::NodeID id) const;
+  std::vector<Node *> GetNodesOfType(Node::NodeID id) const;
   /// @brief Get all arrays of a specific type.
-  std::deque<NodeArray *> GetArraysOfType(Node::NodeID id) const;
+  std::vector<NodeArray *> GetArraysOfType(Node::NodeID id) const;
   /// @brief Return all graph nodes that do not explicitly belong to the graph.
-  std::deque<Node *> GetImplicitNodes() const;
+  std::vector<Node *> GetImplicitNodes() const;
 
   /// @brief Shorthand to Get(, ..)
   PortArray *prta(const std::string &port_name) const;
@@ -99,11 +114,17 @@ class Graph : public Named {
   Signal *sig(const std::string &signal_name) const;
   /// @brief Shorthand to Get(Node::PARAMETER, ..)
   Parameter *par(const std::string &signal_name) const;
+  /// @brief Get a parameter by supplying another parameter. Lookup is done according to the name of the supplied param.
+  Parameter *par(const Parameter &param) const;
+  /// @brief Get a parameter by supplying another parameter. Lookup is done according to the name of the supplied param.
+  Parameter *par(const std::shared_ptr<Parameter> &param) const;
 
   /// @brief Return a copy of the metadata.
   std::unordered_map<std::string, std::string> meta() const { return meta_; }
   /// @brief Get all objects.
-  std::deque<Object *> objects() const { return ToRawPointers(objects_); }
+  std::vector<Object *> objects() const { return ToRawPointers(objects_); }
+  /// @brief Return true if object with name already exists on graph.
+  bool Has(const std::string &name);
 
   /// @brief Set metadata
   Graph &SetMeta(const std::string &key, std::string value);
@@ -115,7 +136,7 @@ class Graph : public Named {
   /// Graph type id for convenience
   ID id_;
   /// Graph objects.
-  std::deque<std::shared_ptr<Object>> objects_;
+  std::vector<std::shared_ptr<Object>> objects_;
   /// KV storage for metadata of tools or specific backend implementations
   std::unordered_map<std::string, std::string> meta_;
 };
@@ -143,18 +164,18 @@ class Component : public Graph {
    */
   Instance *AddInstanceOf(Component *comp, const std::string &name = "");
   /// @brief Returns all Instance graphs from this Component.
-  std::deque<Instance *> children() const { return ToRawPointers(children_); }
+  std::vector<Instance *> children() const { return ToRawPointers(children_); }
   /// @brief Returns all unique Components that are referred to by child Instances of this graph.
-  virtual std::deque<const Component *> GetAllUniqueComponents() const;
+  virtual std::vector<const Component *> GetAllUniqueComponents() const;
 
  protected:
   /// Graph children / subgraphs.
-  std::deque<std::unique_ptr<Instance>> children_;
+  std::vector<std::unique_ptr<Instance>> children_;
 };
 
 /// @brief Construct a Component with initial nodes
 std::shared_ptr<Component> component(std::string name,
-                                     const std::deque<std::shared_ptr<Object>> &nodes,
+                                     const std::vector<std::shared_ptr<Object>> &nodes,
                                      ComponentPool *component_pool = default_component_pool());
 /// @brief Construct an empty Component with only a name.
 std::shared_ptr<Component> component(std::string name,
@@ -186,5 +207,8 @@ class Instance : public Graph {
 
 /// @brief Construct a shared pointer to a Component
 std::unique_ptr<Instance> instance(Component *component, const std::string &name = "");
+
+/// @brief Rebind a type generic node to a component.
+void RebindGeneric(Component *comp, Node *generic, std::unordered_map<Node *, Node *> *rebinding);
 
 }  // namespace cerata

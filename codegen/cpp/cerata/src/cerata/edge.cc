@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 #include "cerata/edge.h"
 
 #include <memory>
-#include <deque>
+#include <vector>
 #include <string>
 #include <optional>
 
@@ -93,10 +93,14 @@ std::shared_ptr<Edge> Connect(Node *dst, Node *src) {
       auto parent = *dst->parent();
       if (parent->IsInstance() && port->IsOutput()) {
         // If the parent is an instance, and the terminator node is an output, then we may not drive it.
-        CERATA_LOG(FATAL, "Cannot drive instance port " + dst->ToString() + " of mode output.");
+        CERATA_LOG(FATAL,
+                   "Cannot drive instance " + dst->parent().value()->ToString() + " port " + dst->ToString()
+                       + " of mode output with " + src->ToString());
       } else if (parent->IsComponent() && port->IsInput()) {
         // If the parent is a component, and the terminator node is an input, then we may not drive it.
-        CERATA_LOG(FATAL, "Cannot drive component port " + dst->ToString() + " of mode input.");
+        CERATA_LOG(FATAL,
+                   "Cannot drive component " + dst->parent().value()->ToString() + " port " + dst->ToString()
+                       + " of mode input with " + src->ToString());
       }
     }
   }
@@ -146,8 +150,8 @@ std::shared_ptr<Edge> operator<<=(const std::weak_ptr<Node> &dst, Node *src) {
   return Connect(dst.lock().get(), src);
 }
 
-std::deque<Edge *> GetAllEdges(const Graph &graph) {
-  std::deque<Edge *> all_edges;
+std::vector<Edge *> GetAllEdges(const Graph &graph) {
+  std::vector<Edge *> all_edges;
 
   // Get all normal nodes
   for (const auto &node : graph.GetAll<Node>()) {
@@ -185,7 +189,10 @@ std::deque<Edge *> GetAllEdges(const Graph &graph) {
   return all_edges;
 }
 
-std::shared_ptr<Signal> insert(Edge *edge, const std::string &name_prefix, std::optional<Graph *> new_owner) {
+std::shared_ptr<Signal> insert(Edge *edge,
+                               Component *comp,
+                               std::unordered_map<Node *, Node *> *rebinding,
+                               const std::string &name_prefix) {
   auto src = edge->src();
   auto dst = edge->dst();
 
@@ -200,15 +207,31 @@ std::shared_ptr<Signal> insert(Edge *edge, const std::string &name_prefix, std::
   if (src->IsSignal()) domain = src->AsSignal().domain();
 
   // Get the destination type
-  auto type = src->type();
+  auto type = src->type()->shared_from_this();
+  // Rebind generics if the type
+  if (type->IsGeneric()) {
+    for (const auto g : type->GetGenerics()) {
+      RebindGeneric(comp, g, rebinding);
+    }
+    type = type->Copy(*rebinding);
+  }
+
+  // Determine name.
   auto name = name_prefix + "_" + src->name();
+  // Perhaps a node with this name exists already. Just add a number behind the name until we find an empty name.
+  if (comp->GetNode(name)) {
+    int i = 1;
+    name = name_prefix + "_" + src->name() + "_" + std::to_string(i);
+    while (comp->GetNode(name)) {
+      i++;
+    }
+  }
   // Create the signal and take shared ownership of the type
-  auto sig = signal(name, type->shared_from_this(), domain);
+  auto sig = signal(name, type, domain);
 
   // Share ownership of the new signal with the potential new_owner
-  if (new_owner) {
-    (*new_owner)->Add(sig);
-  }
+  comp->Add(sig);
+
 
   // Remove the original edge from the source and destination node
   src->RemoveEdge(edge);
@@ -232,6 +255,14 @@ std::shared_ptr<Signal> extend(Port *port, const std::string &name_prefix, std::
     (*new_owner)->Add(sig);
   }
   return sig;
+}
+
+std::shared_ptr<Edge> Connect(Node *dst, const std::shared_ptr<Node> &src) {
+  return Connect(dst, src.get());
+}
+
+std::shared_ptr<Edge> Connect(const std::shared_ptr<Node> &dst, Node *src) {
+  return Connect(dst.get(), src);
 }
 
 std::optional<Node *> Edge::GetOtherNode(const Node &node) const {

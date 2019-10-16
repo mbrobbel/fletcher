@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 #include <cerata/api.h>
 #include <utility>
 #include <string>
-#include <deque>
+#include <vector>
 #include <memory>
 #include <vector>
 #include <unordered_map>
@@ -26,6 +26,8 @@
 #include "fletchgen/nucleus.h"
 
 namespace fletchgen {
+
+using NodeProfilerPorts = std::unordered_map<Node *, std::pair<std::vector<Instance *>, std::vector<Port *>>>;
 
 /// @brief Obtain the registers that should be reserved in the mmio component for profiling.
 std::vector<MmioReg> GetProfilingRegs(const std::vector<std::shared_ptr<RecordBatch>> &recordbatches);
@@ -47,9 +49,8 @@ std::unique_ptr<cerata::Instance> ProfilerInstance(const std::string &name,
  *
  * @param top           The top-level component to apply this to.
  * @param profile_nodes The nodes that should be profiled.
- * @return              A mapping from each input node to the instantiated port nodes of the profilers.
+ * @return              A mapping from each input node to the instantiated profiler and its relevant result port nodes.
  */
-std::unordered_map<Node *, std::vector<Port *>> EnableStreamProfiling(cerata::Component *comp,
-                                                                      const std::vector<Node *> &profile_nodes);
+NodeProfilerPorts EnableStreamProfiling(cerata::Component *comp, const std::vector<Node *> &profile_nodes);
 
 }  // namespace fletchgen

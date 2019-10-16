@@ -17,17 +17,23 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+library work;
+use work.UtilStr_pkg.all;
+use work.UtilConv_pkg.all;
+
 entity ProfilerStreams is
   generic (
-    OUT_COUNT_MAX   : integer := 1023;
-    OUT_COUNT_WIDTH : integer := 10
+    PROBE_COUNT_WIDTH : positive;
+    OUT_COUNT_WIDTH   : positive
   );
   port (
     pcd_clk     : in  std_logic;
     pcd_reset   : in  std_logic;
-    probe_valid : in  std_logic := '0';
+    probe_valid : in  std_logic;
     probe_ready : out std_logic;
-    enable      : in  std_logic := '1';
+    probe_count : in  std_logic_vector(PROBE_COUNT_WIDTH-1 downto 0) := std_logic_vector(to_unsigned(1, PROBE_COUNT_WIDTH));
+    enable      : in  std_logic;
+    clear       : in  std_logic;
     ecount      : out std_logic_vector(OUT_COUNT_WIDTH-1 downto 0);
     vcount      : out std_logic_vector(OUT_COUNT_WIDTH-1 downto 0);
     rcount      : out std_logic_vector(OUT_COUNT_WIDTH-1 downto 0);
@@ -38,5 +44,28 @@ end ProfilerStreams;
 
 architecture Behavioral of ProfilerStreams is
 begin
+
+  t_count_proc: process is
+    variable transfers : natural := 0;
+  begin
+    -- Wait for reset.
+    loop
+      wait until rising_edge(pcd_clk) ;
+      exit when pcd_reset = '0';
+    end loop;
+    
+    if (enable = '1') then
+      loop
+        wait until rising_edge(pcd_clk);
+        exit when probe_valid = '1' and probe_ready = '1';
+      end loop;
+      
+      transfers := transfers + 1;
+      
+      tcount <= std_logic_vector(to_unsigned(transfers, 32));    
+      
+      println("Transfers: " & slvToDec(tcount));
+    end if;
+  end process;
 
 end architecture;

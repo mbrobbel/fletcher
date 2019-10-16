@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 
 #include <utility>
 #include <string>
-#include <deque>
+#include <vector>
 #include <memory>
 
 #include "fletchgen/utils.h"
@@ -89,50 +89,49 @@ struct FieldPort : public Port {
         fletcher_schema_(std::move(fletcher_schema)),
         profile_(profile) {}
 
-  /**
-   * @brief Construct a field-derived port for Arrow data.
-   * @param fletcher_schema  The Fletcher-derived schema.
-   * @param field            The Arrow field to derive the port from.
-   * @param mode             The mode of the port, whether to read or write.
-   * @param invert           Invert the direction of the port.
-   * @param domain           The clock domain of this port.
-   * @return                 A shared pointer to a new FieldPort.
-   */
-  static std::shared_ptr<FieldPort> MakeArrowPort(const std::shared_ptr<FletcherSchema> &fletcher_schema,
-                                                  const std::shared_ptr<arrow::Field> &field,
-                                                  Mode mode,
-                                                  bool invert,
-                                                  const std::shared_ptr<ClockDomain> &domain = default_domain());
-  /**
-   * @brief Construct a field-derived command port.
-   * @param fletcher_schema  The Fletcher-derived schema.
-   * @param field            The Arrow field to derive the port from.
-   * @param ctrl             Whether to generate this command port with or without ctrl field.
-   * @param domain           The clock domain.
-   * @return                 A shared pointer to a new FieldPort.
-   */
-  static std::shared_ptr<FieldPort> MakeCommandPort(const std::shared_ptr<FletcherSchema> &fletcher_schema,
-                                                    const std::shared_ptr<arrow::Field> &field,
-                                                    bool ctrl = true,
-                                                    const std::shared_ptr<ClockDomain> &domain = default_domain());
-
-  /**
-   * @brief Construct a field-derived unlock port.
-   * @param fletcher_schema  The Fletcher-derived schema.
-   * @param field            The Arrow field to derive the port from.
-   * @param domain           The clock domain.
-   * @return                 A shared pointer to a new FieldPort.
-   */
-  static std::shared_ptr<FieldPort> MakeUnlockPort(const std::shared_ptr<FletcherSchema> &fletcher_schema,
-                                                   const std::shared_ptr<arrow::Field> &field,
-                                                   const std::shared_ptr<ClockDomain> &domain = default_domain());
-
   /// @brief Create a deep-copy of the FieldPort.
   std::shared_ptr<Object> Copy() const override;
 
   /// @brief Return the width of the data of this field.
   std::shared_ptr<Node> data_width();
 };
+
+/**
+ * @brief Construct a field-derived port for Arrow data.
+ * @param fletcher_schema  The Fletcher-derived schema.
+ * @param field            The Arrow field to derive the port from.
+ * @param mode             The mode of the port, whether to read or write.
+ * @param invert           Invert the direction of the port.
+ * @param domain           The clock domain of this port.
+ * @return                 A shared pointer to a new FieldPort.
+ */
+std::shared_ptr<FieldPort> arrow_port(const std::shared_ptr<FletcherSchema> &fletcher_schema,
+                                      const std::shared_ptr<arrow::Field> &field,
+                                      bool invert,
+                                      const std::shared_ptr<ClockDomain> &domain = default_domain());
+/**
+ * @brief Construct a field-derived command port.
+ * @param fletcher_schema  The Fletcher-derived schema.
+ * @param field            The Arrow field to derive the port from.
+ * @param ctrl             Whether to generate this command port with or without ctrl field.
+ * @param domain           The clock domain.
+ * @return                 A shared pointer to a new FieldPort.
+ */
+std::shared_ptr<FieldPort> command_port(const std::shared_ptr<FletcherSchema> &fletcher_schema,
+                                        const std::shared_ptr<arrow::Field> &field,
+                                        bool ctrl = true,
+                                        const std::shared_ptr<ClockDomain> &domain = default_domain());
+
+/**
+ * @brief Construct a field-derived unlock port.
+ * @param fletcher_schema  The Fletcher-derived schema.
+ * @param field            The Arrow field to derive the port from.
+ * @param domain           The clock domain.
+ * @return                 A shared pointer to a new FieldPort.
+ */
+std::shared_ptr<FieldPort> unlock_port(const std::shared_ptr<FletcherSchema> &fletcher_schema,
+                                       const std::shared_ptr<arrow::Field> &field,
+                                       const std::shared_ptr<ClockDomain> &domain = default_domain());
 
 /**
  * @brief A RecordBatch aggregating ArrayReaders/Writers
@@ -152,18 +151,20 @@ struct RecordBatch : public Component {
               const std::shared_ptr<FletcherSchema> &fletcher_schema,
               fletcher::RecordBatchDescription batch_desc);
   /// @brief Obtain all ports derived from an Arrow field with a specific function.
-  std::deque<std::shared_ptr<FieldPort>> GetFieldPorts(const std::optional<FieldPort::Function> &function = {}) const;
+  std::vector<std::shared_ptr<FieldPort>> GetFieldPorts(const std::optional<FieldPort::Function> &function = {}) const;
   /// @brief Obtain the data port derived from a specific Arrow field. Field must point to the exact same field object.
   std::shared_ptr<FieldPort> GetArrowPort(const arrow::Field &field) const;
 
   /// @brief Return the Fletcher schema this RecordBatch(Reader/Writer) is based on.
   std::shared_ptr<FletcherSchema> fletcher_schema() const { return fletcher_schema_; }
   /// @brief Return pointers to all Array(Reader/Writer) instances of this component.
-  std::deque<Instance *> reader_instances() const { return array_instances_; }
+  std::vector<Instance *> reader_instances() const { return array_instances_; }
   /// @brief Return the Fletcher schema this RecordBatch(Reader/Writer) is based on.
-  std::deque<std::shared_ptr<BusPort>> bus_ports() const { return bus_ports_; }
+  std::vector<std::shared_ptr<BusPort>> bus_ports() const { return bus_ports_; }
   /// @brief Return the description of the RecordBatch this component is based on.
-  fletcher::RecordBatchDescription batch_desc() { return batch_desc_; }
+  fletcher::RecordBatchDescription batch_desc() const { return batch_desc_; }
+  /// @brief Return the mode (read or write) of this RecordBatch.
+  Mode mode() const { return mode_; }
 
  protected:
   /**
@@ -178,9 +179,9 @@ struct RecordBatch : public Component {
   /// Fletcher schema implemented by this RecordBatch(Reader/Writer)
   std::shared_ptr<FletcherSchema> fletcher_schema_;
   /// Array(Readers/Writers) instantiated
-  std::deque<Instance *> array_instances_ = {};
+  std::vector<Instance *> array_instances_ = {};
   /// Bus ports
-  std::deque<std::shared_ptr<BusPort>> bus_ports_ = {};
+  std::vector<std::shared_ptr<BusPort>> bus_ports_ = {};
   /// Mode
   Mode mode_ = Mode::READ;
   /// The RecordBatch description.

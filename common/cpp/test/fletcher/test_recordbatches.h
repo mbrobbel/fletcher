@@ -49,12 +49,29 @@ inline std::shared_ptr<arrow::RecordBatch> GetStringRB() {
   return record_batch;
 }
 
+inline std::shared_ptr<arrow::RecordBatch> GetTwoPrimReadRB() {
+  std::vector<int8_t> a = {-1, 3, -3, 7};
+  std::vector<uint16_t> b = {6, 1, 7, 4};
+  // Make a string builder
+  arrow::Int8Builder a_builder;
+  arrow::UInt16Builder b_builder;
+  THROW_NOT_OK(a_builder.AppendValues(a));
+  THROW_NOT_OK(b_builder.AppendValues(b));
+  std::shared_ptr<arrow::Array> a_array;
+  std::shared_ptr<arrow::Array> b_array;
+  THROW_NOT_OK(a_builder.Finish(&a_array));
+  THROW_NOT_OK(b_builder.Finish(&b_array));
+  // Create the Record Batch
+  auto record_batch = arrow::RecordBatch::Make(GetTwoPrimReadSchema(), 4, {a_array, b_array});
+  return record_batch;
+}
+
 inline std::shared_ptr<arrow::RecordBatch> GetIntRB() {
   std::vector<int8_t> numbers = {-1, 3, -3, 7};
   // Make a string builder
   arrow::Int8Builder int_builder;
   THROW_NOT_OK(int_builder.AppendValues(numbers));
-  // Array to hold Arrow formatted string data
+
   std::shared_ptr<arrow::Array> data_array;
   // Finish building and create a new data array around the data
   THROW_NOT_OK(int_builder.Finish(&data_array));

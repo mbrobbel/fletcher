@@ -45,6 +45,8 @@ struct Axi4LitePort : public Port {
   /// @brief Construct a new MmioPort.
   Axi4LitePort(Port::Dir dir, Axi4LiteSpec spec, std::string name = "mmio",
                std::shared_ptr<ClockDomain> domain = cerata::default_domain());
+
+  std::shared_ptr<Object> Copy() const override;
 };
 
 /// @brief AXI4-lite port type.

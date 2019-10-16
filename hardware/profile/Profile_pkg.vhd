@@ -20,15 +20,17 @@ package Profile_pkg is
 
   component ProfilerStreams is
     generic (
-      OUT_COUNT_MAX   : integer := 1023;
-      OUT_COUNT_WIDTH : integer := 10
+      PROBE_COUNT_WIDTH : positive := 1;
+      OUT_COUNT_WIDTH   : positive := 32
     );
     port (
       pcd_clk     : in  std_logic;
       pcd_reset   : in  std_logic;
       probe_valid : in  std_logic;
       probe_ready : out std_logic;
-      enable      : in  std_logic := '1';
+      probe_count : in  std_logic_vector(PROBE_COUNT_WIDTH-1 downto 0) := std_logic_vector(to_unsigned(1, PROBE_COUNT_WIDTH));
+      enable      : in  std_logic;
+      clear       : in  std_logic;
       ecount      : out std_logic_vector(OUT_COUNT_WIDTH-1 downto 0);
       vcount      : out std_logic_vector(OUT_COUNT_WIDTH-1 downto 0);
       rcount      : out std_logic_vector(OUT_COUNT_WIDTH-1 downto 0);

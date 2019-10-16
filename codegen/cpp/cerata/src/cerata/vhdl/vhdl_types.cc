@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 #include "cerata/vhdl/vhdl_types.h"
 
 #include <memory>
-#include <deque>
+#include <vector>
 
 #include "cerata/vhdl/vhdl.h"
 #include "cerata/type.h"
@@ -50,12 +50,14 @@ Port::Dir Reverse(Port::Dir dir) {
   }
 }
 
-std::deque<FlatType> FilterForVHDL(const std::deque<FlatType> &list) {
-  std::deque<FlatType> result;
+std::vector<FlatType> FilterForVHDL(const std::vector<FlatType> &list) {
+  std::vector<FlatType> result;
   for (const auto &ft : list) {
     // Only keep types that are not abstract, or boolean.
-    if (!ft.type_->IsAbstract() || ft.type_->Is(Type::BOOLEAN)) {
-      result.push_back(ft);
+    if (ft.type_->IsPhysical() || ft.type_->Is(Type::BOOLEAN)) {
+      if (!ft.type_->Is(Type::ID::RECORD) && !ft.type_->Is(Type::ID::STREAM)) {
+        result.push_back(ft);
+      }
     }
   }
   return result;

@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,17 +14,20 @@
 
 #pragma once
 
-#include <algorithm>
+#include  <algorithm>
 #include <iostream>
 #include <utility>
 #include <memory>
 #include <string>
-#include <deque>
+#include <vector>
 
 #include "cerata/utils.h"
 #include "cerata/node.h"
 
 namespace cerata {
+
+// Forward decl.
+class Component;
 
 /// @brief A directed edge between two nodes.
 class Edge : public Named {
@@ -63,6 +66,22 @@ class Edge : public Named {
  */
 std::shared_ptr<Edge> Connect(Node *dst, Node *src);
 
+/**
+ * @brief Connect two nodes, returns the corresponding edge.
+ * @param dst The destination node.
+ * @param src The source node.
+ * @return The edge connecting the nodes.
+ */
+std::shared_ptr<Edge> Connect(Node *dst, const std::shared_ptr<Node> &src);
+
+/**
+ * @brief Connect two nodes, returns the corresponding edge.
+ * @param dst The destination node.
+ * @param src The source node.
+ * @return The edge connecting the nodes.
+ */
+std::shared_ptr<Edge> Connect(const std::shared_ptr<Node> &dst, Node *src);
+
 // Connect operators:
 /// @brief Create an edge, connecting the src node to the dst node.
 std::shared_ptr<Edge> operator<<=(Node *dst, const std::shared_ptr<Node> &src);
@@ -77,8 +96,9 @@ std::shared_ptr<Edge> operator<<=(const std::shared_ptr<Node> &dst, const std::s
 
 /// @brief Split an edge up to create two new edges with a signal node in the middle. Returns the new signal.
 std::shared_ptr<Signal> insert(Edge *edge,
-                               const std::string &name_prefix = "int_",
-                               std::optional<Graph *> new_owner = std::nullopt);
+                               Component *comp,
+                               std::unordered_map<Node *, Node *> *rebinding,
+                               const std::string &name_prefix = "int_");
 
 /// @brief Create a signal node based on a port, and create an edge in between.
 std::shared_ptr<Signal> extend(Port *port,
@@ -86,6 +106,6 @@ std::shared_ptr<Signal> extend(Port *port,
                                std::optional<Graph *> new_owner = std::nullopt);
 
 /// @brief Obtain all edges in a graph.
-std::deque<Edge *> GetAllEdges(const Graph &graph);
+std::vector<Edge *> GetAllEdges(const Graph &graph);
 
 }  // namespace cerata

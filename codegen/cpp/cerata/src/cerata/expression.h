@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 #include <optional>
 #include <string>
 #include <memory>
-#include <deque>
+#include <vector>
 #include <unordered_map>
 
 #include "cerata/object.h"
@@ -54,16 +54,7 @@ class Expression : public MultiOutputNode {
   const Node *rhs() const { return rhs_.get(); }
 
   /// @brief Recursively list any nodes that this node owns.
-  std::deque<const Node *> ownees() const override {
-    std::deque<const Node *> result;
-    result.push_back(lhs_.get());
-    result.push_back(rhs_.get());
-    auto lh_ownees = lhs_->ownees();
-    auto rh_ownees = rhs_->ownees();
-    result.insert(result.end(), lh_ownees.begin(), lh_ownees.end());
-    result.insert(result.end(), rh_ownees.begin(), rh_ownees.end());
-    return result;
-  }
+  std::vector<const Node *> ownees() const override;
 
  protected:
   /// @brief Minimize a node, if it is an expression, otherwise just returns a copy of the input.
@@ -109,7 +100,7 @@ inline std::shared_ptr<Node> operator SYMBOL (const std::shared_ptr<const Node>&
   if (lhs->IsLiteral()) {                                                                                         \
     auto li = std::dynamic_pointer_cast<const Literal>(lhs);                                                      \
     if (li->storage_type() == Literal::StorageType::INT) {                                                        \
-      return default_node_pool()->GetLiteral(li->IntValue() SYMBOL rhs);                                           \
+      return default_node_pool()->GetLiteral(li->IntValue() SYMBOL rhs);                                          \
     }                                                                                                             \
   }                                                                                                               \
   return lhs SYMBOL intl(rhs);                                                                                    \
@@ -119,7 +110,7 @@ inline std::shared_ptr<Node> operator SYMBOL (const Node& lhs, int rhs) {       
   if (lhs.IsLiteral()) {                                                                                          \
     auto& li = dynamic_cast<const Literal&>(lhs);                                                                 \
     if (li.storage_type() == Literal::StorageType::INT) {                                                         \
-      return default_node_pool()->GetLiteral(li.IntValue() SYMBOL rhs);                                            \
+      return default_node_pool()->GetLiteral(li.IntValue() SYMBOL rhs);                                           \
     }                                                                                                             \
   }                                                                                                               \
   return lhs.shared_from_this() SYMBOL intl(rhs);                                                                 \

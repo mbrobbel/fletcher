@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,8 +25,12 @@ namespace cerata::vhdl {
 struct Arch {
   /// @brief Generate the VHDL architecture of a component.
   static MultiBlock Generate(const Component &comp);
-  /// @brief Generate the VHDL signal assignments inside a component.
-  static Block Generate(const Signal& sig, int indent);
+  /// @brief Generate the VHDL signal assignments.
+  static Block Generate(const Component &comp, const Signal &sig, int indent);
+  /// @brief Generate the VHDL port assignments.
+  static Block Generate(const Component &comp, const Port &port, int indent);
+  /// @brief Generate the VHDL signal array assignments inside a component.
+  static Block Generate(const Component &comp, const SignalArray &sig_array, int indent);
 };
 
 }  // namespace cerata::vhdl

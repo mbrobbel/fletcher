@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,9 @@ TEST(VHDL_INST, TypeMapper) {
   auto top = GetTypeConvComponent();
   auto code = vhdl::Design(top);
   std::cout << code.Generate().ToString();
+  dot::Grapher dot;
+  dot.style.config = dot::Config::all();
+  dot.GenFile(*top, "Dot_TypeMapper.dot");
 }
 
 TEST(VHDL_INST, StreamTypeMapper) {
@@ -115,6 +118,43 @@ TEST(VHDL_INST, AllPortTypes) {
   auto top = GetAllPortTypesComponent();
   auto code = vhdl::Design(top);
   std::cout << code.Generate().ToString();
+}
+
+TEST(VHDL_INST, NonLocallyStaticArrayMap) {
+  default_component_pool()->Clear();
+  auto child_out_size = parameter("IN_SIZE", integer());
+  auto child_in_size = parameter("OUT_SIZE", integer());
+  auto child_width = parameter("WIDTH", integer());
+  auto child_vec = vector("VecType", child_width);
+  auto child_po = port_array("po", child_vec, child_out_size, Port::Dir::OUT);
+  auto child_pi = port_array("pi", child_vec, child_in_size, Port::Dir::IN);
+  auto child = component("child", {child_width,
+                                   child_in_size,
+                                   child_out_size,
+                                   child_po,
+                                   child_pi});
+
+  auto top_width = parameter("TOP_WIDTH", integer());
+  auto top_vec = vector("VecType", top_width);
+  auto top_pi0 = port("pi0", top_vec, Port::Dir::IN);
+  auto top_pi1 = port("pi1", top_vec, Port::Dir::IN);
+  auto top_po0 = port("po0", top_vec, Port::Dir::OUT);
+  auto top_po1 = port("po1", top_vec, Port::Dir::OUT);
+  auto top = component("top", {top_width, top_pi0, top_pi1, top_po0, top_po1});
+  auto child_inst = top->AddInstanceOf(child.get());
+
+  Connect(child_inst->par("WIDTH"), top_width);
+  Connect(top_po0, child_inst->prta("po")->Append());
+  Connect(top_po1, child_inst->prta("po")->Append());
+  Connect(child_inst->prta("pi")->Append(), top_pi0);
+  Connect(child_inst->prta("pi")->Append(), top_pi1);
+
+  auto code = vhdl::Design(top);
+  std::cout << code.Generate().ToString();
+
+  dot::Grapher dot;
+  dot.style.config = dot::Config::all();
+  dot.GenFile(*top, "Dot_NonLocallyStaticArrayMap.dot");
 }
 
 }  // namespace cerata

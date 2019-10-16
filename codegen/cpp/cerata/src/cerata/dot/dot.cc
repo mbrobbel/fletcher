@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -79,14 +79,6 @@ std::string Grapher::GenEdges(const Graph &graph, int level) {
         case Type::STREAM: {
           sb << style.edge.stream;
           sb << awq("color", style.edge.color.stream);
-          break;
-        }
-        case Type::CLOCK: {
-          sb << style.edge.clock;
-          break;
-        }
-        case Type::RESET: {
-          sb << style.edge.reset;
           break;
         }
         default: {

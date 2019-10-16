@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 #include <string>
 #include <memory>
 #include <utility>
-#include <deque>
+#include <vector>
 #include <algorithm>
 #include <optional>
 #include <fstream>
@@ -45,38 +45,38 @@ struct Named {
   std::string name_;
 };
 
-/// @brief Return true if list contains item, false otherwise.
+/// @brief Return true if vector contains item, false otherwise.
 template<typename T>
-bool Contains(const std::deque<std::shared_ptr<T>> &list, const std::shared_ptr<T> &item) {
+bool Contains(const std::vector<std::shared_ptr<T>> &list, const std::shared_ptr<T> &item) {
   return std::find(std::begin(list), std::end(list), item) != std::end(list);
 }
 
-/// @brief Return true if list contains item, false otherwise.
+/// @brief Return true if vector contains item, false otherwise.
 template<typename T>
-bool Contains(const std::deque<std::weak_ptr<T>> &list, const std::weak_ptr<T> &item) {
+bool Contains(const std::vector<std::weak_ptr<T>> &list, const std::weak_ptr<T> &item) {
   return std::find(std::begin(list), std::end(list), item) != std::end(list);
 }
 
-/// @brief Return true if list contains item, false otherwise.
+/// @brief Return true if vector contains item, false otherwise.
 template<typename T>
-bool Contains(const std::deque<T *> &list, T *item) {
+bool Contains(const std::vector<T *> &list, T *item) {
   return std::find(std::begin(list), std::end(list), item) != std::end(list);
 }
 
 /// @brief Append list b to list a.
 template<typename T>
-void Append(std::deque<std::shared_ptr<T>> *list_a, const std::deque<std::shared_ptr<T>> &list_b) {
+void Append(std::vector<std::shared_ptr<T>> *list_a, const std::vector<std::shared_ptr<T>> &list_b) {
   list_a->insert(list_a->end(), list_b.begin(), list_b.end());
 }
 /**
- * @brief Remove an item from a deque, returning false if it was not in the deque, true otherwise.
+ * @brief Remove an item from a vector, returning false if it was not in the vector, true otherwise.
  * @tparam T    The type of the item
- * @param list  The deque
+ * @param list  The vector
  * @param item  The item to remove
  * @return      True if item was in list and got removed, false otherwise.
  */
 template<typename T>
-bool Remove(std::deque<std::shared_ptr<T>> *list, const std::shared_ptr<T> &item) {
+bool Remove(std::vector<std::shared_ptr<T>> *list, const std::shared_ptr<T> &item) {
   auto it = std::find(std::begin(*list), std::end(*list), item);
   if (it != std::end(*list)) {
     list->erase(it);
@@ -93,8 +93,8 @@ bool Remove(std::deque<std::shared_ptr<T>> *list, const std::shared_ptr<T> &item
  * @return      A list of raw pointers.
  */
 template<typename T>
-std::deque<T *> ToRawPointers(const std::deque<std::shared_ptr<T>> &list) {
-  std::deque<T *> result;
+std::vector<T *> ToRawPointers(const std::vector<std::shared_ptr<T>> &list) {
+  std::vector<T *> result;
   for (auto &value : list) {
     result.push_back(value.get());
   }
@@ -108,8 +108,8 @@ std::deque<T *> ToRawPointers(const std::deque<std::shared_ptr<T>> &list) {
  * @return      A list of raw pointers.
  */
 template<typename T>
-std::deque<T *> ToRawPointers(const std::deque<std::unique_ptr<T>> &list) {
-  std::deque<T *> result;
+std::vector<T *> ToRawPointers(const std::vector<std::unique_ptr<T>> &list) {
+  std::vector<T *> result;
   for (auto &value : list) {
     result.push_back(value.get());
   }

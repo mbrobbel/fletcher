@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,20 +19,17 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "fletchgen/basic_types.h"
 
 namespace fletchgen {
 
-using cerata::Component;
 using cerata::Instance;
-using cerata::Node;
-using cerata::Literal;
+using cerata::Component;
 using cerata::Port;
-using cerata::Parameter;
-using cerata::PortArray;
-using cerata::integer;
-using cerata::Type;
+using cerata::intl;
+using cerata::Object;
 
 // Bus channel classes:
 
@@ -42,21 +39,22 @@ enum class BusFunction {
   WRITE  ///< Interface writes to memory.
 };
 
-/// @brief Bus specification
-struct BusSpec {
-  /// Width of data bus.
-  uint32_t data_width = 512;
-  /// Width of address bus.
-  uint32_t addr_width = 64;
+/// @brief Bus specification using parameters.
+struct BusParam {
+  /// Width of address.
+  std::shared_ptr<Node> addr_width = bus_addr_width();
+  /// Width of data.
+  std::shared_ptr<Node> data_width = bus_data_width();
+  /// Width of strobe.
+  std::shared_ptr<Node> strobe_width = bus_strobe_width();
   /// Width of burst length field.
-  uint32_t len_width = 8;
+  std::shared_ptr<Node> len_width = bus_len_width();
   /// Minimum burst size.
-  uint32_t burst_step = 1;
+  std::shared_ptr<Node> burst_step = bus_burst_step_len();
   /// Maximum burst size.
-  uint32_t max_burst = 128;
-  /// Bus function.
-  BusFunction function = BusFunction::READ;
-
+  std::shared_ptr<Node> burst_max = bus_burst_max_len();
+  /// @brief Return all parameters as an object vector.
+  [[nodiscard]] std::vector<std::shared_ptr<Object>> all(std::optional<BusFunction> function = std::nullopt) const;
   /// @brief Return a human-readable version of the bus specification.
   [[nodiscard]] std::string ToString() const;
   /// @brief Return a type name for a Cerata type based on this bus specification.
@@ -64,10 +62,13 @@ struct BusSpec {
 };
 
 /// @brief Returns true if bus specifications are equal, false otherwise.
-bool operator==(const BusSpec &lhs, const BusSpec &rhs);
+bool operator==(const BusParam &lhs, const BusParam &rhs);
 
-/// @brief Fletcher bus type with access mode conveyed through spec.
-std::shared_ptr<Type> bus(BusSpec spec = BusSpec());
+/// @brief Fletcher bus type with access mode conveyed through parameters.
+std::shared_ptr<Type> bus(BusFunction function);
+
+/// @brief Fletcher bus type with access mode conveyed through spec of params.
+std::shared_ptr<Type> bus(const BusParam &spec, BusFunction function);
 
 /// @brief Return a Cerata type for a Fletcher bus read interface.
 std::shared_ptr<Type> bus_read(const std::shared_ptr<Node> &addr_width,
@@ -79,27 +80,33 @@ std::shared_ptr<Type> bus_write(const std::shared_ptr<Node> &addr_width,
                                 const std::shared_ptr<Node> &len_width,
                                 const std::shared_ptr<Node> &data_width);
 
-/// A port derived from a BusSpec.
+/// A port derived from bus parameters.
 struct BusPort : public Port {
   /// Bus specification.
-  BusSpec spec_;
-  /// @brief Construct a new port based on a bus specification.
-  BusPort(Port::Dir dir,
-          BusSpec spec,
-          const std::string &name = "",
+  BusParam params_;
+  /// Bus function.
+  BusFunction function_;
+  /// @brief Construct a new port based on a bus parameters..
+  BusPort(const std::string &name,
+          Port::Dir dir,
+          const BusParam &params,
+          BusFunction function,
           std::shared_ptr<ClockDomain> domain = bus_cd())
-      : Port(name.empty() ? "bus" : name, bus(spec), dir, std::move(domain)), spec_(spec) {}
-  /// @brief Make a new port and return a shared pointer to it.
-  static std::shared_ptr<BusPort> Make(const std::string& name, Port::Dir dir, BusSpec spec);
-  /// @brief Make a new port, name it automatically based on the bus specification, and return a shared pointer to it.
-  static std::shared_ptr<BusPort> Make(Port::Dir dir, BusSpec spec);
+      : Port(name.empty() ? "bus" : name, bus(params, function), dir, std::move(domain)),
+        params_(params),
+        function_(function) {}
   /// @brief Deep-copy the BusPort.
   std::shared_ptr<Object> Copy() const override;
 };
 
+/// @brief Make a new port and return a shared pointer to it.
+std::shared_ptr<BusPort> bus_port(const std::string &name, Port::Dir dir, const BusParam &params, BusFunction func);
+/// @brief Make a new port, name it automatically based on the bus specification, and return a shared pointer to it.
+std::shared_ptr<BusPort> bus_port(Port::Dir dir, const BusParam &spec, BusFunction func);
+
 /**
- * @brief Return a Cerata Instance of a BusArbiter.
- * @param spec      The bus specification.
+ * @brief Return a Cerata model of a BusArbiter.
+ * @param function  The function of the bus; either read or write.
  * @return          A Bus(Read/Write)Arbiter Cerata component model.
  *
  * This model corresponds to either:
@@ -110,7 +117,7 @@ struct BusPort : public Port {
  * Changes to the implementation of this component in the HDL source must be reflected in the implementation of this
  * function.
  */
-std::unique_ptr<Instance> BusArbiterInstance(BusSpec spec = BusSpec());
+Component *bus_arbiter(BusFunction function);
 
 /// @brief Return a BusReadSerializer component
 std::shared_ptr<Component> BusReadSerializer();
@@ -120,11 +127,14 @@ std::shared_ptr<Component> BusWriteSerializer();
 
 }  // namespace fletchgen
 
+
 ///  Specialization of std::hash for BusSpec
 template<>
-struct std::hash<fletchgen::BusSpec> {
+struct std::hash<fletchgen::BusParam> {
   /// @brief Hash a BusSpec.
-  size_t operator()(fletchgen::BusSpec const &s) const noexcept {
-    return s.data_width + s.addr_width + s.len_width + s.burst_step + s.max_burst;
+  size_t operator()(fletchgen::BusParam const &s) const noexcept {
+    auto str = s.data_width->ToString() + s.addr_width->ToString() + s.len_width->ToString()
+        + s.burst_step->ToString() + s.burst_max->ToString();
+    return std::hash<std::string>()(str);
   }
 };

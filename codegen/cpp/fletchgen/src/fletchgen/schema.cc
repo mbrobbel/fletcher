@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 #include <algorithm>
 #include <memory>
 #include <utility>
-#include <deque>
+#include <vector>
 #include <optional>
 
 namespace fletchgen {
@@ -86,8 +86,8 @@ std::optional<std::shared_ptr<FletcherSchema>> SchemaSet::GetSchema(const std::s
   return std::nullopt;
 }
 
-std::deque<std::shared_ptr<FletcherSchema>> SchemaSet::read_schemas() const {
-  std::deque<std::shared_ptr<FletcherSchema>> ret;
+std::vector<std::shared_ptr<FletcherSchema>> SchemaSet::read_schemas() const {
+  std::vector<std::shared_ptr<FletcherSchema>> ret;
   for (const auto& s : schemas_) {
     if (s->mode() == Mode::READ) {
       ret.push_back(s);
@@ -96,8 +96,8 @@ std::deque<std::shared_ptr<FletcherSchema>> SchemaSet::read_schemas() const {
   return ret;
 }
 
-std::deque<std::shared_ptr<FletcherSchema>> SchemaSet::write_schemas() const {
-  std::deque<std::shared_ptr<FletcherSchema>> ret;
+std::vector<std::shared_ptr<FletcherSchema>> SchemaSet::write_schemas() const {
+  std::vector<std::shared_ptr<FletcherSchema>> ret;
   for (const auto& s : schemas_) {
     if (s->mode() == Mode::WRITE) {
       ret.push_back(s);

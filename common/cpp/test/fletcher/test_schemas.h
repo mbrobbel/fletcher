@@ -41,6 +41,34 @@ inline std::shared_ptr<arrow::Schema> GetPrimReadSchema() {
   return WithMetaRequired(*schema, "PrimRead", Mode::READ);
 }
 
+inline std::shared_ptr<arrow::Schema> GetPrimWriteSchema() {
+  std::vector<std::shared_ptr<arrow::Field>> schema_fields = {
+      WithMetaProfile(*arrow::field("number", arrow::uint8(), false))
+  };
+  auto schema = std::make_shared<arrow::Schema>(schema_fields);
+  return WithMetaRequired(*schema, "PrimWrite", Mode::WRITE);
+}
+
+inline std::shared_ptr<arrow::Schema> GetTwoPrimReadSchema() {
+  // Create a vector of fields that will form the schema.
+  std::vector<std::shared_ptr<arrow::Field>> schema_fields = {
+      WithMetaProfile(*arrow::field("A", arrow::int8(), false)),
+      WithMetaProfile(*arrow::field("B", arrow::int8(), false))
+  };
+  auto schema = std::make_shared<arrow::Schema>(schema_fields);
+  return WithMetaRequired(*schema, "R", Mode::READ);
+}
+
+inline std::shared_ptr<arrow::Schema> GetTwoPrimWriteSchema() {
+  // Create a vector of fields that will form the schema.
+  std::vector<std::shared_ptr<arrow::Field>> schema_fields = {
+      WithMetaProfile(*arrow::field("C", arrow::int8(), false)),
+      WithMetaProfile(*arrow::field("D", arrow::int8(), false))
+  };
+  auto schema = std::make_shared<arrow::Schema>(schema_fields);
+  return WithMetaRequired(*schema, "W", Mode::WRITE);
+}
+
 inline std::shared_ptr<arrow::Schema> GetNullablePrimReadSchema() {
   // Create a vector of fields that will form the schema.
   std::vector<std::shared_ptr<arrow::Field>> schema_fields = {
@@ -48,14 +76,6 @@ inline std::shared_ptr<arrow::Schema> GetNullablePrimReadSchema() {
   };
   auto schema = std::make_shared<arrow::Schema>(schema_fields);
   return WithMetaRequired(*schema, "PrimRead", Mode::READ);
-}
-
-inline std::shared_ptr<arrow::Schema> GetPrimWriteSchema() {
-  std::vector<std::shared_ptr<arrow::Field>> schema_fields = {
-      WithMetaProfile(*arrow::field("number", arrow::uint8(), false))
-  };
-  auto schema = std::make_shared<arrow::Schema>(schema_fields);
-  return WithMetaRequired(*schema, "PrimWrite", Mode::WRITE);
 }
 
 inline std::shared_ptr<arrow::Schema> GetStringReadSchema() {

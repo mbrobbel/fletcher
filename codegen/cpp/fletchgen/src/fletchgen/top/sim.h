@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,10 +23,10 @@ namespace fletchgen::top {
 
 /// @brief Generate a simulation top level on supplied output streams from a ColumnWrapper
 std::string GenerateSimTop(const Mantle &mantle,
-                           const SchemaSet& schema_set,
+                           const SchemaSet &schema_set,
                            const std::vector<std::ostream *> &outputs,
                            const std::string &read_srec_path,
                            const std::string &write_srec_path,
-                           const std::vector<fletcher::RecordBatchDescription>& recordbatches);
+                           const std::vector<fletcher::RecordBatchDescription> &recordbatches);
 
 }

@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,10 +27,10 @@ TEST(Profiler, Connect) {
   cerata::logger().enable(fletchgen::LogCerata);
   cerata::default_component_pool()->Clear();
 
-  auto stream_type = cerata::Stream::Make("test_stream", cerata::Vector::Make(8), "data");
-  auto stream_port = cerata::Port::Make(stream_type);
-  auto crp = cerata::Port::Make("bcd", cr());
-  auto top = cerata::Component::Make("top", {crp, stream_port});
+  auto stream_type = cerata::stream("test_stream", cerata::vector(8), "data");
+  auto stream_port = port(stream_type);
+  auto crp = port("bcd", cr());
+  auto top = cerata::component("top", {crp, stream_port});
 
   EnableStreamProfiling(top.get(), {stream_port.get()});
 

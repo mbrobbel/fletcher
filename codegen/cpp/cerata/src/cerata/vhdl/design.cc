@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ MultiBlock Design::Generate() {
   // Resolve VHDL specific problems
   CERATA_LOG(DEBUG, "VHDL: Transforming Cerata graph to VHDL-compatible.");
 
-  Resolve::ResolvePortToPort(component_.get());
+  Resolve::SignalizePorts(component_.get());
   Resolve::ExpandStreams(component_.get());
 
   // Place header

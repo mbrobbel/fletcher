@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -116,15 +116,15 @@ std::string GenerateAXITop(const Mantle &mantle,
 
   if (schema_set.RequiresWriting()) {
     t.Replace("MST_WREQ_DECLARE",
-              "      wr_mst_wreq_valid         : out std_logic;\n"
-              "      wr_mst_wreq_ready         : in std_logic;\n"
-              "      wr_mst_wreq_addr          : out std_logic_vector(BUS_ADDR_WIDTH-1 downto 0);\n"
-              "      wr_mst_wreq_len           : out std_logic_vector(BUS_LEN_WIDTH-1 downto 0);\n"
-              "      wr_mst_wdat_valid         : out std_logic;\n"
-              "      wr_mst_wdat_ready         : in std_logic;\n"
-              "      wr_mst_wdat_data          : out std_logic_vector(BUS_DATA_WIDTH-1 downto 0);\n"
-              "      wr_mst_wdat_strobe        : out std_logic_vector(BUS_STROBE_WIDTH-1 downto 0);\n"
-              "      wr_mst_wdat_last          : out std_logic;");
+              "      wr_mst_wreq_valid        : out std_logic;\n"
+              "      wr_mst_wreq_ready        : in std_logic;\n"
+              "      wr_mst_wreq_addr         : out std_logic_vector(BUS_ADDR_WIDTH-1 downto 0);\n"
+              "      wr_mst_wreq_len          : out std_logic_vector(BUS_LEN_WIDTH-1 downto 0);\n"
+              "      wr_mst_wdat_valid        : out std_logic;\n"
+              "      wr_mst_wdat_ready        : in std_logic;\n"
+              "      wr_mst_wdat_data         : out std_logic_vector(BUS_DATA_WIDTH-1 downto 0);\n"
+              "      wr_mst_wdat_strobe       : out std_logic_vector(BUS_STROBE_WIDTH-1 downto 0);\n"
+              "      wr_mst_wdat_last         : out std_logic;");
 
     t.Replace("MST_WREQ_INSTANTIATE",
               "      wr_mst_wreq_valid         => wr_mst_wreq_valid,\n"

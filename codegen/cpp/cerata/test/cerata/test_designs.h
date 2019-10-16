@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,24 +46,24 @@ std::shared_ptr<Component> GetTypeExpansionComponent() {
 std::shared_ptr<Component> GetArrayToArrayInternalComponent(bool invert = false) {
   auto data = vector<8>();
 
-  std::string a = invert ? "src" : "dst";
-  std::string x = invert ? "dst0" : "src0";
-  std::string y = invert ? "dst1" : "src1";
+  std::string a = !invert ? "src" : "dst";
+  std::string x = !invert ? "dst0" : "src0";
+  std::string y = !invert ? "dst1" : "src1";
 
   auto top_comp = component("top_comp");
 
   auto a_size = parameter("size", integer(), intl(0));
-  auto a_array = PortArray::Make("array", data, a_size, invert ? Term::IN : Term::OUT);
+  auto a_array = port_array("array", data, a_size, invert ? Term::IN : Term::OUT);
   auto a_comp = component(a, {a_size, a_array});
   auto a_inst = instance(a_comp.get());
 
   auto x_size = parameter("size", integer(), intl(0));
-  auto x_array = PortArray::Make("array", data, x_size, invert ? Term::OUT : Term::IN);
+  auto x_array = port_array("array", data, x_size, invert ? Term::OUT : Term::IN);
   auto x_comp = component(x, {x_size, x_array});
   auto x_inst = instance(x_comp.get());
 
   auto y_size = parameter("size", integer(), intl(0));
-  auto y_array = PortArray::Make("array", data, y_size, invert ? Term::OUT : Term::IN);
+  auto y_array = port_array("array", data, y_size, invert ? Term::OUT : Term::IN);
   auto y_comp = component(y, {y_size, y_array});
   auto y_inst = instance(y_comp.get());
 
@@ -99,11 +99,11 @@ std::shared_ptr<Component> GetArrayToArrayComponent(bool invert = false) {
   auto data = vector<8>();
 
   auto top_size = parameter("top_size", integer(), intl(0));
-  auto top_array = PortArray::Make("top_array", data, top_size, invert ? Term::OUT : Term::IN);
+  auto top_array = port_array("top_array", data, top_size, invert ? Term::OUT : Term::IN);
   auto top_comp = component("top_comp", {top_size, top_array});
 
   auto child_size = parameter("child_size", integer(), intl(0));
-  auto child_array = PortArray::Make("child_array", data, child_size, invert ? Term::OUT : Term::IN);
+  auto child_array = port_array("child_array", data, child_size, invert ? Term::OUT : Term::IN);
   auto child_comp = component("child_comp", {child_size, child_array});
   auto child_inst = instance(child_comp.get());
 
@@ -127,7 +127,7 @@ std::shared_ptr<Component> GetArrayToArrayComponent(bool invert = false) {
 std::shared_ptr<Component> GetArrayComponent() {
   auto size = parameter("size", integer(), intl(0));
   auto data = vector<8>();
-  auto pA = PortArray::Make("A", data, size, Term::OUT);
+  auto pA = port_array("A", data, size, Term::OUT);
   auto pB = port("B", data, Term::IN);
   auto pC = port("C", data, Term::IN);
 
@@ -151,18 +151,18 @@ std::shared_ptr<Component> GetTypeConvComponent() {
   auto t_wide = vector<4>();
   auto t_narrow = vector<2>();
   // Flat indices:
-  auto tA = record("rec_A", {       // 0
-      field("q", t_wide),     // 1
-      field("r", t_narrow),   // 2
-      field("s", t_narrow),   // 3
-      field("t", t_wide),     // 4
+  auto tA = record("rec_A", {  // 0
+      field("q", t_wide),      // 1
+      field("r", t_narrow),    // 2
+      field("s", t_narrow),    // 3
+      field("t", t_wide),      // 4
   });
 
-  auto tB = record("rec_B", {       // 0
-      field("u", t_wide),     // 1
-      field("v", t_narrow),   // 2
-      field("w", t_narrow),   // 3
-      field("x", t_wide),     // 4
+  auto tB = record("rec_B", {  // 0
+      field("u", t_wide),      // 1
+      field("v", t_narrow),    // 2
+      field("w", t_narrow),    // 3
+      field("x", t_wide),      // 4
   });
 
   // Create a type mapping from tA to tE
@@ -199,13 +199,13 @@ std::shared_ptr<Component> GetArrayTypeConvComponent() {
   auto t_wide = vector<4>();
   auto t_narrow = vector<2>();
   // Flat indices:
-  auto tA = record("Type _A", {    // 0
-      field("q", t_wide),     // 1
+  auto tA = record("Type _A", {  // 0
+      field("q", t_wide),        // 1
   });
 
-  auto tB = record("Type B", {    // 0
-      field("r", t_narrow),   // 1
-      field("s", t_narrow),   // 2
+  auto tB = record("Type B", {  // 0
+      field("r", t_narrow),     // 1
+      field("s", t_narrow),     // 2
   });
 
   // Create a type mapping from tA to tE
@@ -216,7 +216,7 @@ std::shared_ptr<Component> GetArrayTypeConvComponent() {
 
   // Ports
   auto parSize = parameter("ARRAY_SIZE", integer(), intl(0));
-  auto pA = PortArray::Make("A", tA, parSize, Port::OUT);
+  auto pA = port_array("A", tA, parSize, Port::OUT);
   auto pB = port("B", tB, Port::OUT);
   auto pC = port("C", tB, Port::OUT);
 
@@ -237,21 +237,21 @@ std::shared_ptr<Component> GetArrayTypeConvComponent() {
 std::shared_ptr<Component> GetStreamConcatComponent() {
   // Flat indices:
   auto tA = stream("split",                                 // 0
-                         record("a", {                      // 1
-                             field("other",
-                                         bit()),               // 2
-                             field("child",
-                                         stream("se",    // 3
-                                                         bit()))  // 4
-                         }));
+                   record("a", {                      // 1
+                       field("other",
+                             bit()),               // 2
+                       field("child",
+                             stream("se",    // 3
+                                    bit()))  // 4
+                   }));
 
   auto tB = stream("concat",  // 0
-                         bit(),     // 1
-                         "data");
+                   bit(),     // 1
+                   "data");
 
   auto tC = stream("concat",  // 0
-                         bit(),     // 1
-                         "data");
+                   bit(),     // 1
+                   "data");
 
   // Create a type mapping from tA to tB
   auto mapperB = std::make_shared<TypeMapper>(tA.get(), tB.get());
@@ -318,20 +318,20 @@ std::shared_ptr<Component> GetExampleDesign() {
   auto vec_width = parameter("vec_width", integer(), intl(32));
   // Construct a deeply nested type to showcase Cerata's capabilities.
   auto my_type = record("my_record_type", {field("bit", bit()),
-                                                 field("vec", vector("param_vec", vec_width)),
-                                                 field("stream",
-                                                             stream("d", record("other_rec_type", {
-                                                                 field("substream",
-                                                                             stream(vector<32>())),
-                                                                 field("int", integer())})))});
+                                           field("vec", vector("param_vec", vec_width)),
+                                           field("stream",
+                                                 stream("d", record("other_rec_type", {
+                                                     field("substream",
+                                                           stream(vector<32>())),
+                                                     field("int", integer())})))});
 
   // Construct two components with a port made from these types
   auto my_array_size = parameter("array_size", integer());
   auto my_comp = component("my_comp", {vec_width,
-                                             PortArray::Make("my_array", my_type, my_array_size, Port::OUT)});
+                                       port_array("my_array", my_type, my_array_size, Port::OUT)});
 
   auto my_other_comp = component("my_other_comp", {vec_width,
-                                                         port("my_port", my_type)});
+                                                   port("my_port", my_type)});
 
   // Create a top level and add instances of each component
   auto my_top = component("my_top_level");

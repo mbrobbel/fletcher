@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -136,6 +136,17 @@ std::shared_ptr<Object> Expression::Copy() const {
 std::shared_ptr<Edge> Expression::AddSource(Node *source) {
   CERATA_LOG(FATAL, "Cannot drive an expression node.");
   return nullptr;
+}
+
+std::vector<const Node *> Expression::ownees() const {
+  std::vector<const Node *> result;
+  result.push_back(lhs_.get());
+  result.push_back(rhs_.get());
+  auto lh_ownees = lhs_->ownees();
+  auto rh_ownees = rhs_->ownees();
+  result.insert(result.end(), lh_ownees.begin(), lh_ownees.end());
+  result.insert(result.end(), rh_ownees.begin(), rh_ownees.end());
+  return result;
 }
 
 }  // namespace cerata

@@ -1,4 +1,4 @@
-// Copyright 2018 Delft University of Technology
+// Copyright 2018-2019 Delft University of Technology
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,21 +28,23 @@
 
 namespace fletchgen {
 
+using cerata::port;
+
 ArrayCmdCtrlMerger::ArrayCmdCtrlMerger() : Component("ArrayCmdCtrlMerger") {
   // This is a primitive component from the hardware lib
   meta_[cerata::vhdl::metakeys::PRIMITIVE] = "true";
   meta_[cerata::vhdl::metakeys::LIBRARY] = "work";
   meta_[cerata::vhdl::metakeys::PACKAGE] = "Array_pkg";
 
-  auto reg64 = cerata::Vector::Make(64);
-  auto baw = Parameter::Make("bus_addr_width", integer(), intl(64));
-  auto idw = Parameter::Make("index_width", integer(), intl(32));
-  auto tw = Parameter::Make("tag_width", integer(), intl(1));
-  auto cw = Parameter::Make("num_addr", integer(), intl(0));
-  auto nucleus_side_cmd = Port::Make("nucleus_cmd", cmd(tw, cw), Port::Dir::OUT, kernel_cd());
-  auto kernel_side_cmd = Port::Make("kernel_cmd", cmd(tw), Port::Dir::IN, kernel_cd());
-  auto ctrl = PortArray::Make("ctrl", reg64, cw, Port::Dir::IN, kernel_cd());
-  Add({baw, idw, tw, nucleus_side_cmd, kernel_side_cmd, ctrl});
+  auto reg64 = cerata::vector(64);
+  auto baw = bus_addr_width();
+  auto idw = index_width();
+  auto tw = tag_width();
+  auto cw = parameter("num_addr", integer(), intl(0));
+  auto nucleus_side_cmd = port("nucleus_cmd", cmd(tw, cw), Port::Dir::OUT, kernel_cd());
+  auto kernel_side_cmd = port("kernel_cmd", cmd(tw), Port::Dir::IN, kernel_cd());
+  auto ctrl = port_array("ctrl", reg64, cw, Port::Dir::IN, kernel_cd());
+  Add({cw, baw, idw, tw, nucleus_side_cmd, kernel_side_cmd, ctrl});
 }
 
 std::unique_ptr<Instance> ArrayCmdCtrlMergerInstance(const std::string &name) {
@@ -58,7 +60,7 @@ std::unique_ptr<Instance> ArrayCmdCtrlMergerInstance(const std::string &name) {
     merger_comp = merger_comp_shared.get();
   }
   // Create and return an instance of the Array component.
-  result = Instance::Make(merger_comp, name);
+  result = instance(merger_comp, name);
   return result;
 }
 
@@ -83,21 +85,23 @@ Nucleus::Nucleus(const std::string &name,
 
   // Add address width parameter.
   Add(bus_addr_width());
+  Add(tag_width());
+  Add(index_width());
   // Add clock/reset
-  auto kcd = Port::Make("kcd", cr(), Port::Dir::IN, kernel_cd());
+  auto kcd = port("kcd", cr(), Port::Dir::IN, kernel_cd());
   Add(kcd);
   // Add AXI4-lite interface
-  auto axi = axi4_lite(Port::Dir::IN);
+  auto axi = axi4_lite(Port::Dir::IN, bus_cd());
   Add(axi);
 
   // Instantiate the kernel and connect the clock/reset.
   kernel_inst = AddInstanceOf(kernel.get());
-  Connect(kernel_inst->port("kcd"), kcd.get());
+  Connect(kernel_inst->prt("kcd"), kcd.get());
 
   // Instantiate the MMIO component and connect the AXI4-lite port and clock/reset.
   auto mmio_inst = AddInstanceOf(mmio.get());
-  mmio_inst->port("mmio") <<= axi;
-  mmio_inst->port("kcd") <<= kcd;
+  mmio_inst->prt("mmio") <<= axi;
+  mmio_inst->prt("kcd") <<= kcd;
   // For the kernel user, we need to abstract the "ctrl" field of the command streams away.
   // We need to instantiate a little ArrayCommandCtrlMerger (accm) component that just adds the buffer addresses to
   // the cmd stream ctrl field. We will remember the instances of that component and we'll get the buffer address ports
@@ -124,6 +128,10 @@ Nucleus::Nucleus(const std::string &name,
       Add(nucleus_cmd);
       // Now, instantiate an ACCM that will merge the buffer addresses onto the command stream at the nucleus level.
       auto accm_inst = ArrayCmdCtrlMergerInstance(cmd->name() + "_accm_inst");
+      // Connect the parameters.
+      Connect(accm_inst->par(bus_addr_width()), par(bus_addr_width()));
+      Connect(accm_inst->par(index_width()), par(index_width()));
+      Connect(accm_inst->par(tag_width()), par(tag_width()));
       // Remember the instance.
       accms.push_back(accm_inst.get());
       // Move ownership to this Nucleus component.
@@ -138,8 +146,8 @@ Nucleus::Nucleus(const std::string &name,
   for (const auto &r : recordbatches) {
     // Connect Arrow data stream
     for (const auto &ap : r->GetFieldPorts(FieldPort::Function::ARROW)) {
-      auto kernel_data = kernel_inst->port(ap->name());
-      auto nucleus_data = port(ap->name());
+      auto kernel_data = kernel_inst->prt(ap->name());
+      auto nucleus_data = prt(ap->name());
       std::shared_ptr<cerata::Edge> edge;
       if (ap->dir() == Port::OUT) {
         edge = Connect(kernel_data, nucleus_data);
@@ -150,8 +158,8 @@ Nucleus::Nucleus(const std::string &name,
 
     // Connect unlock stream
     for (const auto &up : r->GetFieldPorts(FieldPort::Function::UNLOCK)) {
-      auto kernel_unl = kernel_inst->port(up->name());
-      auto nucleus_unl = port(up->name());
+      auto kernel_unl = kernel_inst->prt(up->name());
+      auto nucleus_unl = prt(up->name());
       Connect(kernel_unl, nucleus_unl);
     }
 
@@ -159,18 +167,19 @@ Nucleus::Nucleus(const std::string &name,
     size_t field_idx = 0;
     for (const auto &cmd : r->GetFieldPorts(FieldPort::Function::COMMAND)) {
       // Get the ports on either side of the ACCM.
-      auto accm_nucleus_cmd = accms[accm_idx]->port("nucleus_cmd");
-      auto accm_kernel_cmd = accms[accm_idx]->port("kernel_cmd");
-      auto accm_ctrl = accms[accm_idx]->porta("ctrl");
-      // Get the corresponding cmd ports on this nucleus and the kernel.
-      auto nucleus_cmd = port(cmd->name());
-      auto kernel_cmd = kernel_inst->port(cmd->name());
+      auto accm_nucleus_cmd = accms[accm_idx]->prt("nucleus_cmd");
+      auto accm_kernel_cmd = accms[accm_idx]->prt("kernel_cmd");
+      auto accm_ctrl = accms[accm_idx]->prta("ctrl");
 
-      // Connect the nucleus cmd to the accm cmd and the accm command to the kernel cmd.
+      // Get the corresponding cmd ports on this nucleus and the kernel.
+      auto nucleus_cmd = prt(cmd->name());
+      auto kernel_cmd = kernel_inst->prt(cmd->name());
+
+      // Connect the nucleus cmd to the ACCM cmd and the ACCM command to the kernel cmd.
       Connect(nucleus_cmd, accm_nucleus_cmd);
       Connect(accm_kernel_cmd, kernel_cmd);
 
-      // To connect the buffer addresses from the mmio to the accm, we need to figure out which buffers there are.
+      // To connect the buffer addresses from the mmio to the ACCM, we need to figure out which buffers there are.
       // We can look this up in the RecordBatchDescription.
       auto field_bufs = r->batch_desc().fields[field_idx].buffers;
       for (size_t b = 0; b < field_bufs.size(); b++) {
@@ -190,7 +199,7 @@ Nucleus::Nucleus(const std::string &name,
   // Then, make a connection between these two components.
   for (auto &p : mmio_inst->GetAll<MmioPort>()) {
     if (ExposeToKernel(p->reg.function)) {
-      auto inst_port = kernel_inst->port(p->reg.name);
+      auto inst_port = kernel_inst->prt(p->reg.name);
       if (p->dir() == Port::Dir::OUT) {
         Connect(inst_port, p);
       } else {
@@ -202,6 +211,7 @@ Nucleus::Nucleus(const std::string &name,
   // Gather all Field-derived ports that require profiling on this Nucleus.
   // Insert a signal in between, and then mark that signal for profiling.
   std::vector<Node *> profile_nodes;
+  std::unordered_map<Node *, Node *> rebinding;
   for (const auto &p : GetFieldPorts(FieldPort::Function::ARROW)) {
     if (p->profile_) {
       // At this point, these ports should only have one edge straight into the kernel.
@@ -209,7 +219,7 @@ Nucleus::Nucleus(const std::string &name,
         FLETCHER_LOG(ERROR, "Nucleus port has other than exactly one edge.")
       }
       // Insert a signal node in between that we can attach the profiler probe onto.
-      auto s = cerata::insert(p->edges()[0], "Prof", this);
+      auto s = cerata::insert(p->edges()[0], this, &rebinding, "pr");
       profile_nodes.push_back(dynamic_cast<Node *>(s.get()));
     }
   }
@@ -221,23 +231,37 @@ Nucleus::Nucleus(const std::string &name,
   //  unchanged as well. This assumption might be a bit wild if things get added in the future, so it would be nice
   //  to figure out a better way to keep this synchronized.
 
+  // Get the enable and clear ports.
+  auto mmio_enable = signal("profile_enable", cerata::bit(), kernel_cd());
+  auto mmio_clear = signal("profile_clear", cerata::bit(), kernel_cd());
+  Add({mmio_enable, mmio_clear});
+
+  Connect(mmio_enable.get(), mmio_inst->prt("f_profile_enable_data"));
+  Connect(mmio_clear.get(), mmio_inst->prt("f_profile_clear_data"));
+
   // Gather all mmio profile result ports
-  std::vector<MmioPort*> mmio_profile_ports;
+  std::vector<MmioPort *> mmio_profile_ports;
   for (auto &p : mmio_inst->GetAll<MmioPort>()) {
     if (p->reg.function == MmioReg::Function::PROFILE) {
       mmio_profile_ports.push_back(p);
     }
   }
+  // Loop over all profiled nodes and connect them.
+  size_t port_idx = 0;
+  for (const auto &pair : profile_results) {
+    auto prof_instances = pair.second.first;
+    auto prof_ports = pair.second.second;
 
-  // Loop over all profiled nodes.
-  size_t idx = 0;
-  for (const auto& pair : profile_results) {
-    for (const auto& profile_result : pair.second) {
-      Connect(mmio_profile_ports[idx], profile_result);
-      idx++;
+    for (const auto &prof_inst : prof_instances) {
+      Connect(prof_inst->prt("enable"), mmio_enable.get());
+      Connect(prof_inst->prt("clear"), mmio_clear.get());
+    }
+
+    for (const auto &profile_result : prof_ports) {
+      Connect(mmio_profile_ports[port_idx], profile_result);
+      port_idx++;
     }
   }
-
 }
 
 std::shared_ptr<Nucleus> nucleus(const std::string &name,
