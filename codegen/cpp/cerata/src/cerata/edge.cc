@@ -80,9 +80,9 @@ std::shared_ptr<Edge> Connect(Node *dst, Node *src) {
 
   // Check if the types can be mapped onto each other
   if (!src->type()->GetMapper(dst->type())) {
-    CERATA_LOG(FATAL, "No known type mapping available for connection between node "
-        + dst->ToString() + " (" + dst->type()->ToString() + ")  and ("
-        + src->ToString() + " (" + src->type()->ToString() + ")");
+    CERATA_LOG(FATAL, "No known type mapping available for connection between node ["
+        + dst->ToString() + "] and ["
+        + src->ToString() + "]");
   }
 
   // If the destination is a terminator
@@ -263,6 +263,10 @@ std::shared_ptr<Edge> Connect(Node *dst, const std::shared_ptr<Node> &src) {
 
 std::shared_ptr<Edge> Connect(const std::shared_ptr<Node> &dst, Node *src) {
   return Connect(dst.get(), src);
+}
+
+std::shared_ptr<Edge> Connect(const std::shared_ptr<Node> &dst, const std::shared_ptr<Node> &src) {
+  return Connect(dst.get(), src.get());
 }
 
 std::optional<Node *> Edge::GetOtherNode(const Node &node) const {

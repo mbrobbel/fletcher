@@ -73,6 +73,7 @@ add_compile_unit(
     test/cerata/vhdl/test_declarators.cc
     test/cerata/vhdl/test_designs.cc
     test/cerata/vhdl/test_instantiators.cc
+    test/cerata/vhdl/test_assignments.cc
   DEPS
     cerata::core
     cerata::dot

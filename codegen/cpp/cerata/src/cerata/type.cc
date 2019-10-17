@@ -162,19 +162,21 @@ bool Type::IsEqual(const Type &other) const {
   return other.id() == id_;
 }
 
-Vector::Vector(std::string name, const OptionalNode &width)
+Vector::Vector(std::string name, const std::shared_ptr<Node> &width)
     : Type(std::move(name), Type::VECTOR) {
-  // Check if width is parameter or literal node
-  if (width) {
-    if (!(width.value()->IsParameter() || width.value()->IsLiteral() || width.value()->IsExpression())) {
-      CERATA_LOG(FATAL, "Vector width can only be Parameter, Literal or Expression node.");
-    }
+  // Sanity check the width generic node.
+  if (!(width->IsParameter() || width->IsLiteral() || width->IsExpression())) {
+    CERATA_LOG(FATAL, "Vector width can only be Parameter, Literal or Expression node.");
   }
   width_ = width;
 }
 
-std::shared_ptr<Type> vector(const std::string &name, const OptionalNode &width) {
+std::shared_ptr<Type> vector(const std::string &name, const std::shared_ptr<Node> &width) {
   return std::make_shared<Vector>(name, width);
+}
+
+std::shared_ptr<Type> vector(const std::shared_ptr<Node> &width) {
+  return std::make_shared<Vector>("Vec_" + width->ToString(), width);
 }
 
 std::shared_ptr<Type> vector(unsigned int width) {
@@ -188,11 +190,7 @@ std::shared_ptr<Type> vector(std::string name, unsigned int width) {
 }
 
 std::optional<Node *> Vector::width() const {
-  if (width_) {
-    return width_->get();
-  } else {
-    return std::nullopt;
-  }
+  return width_.get();
 }
 
 bool Vector::IsEqual(const Type &other) const {
@@ -208,15 +206,11 @@ bool Vector::IsEqual(const Type &other) const {
 }
 
 std::vector<Node *> Vector::GetGenerics() const {
-  if (width_) {
-    return std::vector({width_.value().get()});
-  } else {
-    return {};
-  }
+  return {width_.get()};
 }
 
 Type &Vector::SetWidth(std::shared_ptr<Node> width) {
-  width_ = width;
+  width_ = std::move(width);
   return *this;
 }
 
@@ -265,11 +259,6 @@ std::shared_ptr<Type> integer() {
   return result;
 }
 
-std::shared_ptr<Type> natural() {
-  static std::shared_ptr<Type> result = std::make_shared<Natural>("natural");
-  return result;
-}
-
 std::shared_ptr<Type> string() {
   static std::shared_ptr<Type> result = std::make_shared<String>("string");
   return result;
@@ -308,12 +297,12 @@ Record &Record::AddField(const std::shared_ptr<Field> &field, std::optional<size
 Record::Record(std::string name, std::vector<std::shared_ptr<Field>> fields)
     : Type(std::move(name), Type::RECORD), fields_(std::move(fields)) {}
 
-std::shared_ptr<Record> record(const std::string &name, const std::initializer_list<std::shared_ptr<Field>> &fields) {
+std::shared_ptr<Record> record(const std::string &name, const std::vector<std::shared_ptr<Field>> &fields) {
   return std::make_shared<Record>(name, fields);
 }
 
-std::shared_ptr<Record> record(const std::string &name, const std::vector<std::shared_ptr<Field>> &fields) {
-  return std::make_shared<Record>(name, fields);
+std::shared_ptr<Record> record(const std::vector<std::shared_ptr<Field>> &fields) {
+  return record("", fields);
 }
 
 bool Stream::IsEqual(const Type &other) const {
@@ -456,7 +445,7 @@ std::shared_ptr<Type> Bit::Copy(std::unordered_map<Node *, Node *> rebinding) co
 
   result->meta = meta;
 
-  for (const auto& mapper : mappers_) {
+  for (const auto &mapper : mappers_) {
     auto new_mapper = mapper->Make(result.get(), mapper->b());
     new_mapper->SetMappingMatrix(mapper->map_matrix());
     result->AddMapper(new_mapper);
@@ -468,17 +457,14 @@ std::shared_ptr<Type> Bit::Copy(std::unordered_map<Node *, Node *> rebinding) co
 std::shared_ptr<Type> Vector::Copy(std::unordered_map<Node *, Node *> rebinding) const {
   std::shared_ptr<Type> result;
   std::optional<std::shared_ptr<Node>> new_width = width_;
-  if (width_) {
-    auto w = width_.value().get();
-    if (rebinding.count(w) > 0) {
-      new_width = rebinding.at(w)->shared_from_this();
-    }
+  if (rebinding.count(width_.get()) > 0) {
+    new_width = rebinding.at(width_.get())->shared_from_this();
   }
-  result = vector(name(), new_width);
+  result = vector(name(), *new_width);
 
   result->meta = meta;
 
-  for (const auto& mapper : mappers_) {
+  for (const auto &mapper : mappers_) {
     auto new_mapper = mapper->Make(result.get(), mapper->b());
     new_mapper->SetMappingMatrix(mapper->map_matrix());
     result->AddMapper(new_mapper);
@@ -508,7 +494,7 @@ std::shared_ptr<Type> Record::Copy(std::unordered_map<Node *, Node *> rebinding)
 
   result->meta = meta;
 
-  for (const auto& mapper : mappers_) {
+  for (const auto &mapper : mappers_) {
     auto new_mapper = mapper->Make(result.get(), mapper->b());
     new_mapper->SetMappingMatrix(mapper->map_matrix());
     result->AddMapper(new_mapper);
@@ -523,7 +509,7 @@ std::shared_ptr<Type> Stream::Copy(std::unordered_map<Node *, Node *> rebinding)
 
   result->meta = meta;
 
-  for (const auto& mapper : mappers_) {
+  for (const auto &mapper : mappers_) {
     auto new_mapper = mapper->Make(result.get(), mapper->b());
     new_mapper->SetMappingMatrix(mapper->map_matrix());
     result->AddMapper(new_mapper);

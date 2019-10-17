@@ -24,33 +24,33 @@
 #include "cerata/graph.h"
 #include "cerata/vhdl/identifier.h"
 #include "cerata/vhdl/vhdl_types.h"
+#include "cerata/vhdl/vhdl.h"
 
 namespace cerata::vhdl {
 
 static std::string GenerateTypeDecl(const Type &type,
-                                    const std::optional<std::shared_ptr<Node>> &multiplier = std::nullopt) {
+                                    std::optional<Node *> multiplier = std::nullopt) {
+  std::shared_ptr<Node> mult;
+  if (multiplier) {
+    mult = multiplier.value()->shared_from_this();
+  }
   switch (type.id()) {
     default: {
       if (!multiplier) {
         return "std_logic";
       } else {
-        return "std_logic_vector(" + (*multiplier - 1)->ToString() + " downto 0)";
+        return "std_logic_vector(" + (mult - 1ul)->ToString() + " downto 0)";
       }
     }
     case Type::VECTOR: {
       auto &vec = dynamic_cast<const Vector &>(type);
-      auto width = vec.width();
-      if (width) {
-        auto wnode = width.value();
-        if (!multiplier) {
-          auto expr = *wnode - 1;
-          return "std_logic_vector(" + expr->ToString() + " downto 0)";
-        } else {
-          auto expr = *multiplier * wnode - 1;
-          return "std_logic_vector(" + expr->ToString() + " downto 0)";
-        }
+      auto width = vec.width().value()->shared_from_this();
+      if (!multiplier) {
+        auto expr = width->shared_from_this() - 1ul;
+        return "std_logic_vector(" + expr->ToString() + " downto 0)";
       } else {
-        return "<incomplete type>";
+        auto expr = mult * width - 1ul;
+        return "std_logic_vector(" + expr->ToString() + " downto 0)";
       }
     }
     case Type::RECORD: {
@@ -59,9 +59,6 @@ static std::string GenerateTypeDecl(const Type &type,
     }
     case Type::INTEGER: {
       return "integer";
-    }
-    case Type::NATURAL: {
-      return "natural";
     }
     case Type::STREAM: {
       auto stream = dynamic_cast<const Stream &>(type);
@@ -117,27 +114,31 @@ Block Decl::Generate(const Signal &sig, int depth) {
     Line l;
     auto sig_name_prefix = sig.name();
     l << "signal " + ft.name(NamePart(sig_name_prefix, true)) << " : ";
-    l << GenerateTypeDecl(*ft.type_) + ";";
+    if (ft.type_->meta.count(meta::FORCE_VECTOR)) {
+      l << GenerateTypeDecl(*ft.type_, intl(1).get()) + ";";
+    } else {
+      l << GenerateTypeDecl(*ft.type_) + ";";
+    }
     ret << l;
   }
   return ret;
 }
 
-Block Decl::Generate(const PortArray &porta, int depth) {
+Block Decl::Generate(const PortArray &port_array, int depth) {
   Block ret(depth);
   // Flatten the type of this port
-  auto flat_types = FilterForVHDL(Flatten(porta.type()));
+  auto flat_types = FilterForVHDL(Flatten(port_array.type()));
 
   for (const auto &ft : flat_types) {
     Line l;
-    auto port_name_prefix = porta.name();
+    auto port_name_prefix = port_array.name();
     l << ft.name(NamePart(port_name_prefix, true)) << " : ";
     if (ft.invert_) {
-      l << ToString(Term::Invert(porta.dir())) + " ";
+      l << ToString(Term::Invert(port_array.dir())) + " ";
     } else {
-      l << ToString(porta.dir()) + " ";
+      l << ToString(port_array.dir()) + " ";
     }
-    l << GenerateTypeDecl(*ft.type_, std::dynamic_pointer_cast<Node>(porta.size()->Copy()));
+    l << GenerateTypeDecl(*ft.type_, port_array.size());
     ret << l;
   }
   return ret;
@@ -152,14 +153,14 @@ Block Decl::Generate(const SignalArray &sig_array, int depth) {
     Line l;
     auto port_name_prefix = sig_array.name();
     l << "signal " + ft.name(NamePart(port_name_prefix, true)) << " : ";
-    l << GenerateTypeDecl(*ft.type_, std::dynamic_pointer_cast<Node>(sig_array.size()->Copy())) + ";";
+    l << GenerateTypeDecl(*ft.type_, sig_array.size()) + ";";
     ret << l;
   }
   return ret;
 }
 
-MultiBlock Decl::Generate(const Component &comp, bool entity) {
-  MultiBlock ret(1);
+MultiBlock Decl::Generate(const Component &comp, bool entity, int indent) {
+  MultiBlock ret(indent);
 
   if (entity) {
     ret.indent = 0;

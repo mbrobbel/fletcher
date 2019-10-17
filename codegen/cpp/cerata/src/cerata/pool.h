@@ -137,19 +137,21 @@ inline NodePool *default_node_pool() {
 // Convenience functions for fast access to literals in the default node pool.
 
 /// @brief Obtain a raw pointer to an integer literal from the default node pool.
-inline Literal *rintl(int i) {
+inline Literal *rintl(int64_t i) {
   return default_node_pool()->GetLiteral(i).get();
 }
 /// @brief Obtain a shared pointer to an integer literal from the default node pool.
-inline std::shared_ptr<Literal> intl(int i) {
+inline std::shared_ptr<Literal> intl(int64_t i) {
   return default_node_pool()->GetLiteral(i);
 }
+
 /// @brief Obtain a raw pointer to a string literal from the default node pool.
 inline Literal *rstrl(std::string str) { return default_node_pool()->GetLiteral<std::string>(std::move(str)).get(); }
 /// @brief Obtain a shared pointer to a string literal from the default node pool.
 inline std::shared_ptr<Literal> strl(std::string str) {
   return default_node_pool()->GetLiteral<std::string>(std::move(str));
 }
+
 /// @brief Return a literal node representing a Boolean.
 inline std::shared_ptr<Literal> booll(bool value) {
   return default_node_pool()->GetLiteral<bool>(value);

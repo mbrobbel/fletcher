@@ -36,7 +36,7 @@ static void TestReadMantle(const std::shared_ptr<arrow::Schema> &schema) {
   sa.Analyze(*schema);
   std::vector<fletcher::RecordBatchDescription> rbds = {rbd};
   auto regs = GetRecordBatchRegs(rbds);
-  auto r = recordbatch("Test_" + rbd.name, fs, rbd);
+  auto r = record_batch("Test_" + rbd.name, fs, rbd);
   auto m = mmio({rbd}, regs);
   auto k = kernel("Test_Kernel", {r}, m);
   auto n = nucleus("Test_Nucleus", {r}, k, m);

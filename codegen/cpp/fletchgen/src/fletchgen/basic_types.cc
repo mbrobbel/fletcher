@@ -101,8 +101,24 @@ std::shared_ptr<Type> cr() {
   return result;
 }
 
+std::shared_ptr<Type> valid(int width, bool on_primitive) {
+  if (width > 1 || on_primitive) {
+    return vector("valid", width);
+  } else {
+    return bit("valid");
+  }
+}
+
+std::shared_ptr<Type> ready(int width, bool on_primitive) {
+  if (width > 1 || on_primitive) {
+    return vector("ready", width);
+  } else {
+    return bit("ready");
+  }
+}
+
 // Data channel
-std::shared_ptr<Type> data(const std::shared_ptr<Node> &width) {
+std::shared_ptr<Type> data(int width) {
   std::shared_ptr<Type> result = vector("data", width);
   // Mark this type so later we can figure out that it was concatenated onto the data port of an ArrayReader/Writer.
   result->meta[metakeys::ARRAY_DATA] = "true";
@@ -110,29 +126,35 @@ std::shared_ptr<Type> data(const std::shared_ptr<Node> &width) {
 }
 
 // Length channel
-std::shared_ptr<Type> length(const std::shared_ptr<Node> &width) {
+std::shared_ptr<Type> length(int width) {
   std::shared_ptr<Type> result = vector("length", width);
   // Mark this type so later we can figure out that it was concatenated onto the data port of an ArrayReader/Writer.
   result->meta[metakeys::ARRAY_DATA] = "true";
   return result;
 }
 
-std::shared_ptr<Type> count(const std::shared_ptr<Node> &width) {
-  std::shared_ptr<Type> result = vector("count", width);
+std::shared_ptr<Type> count(int width) {
+  std::shared_ptr<Type> result = vector(width);
   // Mark this type so later we can figure out that it was concatenated onto the data port of an ArrayReader/Writer.
   result->meta[metakeys::ARRAY_DATA] = "true";
-  result->meta[metakeys::COUNT] = width->ToString();
+  result->meta[metakeys::COUNT] = std::to_string(width);
   return result;
 }
 
-std::shared_ptr<Type> dvalid() {
-  static std::shared_ptr<Type> result = bit("dvalid");
-  return result;
+std::shared_ptr<Type> dvalid(int width, bool on_primitive) {
+  if (width > 1 || on_primitive) {
+    return vector("dvalid", width);
+  } else {
+    return bit("dvalid");
+  }
 }
 
-std::shared_ptr<Type> last() {
-  static std::shared_ptr<Type> result = bit("last");
-  return result;
+std::shared_ptr<Type> last(int width, bool on_primitive) {
+  if (width > 1 || on_primitive) {
+    return vector("last", width);
+  } else {
+    return bit("last");
+  }
 }
 
 std::shared_ptr<Type> ConvertFixedWidthType(const std::shared_ptr<arrow::DataType> &arrow_type) {

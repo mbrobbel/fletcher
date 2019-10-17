@@ -96,7 +96,7 @@ inline std::shared_ptr<Node> operator SYMBOL (const std::shared_ptr<const Node>&
   return Expression::Make(Expression::Op::OPID, lhs, rhs->shared_from_this());                                    \
 }                                                                                                                 \
                                                                                                                   \
-inline std::shared_ptr<Node> operator SYMBOL (const std::shared_ptr<const Node>& lhs, int rhs) {                  \
+inline std::shared_ptr<Node> operator SYMBOL (const std::shared_ptr<const Node>& lhs, int64_t rhs) {              \
   if (lhs->IsLiteral()) {                                                                                         \
     auto li = std::dynamic_pointer_cast<const Literal>(lhs);                                                      \
     if (li->storage_type() == Literal::StorageType::INT) {                                                        \
@@ -106,7 +106,7 @@ inline std::shared_ptr<Node> operator SYMBOL (const std::shared_ptr<const Node>&
   return lhs SYMBOL intl(rhs);                                                                                    \
 }                                                                                                                 \
                                                                                                                   \
-inline std::shared_ptr<Node> operator SYMBOL (const Node& lhs, int rhs) {                                         \
+inline std::shared_ptr<Node> operator SYMBOL (const Node& lhs, int64_t rhs) {                                     \
   if (lhs.IsLiteral()) {                                                                                          \
     auto& li = dynamic_cast<const Literal&>(lhs);                                                                 \
     if (li.storage_type() == Literal::StorageType::INT) {                                                         \

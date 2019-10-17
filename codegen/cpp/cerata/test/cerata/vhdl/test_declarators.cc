@@ -20,6 +20,62 @@
 
 namespace cerata {
 
+TEST(VHDL_DECL, Signal) {
+  auto sig = signal("test", vector(8));
+  auto code = vhdl::Decl::Generate(*sig).ToString();
+  ASSERT_EQ(code, "signal test : std_logic_vector(7 downto 0);\n");
+}
+
+TEST(VHDL_DECL, SignalRecord) {
+  auto sig = signal("test",
+                    record({field("a", vector(8)),
+                            field("b", bit())}));
+  auto code = vhdl::Decl::Generate(*sig).ToString();
+  ASSERT_EQ(code, "signal test_a : std_logic_vector(7 downto 0);\n"
+                  "signal test_b : std_logic;\n");
+}
+
+TEST(VHDL_DECL, SignalArray) {
+  auto size = intl(2);
+  auto sig_array = signal_array("test", bit(), size);
+  auto code = vhdl::Decl::Generate(*sig_array).ToString();
+  ASSERT_EQ(code, "signal test : std_logic_vector(1 downto 0);\n");
+}
+
+TEST(VHDL_DECL, SignalRecordArray) {
+  auto size = intl(2);
+  auto sig_array = signal_array("test",
+                                record({field("a", vector(8)),
+                                        field("b", bit())}),
+                                size);
+  auto code = vhdl::Decl::Generate(*sig_array).ToString();
+  ASSERT_EQ(code, "signal test_a : std_logic_vector(15 downto 0);\n"
+                  "signal test_b : std_logic_vector(1 downto 0);\n");
+}
+
+TEST(VHDL_DECL, SignalRecordArrayParam) {
+  auto size = parameter("SIZE", integer());
+  auto sig_array = signal_array("test",
+                                record({field("a", vector(8)),
+                                        field("b", bit())}),
+                                size);
+  auto code = vhdl::Decl::Generate(*sig_array).ToString();
+  ASSERT_EQ(code, "signal test_a : std_logic_vector(SIZE*8-1 downto 0);\n"
+                  "signal test_b : std_logic_vector(SIZE-1 downto 0);\n");
+}
+
+TEST(VHDL_DECL, SignalRecordParamArrayParam) {
+  auto size = parameter("SIZE", integer());
+  auto width = parameter("WIDTH", integer());
+  auto sig_array = signal_array("test",
+                                record({field("a", vector(width)),
+                                        field("b", bit())}),
+                                size);
+  auto code = vhdl::Decl::Generate(*sig_array).ToString();
+  ASSERT_EQ(code, "signal test_a : std_logic_vector(SIZE*WIDTH-1 downto 0);\n"
+                  "signal test_b : std_logic_vector(SIZE-1 downto 0);\n");
+}
+
 TEST(VHDL_DECL, Component) {
   default_component_pool()->Clear();
   auto code = vhdl::Decl::Generate(*GetAllPortTypesComponent());

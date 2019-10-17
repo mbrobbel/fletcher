@@ -82,6 +82,14 @@ std::shared_ptr<Edge> Connect(Node *dst, const std::shared_ptr<Node> &src);
  */
 std::shared_ptr<Edge> Connect(const std::shared_ptr<Node> &dst, Node *src);
 
+/**
+ * @brief Connect two nodes, returns the corresponding edge.
+ * @param dst The destination node.
+ * @param src The source node.
+ * @return The edge connecting the nodes.
+ */
+std::shared_ptr<Edge> Connect(const std::shared_ptr<Node> &dst, const std::shared_ptr<Node> &src);
+
 // Connect operators:
 /// @brief Create an edge, connecting the src node to the dst node.
 std::shared_ptr<Edge> operator<<=(Node *dst, const std::shared_ptr<Node> &src);

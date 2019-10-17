@@ -149,10 +149,10 @@ static Block GeneratePortMappingPair(std::vector<MappingPair> pairs, const Node 
     b_array = true;
     b_idx = b.array().value()->IndexOf(b);
   }
-  if (a.type()->meta.count(metakeys::FORCE_VECTOR) > 0) {
+  if (a.type()->meta.count(meta::FORCE_VECTOR) > 0) {
     a_array = true;
   }
-  if (b.type()->meta.count(metakeys::FORCE_VECTOR) > 0) {
+  if (b.type()->meta.count(meta::FORCE_VECTOR) > 0) {
     b_array = true;
   }
   // Loop over all pairs

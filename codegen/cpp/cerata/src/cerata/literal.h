@@ -36,14 +36,14 @@ namespace cerata {
 class Literal : public MultiOutputNode {
  public:
   /// The storage type of the literal value.
-  enum class StorageType { INT, STRING, BOOL };
+  enum class StorageType { INT, UINT, STRING, BOOL };
  protected:
   /// @brief Literal constructor.
   Literal(std::string name,
           const std::shared_ptr<Type> &type,
           StorageType st,
           std::string str_val,
-          int int_val,
+          int64_t int_val,
           bool bool_val)
       : MultiOutputNode(std::move(name), Node::NodeID::LITERAL, type),
         storage_type_(st),
@@ -71,7 +71,7 @@ class Literal : public MultiOutputNode {
   /// Bools
  LITERAL_DECL_FACTORY(Bool, bool) //NOLINT
   /// Ints
- LITERAL_DECL_FACTORY(Int, int) //NOLINT
+ LITERAL_DECL_FACTORY(Int, int64_t) //NOLINT
   /// Strings
  LITERAL_DECL_FACTORY(String, std::string) //NOLINT
 
@@ -79,7 +79,7 @@ class Literal : public MultiOutputNode {
   /// @brief Create a boolean literal.
   static std::shared_ptr<Literal> Make(bool value) { return MakeBool(value); }
   /// @brief Create an integer literal.
-  static std::shared_ptr<Literal> Make(int value) { return MakeInt(value); }
+  static std::shared_ptr<Literal> Make(int64_t value) { return MakeInt(value); }
   /// @brief Create a string literal.
   static std::shared_ptr<Literal> Make(std::string value) { return MakeString(std::move(value)); }
 
@@ -115,7 +115,7 @@ inline bool RawValueOf(const Literal &node) { return node.BoolValue(); }
 
 /// @brief Template specialization for RawValueOf<int>
 template<>
-inline int RawValueOf(const Literal &node) { return node.IntValue(); }
+inline int64_t RawValueOf(const Literal &node) { return node.IntValue(); }
 
 /// @brief Template specialization for RawValueOf<std::string>
 template<>
@@ -131,7 +131,11 @@ inline Literal::StorageType StorageTypeOf<bool>() { return Literal::StorageType:
 
 /// @brief Template specialization for StorageTypeOf<int>
 template<>
-inline Literal::StorageType StorageTypeOf<int>() { return Literal::StorageType::INT; }
+inline Literal::StorageType StorageTypeOf<int64_t>() { return Literal::StorageType::INT; }
+
+/// @brief Template specialization for StorageTypeOf<int>
+template<>
+inline Literal::StorageType StorageTypeOf<uint64_t>() { return Literal::StorageType::UINT; }
 
 /// @brief Template specialization for StorageTypeOf<std::string>
 template<>

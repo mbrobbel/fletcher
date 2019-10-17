@@ -34,7 +34,7 @@
 namespace cerata::vhdl {
 
 // Metadata that this back-end understands
-namespace metakeys {
+namespace meta {
 /// Setting PRIMITIVE = "true" signifies that a component is a primitive (e.g. has no Cerata internal graph).
 constexpr char PRIMITIVE[] = "vhdl_primitive";
 /// The VHDL library in which the primitive resides. E.g. LIBRARY = "work"

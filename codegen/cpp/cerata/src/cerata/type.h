@@ -31,8 +31,7 @@ namespace cerata {
 class Node;
 class Literal;
 class Graph;
-Literal *rintl(int i);
-std::shared_ptr<Literal> intl(int i);
+std::shared_ptr<Literal> intl(int64_t);
 
 using OptionalNode =  std::optional<std::shared_ptr<Node>>;
 
@@ -71,7 +70,6 @@ class Type : public Named, public std::enable_shared_from_this<Type> {
 
     NUL,      ///<  No       | No        | No
     INTEGER,  ///<  No       | No        | No
-    NATURAL,  ///<  No       | No        | No
     STRING,   ///<  No       | No        | No
     BOOLEAN,  ///<  No       | No        | No
 
@@ -135,10 +133,11 @@ class Type : public Named, public std::enable_shared_from_this<Type> {
   std::unordered_map<std::string, std::string> meta;
 
   /**
-  * @brief Make a copy of the type, and rebind any generic nodes that are keys in the rebind_map to their values.
+  * @brief Make a copy of the type, and rebind any generic nodes that are keys in the rebinding to their values.
   *
    * This is useful in case type generic nodes are on some instance graph and have to be copied over to a component
-   * graph. In that case, the component graph has to copy over these nodes and rebind the generic nodes of the type.
+   * graph, or vice versa.
+   * In that case, the new graph has to copy over these nodes and rebind the type generic nodes.
   *
   * @return A copy of the type.
   */
@@ -210,20 +209,6 @@ struct Integer : public Type {
   std::shared_ptr<Type> Copy(std::unordered_map<Node *, Node *> generic_map) const override { return integer(); }
 };
 
-/// @brief Return a static natural type.
-std::shared_ptr<Type> natural();
-/// @brief Natural type.
-struct Natural : public Type {
-  bool IsPhysical() const override { return false; }
-  bool IsGeneric() const override { return false; }
-  bool IsNested() const override { return false; }
-
-  /// @brief Integer type constructor.
-  explicit Natural(std::string name) : Type(std::move(name), Type::NATURAL) {}
-
-  std::shared_ptr<Type> Copy(std::unordered_map<Node *, Node *> generic_map) const override { return natural(); }
-};
-
 /// @brief Static string type.
 std::shared_ptr<Type> string();
 
@@ -247,7 +232,7 @@ class Vector : public Type {
   bool IsNested() const override { return false; }
 
   /// @brief Vector constructor.
-  Vector(std::string name, const OptionalNode &width);
+  Vector(std::string name, const std::shared_ptr<Node> &width);
   /// @brief Return a pointer to the node representing the width of this vector, if specified.
   std::optional<Node *> width() const override;
   /// @brief Set the width of this vector.
@@ -260,21 +245,24 @@ class Vector : public Type {
   std::shared_ptr<Type> Copy(std::unordered_map<Node *, Node *> rebinding) const override;;
 
  private:
-  /// The optional vector width.
-  OptionalNode width_;
+  /// The vector width type generic.
+  std::shared_ptr<Node> width_;
 };
 
 /// @brief Create a new vector type, and return a shared pointer to it.
-std::shared_ptr<Type> vector(const std::string &name, const OptionalNode &width);
+std::shared_ptr<Type> vector(const std::string &name, const std::shared_ptr<Node> &width);
+
+/// @brief Create a new vector type, and return a shared pointer to it.
+std::shared_ptr<Type> vector(const std::shared_ptr<Node> &width);
 
 /// @brief Create a new vector type of width W and return a shared pointer to it.
-template<int W>
+template<int64_t W>
 std::shared_ptr<Type> vector(const std::string &name) {
   return std::make_shared<Vector>(name, intl(W));
 }
 
 /// @brief Create a new vector type of width W and returns a shared pointer to it.
-template<int W>
+template<int64_t W>
 std::shared_ptr<Type> vector() {
   auto result = std::make_shared<Vector>("vec" + std::to_string(W), intl(W));
   return result;
@@ -361,7 +349,11 @@ class Record : public Type {
 std::shared_ptr<Record> record(const std::string &name,
                                const std::vector<std::shared_ptr<Field>> &fields = {});
 
+std::shared_ptr<Record> record(const std::vector<std::shared_ptr<Field>> &fields);
+
 /// @brief A Stream type.
+// TODO(johanpel): revamp the implementation of this type. It doesn't make much sense. It should overload a Record and
+//  override a bunch of things to automatically add ready/valid bits
 class Stream : public Type {
  public:
   bool IsPhysical() const override;

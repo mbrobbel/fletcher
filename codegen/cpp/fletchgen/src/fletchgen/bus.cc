@@ -116,9 +116,9 @@ Component *bus_arbiter(BusFunction function) {
   result->Add({clk_rst, mst, slv_arr});
 
   // This component is a primitive as far as Cerata is concerned.
-  result->SetMeta(cerata::vhdl::metakeys::PRIMITIVE, "true");
-  result->SetMeta(cerata::vhdl::metakeys::LIBRARY, "work");
-  result->SetMeta(cerata::vhdl::metakeys::PACKAGE, "Interconnect_pkg");
+  result->SetMeta(cerata::vhdl::meta::PRIMITIVE, "true");
+  result->SetMeta(cerata::vhdl::meta::LIBRARY, "work");
+  result->SetMeta(cerata::vhdl::meta::PACKAGE, "Interconnect_pkg");
 
   return result.get();
 }
@@ -141,9 +141,9 @@ std::shared_ptr<Component> BusReadSerializer() {
       port("mst", bus_read(aw, mlw, mdw), Port::Dir::OUT),
       port("slv", bus_read(aw, slw, sdw), Port::Dir::OUT),
   });
-  ret->SetMeta(cerata::vhdl::metakeys::PRIMITIVE, "true");
-  ret->SetMeta(cerata::vhdl::metakeys::LIBRARY, "work");
-  ret->SetMeta(cerata::vhdl::metakeys::PACKAGE, "Interconnect_pkg");
+  ret->SetMeta(cerata::vhdl::meta::PRIMITIVE, "true");
+  ret->SetMeta(cerata::vhdl::meta::LIBRARY, "work");
+  ret->SetMeta(cerata::vhdl::meta::PACKAGE, "Interconnect_pkg");
   return ret;
 }
 

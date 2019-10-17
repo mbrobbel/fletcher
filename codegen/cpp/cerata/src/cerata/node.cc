@@ -129,7 +129,7 @@ bool NormalNode::RemoveEdge(Edge *edge) {
   // First remove the edge from any outputs
   bool success = MultiOutputNode::RemoveEdge(edge);
   // Check if the edge is an input to this node
-  if (edge->dst() && !success) {
+  if ((edge->dst() != nullptr) && !success) {
     if ((edge->dst() == this) && (input_.get() == edge)) {
       input_.reset();
       success = true;
@@ -154,7 +154,9 @@ std::string ToString(Node::NodeID id) {
 }
 
 std::shared_ptr<Object> Parameter::Copy() const {
-  return parameter(name(), type()->shared_from_this(), default_value_);
+  auto result = parameter(name(), type()->shared_from_this(), default_value_);
+  result->meta = this->meta;
+  return result;
 }
 
 std::shared_ptr<Parameter> parameter(const std::string &name,
@@ -178,7 +180,7 @@ std::optional<Node *> Parameter::GetValue() const {
   return std::nullopt;
 }
 
-void Parameter::GetSourceTrace(std::vector<Node *>* out) const {
+void Parameter::GetSourceTrace(std::vector<Node *> *out) const {
   if (input()) {
     out->push_back(input().value()->src());
     if (input().value()->src()->IsParameter()) {
@@ -191,8 +193,13 @@ Signal::Signal(std::string name, std::shared_ptr<Type> type, std::shared_ptr<Clo
     : NormalNode(std::move(name), Node::NodeID::SIGNAL, std::move(type)), Synchronous(std::move(domain)) {}
 
 std::shared_ptr<Object> Signal::Copy() const {
-  auto ret = std::make_shared<Signal>(this->name(), this->type_, this->domain_);
-  return ret;
+  auto result = signal(this->name(), this->type_, this->domain_);
+  result->meta = this->meta;
+  return result;
+}
+
+std::string Signal::ToString() const {
+  return name() + ":" + type()->name();
 }
 
 std::shared_ptr<Signal> signal(const std::string &name,
@@ -210,20 +217,18 @@ std::shared_ptr<Signal> signal(const std::shared_ptr<Type> &type,
 
 std::string Term::str(Term::Dir dir) {
   switch (dir) {
-    default: return "none";
     case IN: return "in";
     case OUT: return "out";
   }
+  return "corrupt";
 }
 
 Term::Dir Term::Invert(Term::Dir dir) {
-  if (dir == IN) {
-    return OUT;
-  } else if (dir == OUT) {
-    return IN;
-  } else {
-    CERATA_LOG(FATAL, "Corrupted terminator direction.");
+  switch (dir) {
+    case IN: return OUT;
+    case OUT: return IN;
   }
+  CERATA_LOG(FATAL, "Corrupted terminator direction.");
 }
 
 }  // namespace cerata

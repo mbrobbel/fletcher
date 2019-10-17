@@ -103,10 +103,10 @@ class SignalArray : public NodeArray {
  * @param domain  The clock domain of the nodes in the node array.
  * @return        A shared pointer to the new node array.
  */
-std::shared_ptr<NodeArray> signal_array(const std::string &name,
-                                        const std::shared_ptr<Type> &type,
-                                        std::shared_ptr<Node> size,
-                                        const std::shared_ptr<ClockDomain> &domain = default_domain());
+std::shared_ptr<SignalArray> signal_array(const std::string &name,
+                                          const std::shared_ptr<Type> &type,
+                                          std::shared_ptr<Node> size,
+                                          const std::shared_ptr<ClockDomain> &domain = default_domain());
 
 /**
  * @brief An array of port nodes

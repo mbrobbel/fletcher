@@ -156,7 +156,7 @@ std::shared_ptr<Component> component(std::string name, ComponentPool *component_
   return component(std::move(name), {}, component_pool);
 }
 
-std::vector<const Component *> Component::GetAllUniqueComponents() const {
+std::vector<const Component *> Component::GetAllInstanceComponents() const {
   std::vector<const Component *> ret;
   for (const auto &child : children_) {
     const Component *comp = nullptr;

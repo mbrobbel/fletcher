@@ -44,7 +44,7 @@ std::string Literal::ToString() const {
 
 LITERAL_IMPL_FACTORY(String, string, STRING, std::string)
 LITERAL_IMPL_FACTORY(Bool, boolean, BOOL, bool)
-LITERAL_IMPL_FACTORY(Int, integer, INT, int)
+LITERAL_IMPL_FACTORY(Int, integer, INT, int64_t)
 
 std::shared_ptr<Object> Literal::Copy() const {
   switch (storage_type_) {

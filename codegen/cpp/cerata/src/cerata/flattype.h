@@ -156,6 +156,18 @@ class MappingMatrix {
     return get(y, x);
   }
 
+  /// @brief Return true if this is an identity matrix.
+  [[nodiscard]] bool IsIdentity() const {
+    if (width_ == height_) {
+      for (size_t d = 0; d < width_; d++) {
+        if (get(d, d) != 1) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   /// @brief Return the maximum of some column.
   [[nodiscard]] T MaxOfColumn(int64_t x) const {
     T max = 0;

@@ -108,9 +108,9 @@ static std::shared_ptr<Component> Profiler() {
                                            e, v, r, t, p});
 
   // VHDL metadata
-  ret->SetMeta(cerata::vhdl::metakeys::PRIMITIVE, "true");
-  ret->SetMeta(cerata::vhdl::metakeys::LIBRARY, "work");
-  ret->SetMeta(cerata::vhdl::metakeys::PACKAGE, "Profile_pkg");
+  ret->SetMeta(cerata::vhdl::meta::PRIMITIVE, "true");
+  ret->SetMeta(cerata::vhdl::meta::LIBRARY, "work");
+  ret->SetMeta(cerata::vhdl::meta::PACKAGE, "Profile_pkg");
 
   return ret;
 }

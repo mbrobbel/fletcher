@@ -32,7 +32,7 @@ TEST(Types, TypeMapper) {
   auto at = ap->type();
   auto top = cerata::component("top", {ap});
 
-  auto array_port = cerata::port("out", read_data(), Port::Dir::OUT);
+  auto array_port = cerata::port("out", array_reader_out(), Port::Dir::OUT);
   auto array_type = array_port->type();
   auto array = cerata::component("array_mock", {array_port});
 

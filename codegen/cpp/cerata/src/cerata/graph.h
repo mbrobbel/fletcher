@@ -166,7 +166,7 @@ class Component : public Graph {
   /// @brief Returns all Instance graphs from this Component.
   std::vector<Instance *> children() const { return ToRawPointers(children_); }
   /// @brief Returns all unique Components that are referred to by child Instances of this graph.
-  virtual std::vector<const Component *> GetAllUniqueComponents() const;
+  virtual std::vector<const Component *> GetAllInstanceComponents() const;
 
  protected:
   /// Graph children / subgraphs.

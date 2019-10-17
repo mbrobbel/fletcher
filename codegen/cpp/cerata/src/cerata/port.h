@@ -61,6 +61,8 @@ struct Port : public NormalNode, public Synchronous, public Term {
   std::shared_ptr<Object> Copy() const override;
   /// @brief Invert the direction of this port.
   Port &InvertDirection();
+
+  std::string ToString() const override;
 };
 
 /// @brief Make a new port with some name, type and direction.

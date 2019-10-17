@@ -46,4 +46,8 @@ Port &Port::InvertDirection() {
   return *this;
 }
 
+std::string Port::ToString() const {
+  return name() + ":" + type()->name() + ":" + Term::str(dir_);
+}
+
 }  // namespace cerata

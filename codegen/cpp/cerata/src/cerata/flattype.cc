@@ -179,7 +179,7 @@ TypeMapper &TypeMapper::Add(int64_t a, int64_t b) {
 std::string TypeMapper::ToString() const {
   constexpr int w = 20;
   std::stringstream ret;
-  ret << "TypeMapper " << a()->ToString(true, true) + " => " + b()->ToString(true, true) + "\n";
+  ret << "TypeMapper (a) " << a()->ToString(true, true) + " => (b) " + b()->ToString(true, true) + "\n";
   ret << "  Meta: " + ::cerata::ToString(meta) + "\n";
   ret << std::setw(w) << " " << " | ";
 
@@ -318,16 +318,16 @@ std::string MappingPair::ToString() const {
 }
 
 std::shared_ptr<Node> MappingPair::width_a(const std::optional<std::shared_ptr<Node>> &no_width_increment) const {
-  std::shared_ptr<Node> w = intl(0);
+  std::shared_ptr<Node> result = intl(0);
   for (int64_t i = 0; i < num_a(); i++) {
     auto fw = flat_type_a(i).type_->width();
     if (fw) {
-      w = w + fw.value();
+      result = result + fw.value();
     } else if (no_width_increment) {
-      w = w + *no_width_increment;
+      result = result + *no_width_increment;
     }
   }
-  return w;
+  return result;
 }
 
 std::shared_ptr<Node> MappingPair::width_b(const std::optional<std::shared_ptr<Node>> &no_width_increment) const {

@@ -194,6 +194,8 @@ class Signal : public NormalNode, public Synchronous {
   Signal(std::string name, std::shared_ptr<Type> type, std::shared_ptr<ClockDomain> domain = default_domain());
   /// @brief Create a copy of this Signal.
   std::shared_ptr<Object> Copy() const override;
+
+  std::string ToString() const override;
 };
 
 /// @brief Create a new Signal and return a smart pointer to it.

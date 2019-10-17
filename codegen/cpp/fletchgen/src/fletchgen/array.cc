@@ -79,23 +79,21 @@ std::shared_ptr<Type> unlock(const std::shared_ptr<Node> &tag_width) {
   return unlock_stream;
 }
 
-std::shared_ptr<Type> read_data(const std::shared_ptr<Node> &width) {
-  auto d = field(data(width));
-  auto dv = field(dvalid());
-  auto l = field(last());
+std::shared_ptr<Type> array_reader_out(int num_streams, int full_width) {
+  auto d = field(data(full_width));
+  auto dv = field(dvalid(num_streams, true));
+  auto l = field(last(num_streams, true));
   auto data_record = record("ARRecord", {d, dv, l});
   auto data_stream = stream("ARData", data_record);
-  data_stream->meta[cerata::vhdl::metakeys::FORCE_VECTOR] = "true";
   return data_stream;
 }
 
-std::shared_ptr<Type> write_data(const std::shared_ptr<Node> &width) {
-  auto d = field(data(width));
-  auto dv = field(dvalid());
-  auto l = field(last());
+std::shared_ptr<Type> array_writer_in(int num_streams, int full_width) {
+  auto d = field(data(full_width));
+  auto dv = field(dvalid(num_streams, true));
+  auto l = field(last(num_streams, true));
   auto data_record = record("AWRecord", {d, dv, l});
   auto data_stream = stream("AWData", data_record);
-  data_stream->meta[cerata::vhdl::metakeys::FORCE_VECTOR] = "true";
   return data_stream;
 }
 
@@ -110,13 +108,17 @@ static std::string DataName(fletcher::Mode mode) {
 /**
  * @brief Return a Cerata component model of an Array(Reader/Writer).
  *
- *  * This model corresponds to either:
+ * This model corresponds to either:
  *    [`hardware/arrays/ArrayReader.vhd`](https://github.com/johanpel/fletcher/blob/develop/hardware/arrays/ArrayReader.vhd)
  * or [`hardware/arrays/ArrayWriter.vhd`](https://github.com/johanpel/fletcher/blob/develop/hardware/arrays/ArrayWriter.vhd)
  * depending on the mode parameter.
  *
  * Changes to the implementation of this component in the HDL source must be reflected in the implementation of this
  * function.
+ *
+ * WARNING: Binding of the input/output data stream width generics is more arcane than what is good for most.
+ *  As such, most widths are just bound to some integer literals rather than parameters.
+ *  Any code instantiating this component should rebind the type themselves after figuring out their true width.
  *
  * @param mode        Whether this Array component must Read or Write.
  * @return            The component model.
@@ -135,7 +137,7 @@ Component *array(Mode mode) {
 
   BusParam params{};
 
-  auto type = mode == Mode::READ ? read_data() : write_data();
+  auto type = mode == Mode::READ ? array_reader_out() : array_writer_in();
   auto dir = mode == Mode::READ ? Port::Dir::OUT : Port::Dir::IN;
   auto func = mode == Mode::READ ? BusFunction::READ : BusFunction::WRITE;
 
@@ -161,9 +163,9 @@ Component *array(Mode mode) {
                port("unl", unlock(), Port::Dir::OUT, kernel_cd()),
                data});
 
-  result->SetMeta(cerata::vhdl::metakeys::PRIMITIVE, "true");
-  result->SetMeta(cerata::vhdl::metakeys::LIBRARY, "work");
-  result->SetMeta(cerata::vhdl::metakeys::PACKAGE, "Array_pkg");
+  result->SetMeta(cerata::vhdl::meta::PRIMITIVE, "true");
+  result->SetMeta(cerata::vhdl::meta::LIBRARY, "work");
+  result->SetMeta(cerata::vhdl::meta::PACKAGE, "Array_pkg");
   return result.get();
 }
 
@@ -317,12 +319,79 @@ std::shared_ptr<TypeMapper> GetStreamTypeMapper(Type *stream_type, Type *other) 
   return conversion;
 }
 
+std::pair<int, int> GetArrayDataSpec(const arrow::Field &arrow_field) {
+  int epc = fletcher::GetIntMeta(arrow_field, metakeys::EPC, 1);
+  int lepc = fletcher::GetIntMeta(arrow_field, metakeys::LEPC, 1);
+
+  auto e_count_width = static_cast<int>(ceil(log2(epc + 1)));
+  auto l_count_width = static_cast<int>(ceil(log2(lepc + 1)));
+
+  std::shared_ptr<Type> type;
+
+  switch (arrow_field.type()->id()) {
+    case arrow::Type::BINARY: {
+      // Special case: binary type has a length stream and byte stream. The EPC is assumed to relate to the list
+      // values, as there is no explicit child field to place this metadata in.
+      auto data_width = epc * 8;
+      auto length_width = lepc * 32;
+      return {2, e_count_width + l_count_width + data_width + length_width};
+    }
+
+    case arrow::Type::STRING: {
+      // Special case: string type has a length stream and utf8 character stream. The EPC is assumed to relate to the
+      // list values, as there is no explicit child field to place this metadata in.
+      auto data_width = epc * 8;
+      auto length_width = lepc * 32;
+      epc = lepc;
+      return {2, e_count_width + l_count_width + data_width + length_width};
+    }
+
+      // Lists
+    case arrow::Type::LIST: {
+      if (arrow_field.type()->num_children() != 1) {
+        FLETCHER_LOG(FATAL, "Encountered Arrow list type with other than 1 child.");
+      }
+      if (epc > 1) {
+        FLETCHER_LOG(FATAL, "Elements per cycle on non-primitive list is unsupported.");
+      }
+      auto arrow_child = arrow_field.type()->child(0);
+      auto elem_spec = GetArrayDataSpec(*arrow_child);
+      auto length_width = 32;
+      // Add a length stream to number of streams, and length width to data width.
+      return {elem_spec.first + 1, elem_spec.second + length_width};
+    }
+
+      // Structs
+    case arrow::Type::STRUCT: {
+      if (arrow_field.type()->num_children() < 1) {
+        FLETCHER_LOG(FATAL, "Encountered Arrow struct type without any children.");
+      }
+      auto spec = std::pair<int, int>{0, 0};
+      for (const auto &f : arrow_field.type()->children()) {
+        auto child_spec = GetArrayDataSpec(*f);
+        spec.first += child_spec.first;
+        spec.second += child_spec.second;
+      }
+      return spec;
+    }
+
+      // Non-nested types or unsupported types.
+    default: {
+      auto fwt = std::dynamic_pointer_cast<arrow::FixedWidthType>(arrow_field.type());
+      if (fwt == nullptr) {
+        FLETCHER_LOG(FATAL, "Encountered unsupported Arrow type: " + arrow_field.type()->ToString());
+      }
+      return {1, fwt->bit_width()};
+    }
+  }
+}
+
 std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::Mode mode, int level) {
   // The ordering of the record fields in this function determines the order in which a nested stream is type converted
   // automatically using GetStreamTypeConverter. This corresponds to how the hardware is implemented.
   //
   // WARNING: Modifications to this function must be reflected in the manual hardware implementation of Fletcher
-  // components! See: hardware/arrays/ArrayConfig_pkg.vhd
+  //  components! See: hardware/arrays/ArrayConfig_pkg.vhd
 
   int epc = fletcher::GetIntMeta(arrow_field, metakeys::EPC, 1);
   int lepc = fletcher::GetIntMeta(arrow_field, metakeys::LEPC, 1);
@@ -339,19 +408,19 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
     case arrow::Type::BINARY: {
       // Special case: binary type has a length stream and byte stream. The EPC is assumed to relate to the list
       // values, as there is no explicit child field to place this metadata in.
-      auto data_width = intl(epc * 8);
-      auto length_width = intl(lepc * 32);
+      auto data_width = epc * 8;
+      auto length_width = lepc * 32;
 
       auto slave = stream(name,
                           record("slave_rec", {
                               field("dvalid", dvalid()),
-                              field("count", count(intl(e_count_width))),
+                              field("count", count(e_count_width)),
                               field("last", last()),
                               field("data", data(data_width)),
                           }), "", epc);
       type = record(name + "_rec", {
           field("length", length(length_width)),
-          field("count", count(intl(l_count_width))),
+          field("count", count(l_count_width)),
           field("bytes", slave)
       });
       epc = lepc;
@@ -362,19 +431,19 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
     case arrow::Type::STRING: {
       // Special case: string type has a length stream and utf8 character stream. The EPC is assumed to relate to the
       // list values, as there is no explicit child field to place this metadata in.
-      auto data_width = intl(epc * 8);
-      auto length_width = intl(lepc * 32);
+      auto data_width = epc * 8;
+      auto length_width = lepc * 32;
 
       auto slave = stream(name,
                           record("slave_rec", {
                               field("dvalid", dvalid()),
-                              field("count", count(intl(e_count_width))),
+                              field("count", count(e_count_width)),
                               field("last", last()),
                               field("data", data(data_width))
                           }), "", epc);
       type = record(name + "_rec", {
           field("length", length(length_width)),
-          field("count", count(intl(l_count_width))),
+          field("count", count(l_count_width)),
           field("chars", slave)
       });
       epc = lepc;
@@ -390,18 +459,18 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
 
       auto arrow_child = arrow_field.type()->child(0);
       auto element_type = GetStreamType(*arrow_child, mode, level + 1);
-      std::shared_ptr<Node> length_width = intl(32);
+      auto length_width = 32;
 
       auto slave = stream(name,
                           record("slave_rec", {
                               field("dvalid", dvalid()),
-                              field("count", count(intl(e_count_width))),
+                              field("count", count(e_count_width)),
                               field("last", last()),
                               field("data", element_type)}),
                           "", epc);
       type = record(name + "_rec", {
           field("length", length(length_width)),
-          field("count", count(intl(l_count_width))),
+          field("count", count(l_count_width)),
           field(arrow_child->name(), slave)
       });
       epc = lepc;
@@ -438,7 +507,7 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
     // Create the stream record
     auto rec = record("data", {
         field("dvalid", dvalid()),
-        // field("count", count(intl(e_count_width))),
+        field("count", count(e_count_width)),
         field("last", last()),
         field("", type)});
     if (arrow_field.nullable()) {

@@ -164,10 +164,10 @@ std::shared_ptr<Object> PortArray::Copy() const {
   return std::shared_ptr<PortArray>(port_array);
 }
 
-std::shared_ptr<NodeArray> signal_array(const std::string &name,
-                                        const std::shared_ptr<Type> &type,
-                                        std::shared_ptr<Node> size,
-                                        const std::shared_ptr<ClockDomain> &domain) {
+std::shared_ptr<SignalArray> signal_array(const std::string &name,
+                                          const std::shared_ptr<Type> &type,
+                                          std::shared_ptr<Node> size,
+                                          const std::shared_ptr<ClockDomain> &domain) {
   auto base_node = signal(name, type, domain);
   auto *sig_array = new SignalArray(base_node, std::move(size));
   return std::shared_ptr<SignalArray>(sig_array);

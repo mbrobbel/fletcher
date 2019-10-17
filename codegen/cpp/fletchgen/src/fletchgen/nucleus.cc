@@ -32,9 +32,9 @@ using cerata::port;
 
 ArrayCmdCtrlMerger::ArrayCmdCtrlMerger() : Component("ArrayCmdCtrlMerger") {
   // This is a primitive component from the hardware lib
-  meta_[cerata::vhdl::metakeys::PRIMITIVE] = "true";
-  meta_[cerata::vhdl::metakeys::LIBRARY] = "work";
-  meta_[cerata::vhdl::metakeys::PACKAGE] = "Array_pkg";
+  meta_[cerata::vhdl::meta::PRIMITIVE] = "true";
+  meta_[cerata::vhdl::meta::LIBRARY] = "work";
+  meta_[cerata::vhdl::meta::PACKAGE] = "Array_pkg";
 
   auto reg64 = cerata::vector(64);
   auto baw = bus_addr_width();

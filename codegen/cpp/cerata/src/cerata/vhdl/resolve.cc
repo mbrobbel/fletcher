@@ -258,10 +258,10 @@ Component *Resolve::SignalizePorts(Component *comp) {
 }
 
 static bool IsExpandType(const Type *t, const std::string &str = "") {
-  if (t->meta.count(metakeys::EXPAND_TYPE) > 0) {
+  if (t->meta.count(meta::EXPAND_TYPE) > 0) {
     if (str.empty()) {
       return true;
-    } else if (t->meta.at(metakeys::EXPAND_TYPE) == str) {
+    } else if (t->meta.at(meta::EXPAND_TYPE) == str) {
       return true;
     }
   }
@@ -286,9 +286,9 @@ static bool HasStream(const std::vector<FlatType> &fts) {
  */
 static void ExpandStreamType(Type *type) {
   // If the type was not expanded yet.
-  if (type->meta.count(metakeys::WAS_EXPANDED) == 0) {
+  if (type->meta.count(meta::WAS_EXPANDED) == 0) {
     // Expand it. First remember that it was expanded.
-    type->meta[metakeys::WAS_EXPANDED] = "true";
+    type->meta[meta::WAS_EXPANDED] = "true";
     // Flatten the type.
     auto flattened_types = Flatten(type);
     // Check if it has any streams.
@@ -300,18 +300,18 @@ static void ExpandStreamType(Type *type) {
         if (flat.type_->Is(Type::STREAM)) {
           auto *stream_type = dynamic_cast<Stream *>(flat.type_);
           // Check if we didn't expand the type already.
-          if (stream_type->meta.count(metakeys::EXPAND_TYPE) == 0) {
+          if (stream_type->meta.count(meta::EXPAND_TYPE) == 0) {
             // Create a new record to hold valid, ready and the original element type
             auto new_elem_type = record(stream_type->name() + "_vr");
             // Mark the record
-            new_elem_type->meta[metakeys::EXPAND_TYPE] = "record";
+            new_elem_type->meta[meta::EXPAND_TYPE] = "record";
             // Add valid, ready and original type to the record and set the new element type
             new_elem_type->AddField(field("valid", valid()));
             new_elem_type->AddField(field("ready", ready(), true));
             new_elem_type->AddField(field(stream_type->element_name(), stream_type->element_type()));
             stream_type->SetElementType(new_elem_type);
             // Mark the stream itself to remember we've expanded it.
-            stream_type->meta[metakeys::EXPAND_TYPE] = "stream";
+            stream_type->meta[meta::EXPAND_TYPE] = "stream";
           }
         }
       }
@@ -328,7 +328,7 @@ static void ExpandMappers(Type *type, const std::vector<std::shared_ptr<TypeMapp
       continue;
     }
     // Skip mappers that were already expanded.
-    if (mapper->meta.count(metakeys::WAS_EXPANDED) > 0) {
+    if (mapper->meta.count(meta::WAS_EXPANDED) > 0) {
       continue;
     }
 
@@ -394,7 +394,7 @@ static void ExpandMappers(Type *type, const std::vector<std::shared_ptr<TypeMapp
 
     // Set the mapping matrix of the new mapper to the new matrix
     new_mapper->SetMappingMatrix(new_matrix);
-    new_mapper->meta[metakeys::WAS_EXPANDED] = "true";
+    new_mapper->meta[meta::WAS_EXPANDED] = "true";
 
     // Add the mapper to the type
     type->AddMapper(new_mapper);

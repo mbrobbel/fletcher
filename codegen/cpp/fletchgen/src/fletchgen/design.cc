@@ -164,7 +164,7 @@ Design::Design(const std::shared_ptr<Options> &opts) {
   for (size_t i = 0; i < batch_desc.size(); i++) {
     auto schema = schema_set->schemas()[i];
     auto rb_desc = batch_desc[i];
-    auto rb = recordbatch(opts->kernel_name + "_" + schema->name(), schema, rb_desc);
+    auto rb = record_batch(opts->kernel_name + "_" + schema->name(), schema, rb_desc);
     recordbatches.push_back(rb);
   }
 
@@ -214,19 +214,19 @@ std::vector<cerata::OutputSpec> Design::GetOutputSpec() {
   // Mantle
   omantle.comp = mantle_comp;
   // Always overwrite mantle, as users should not modify.
-  omantle.meta[cerata::vhdl::metakeys::BACKUP_EXISTING] = backup;
+  omantle.meta[cerata::vhdl::meta::BACKUP_EXISTING] = backup;
   result.push_back(omantle);
 
   // Nucleus
   onucleus.comp = nucleus_comp;
   // Check the force flag if kernel should be overwritten
-  onucleus.meta[cerata::vhdl::metakeys::BACKUP_EXISTING] = backup;
+  onucleus.meta[cerata::vhdl::meta::BACKUP_EXISTING] = backup;
   result.push_back(onucleus);
 
   // Kernel
   okernel.comp = kernel_comp;
   // Check the force flag if kernel should be overwritten
-  okernel.meta[cerata::vhdl::metakeys::BACKUP_EXISTING] = backup;
+  okernel.meta[cerata::vhdl::meta::BACKUP_EXISTING] = backup;
   result.push_back(okernel);
 
   // RecordBatchReaders/Writers
@@ -234,7 +234,7 @@ std::vector<cerata::OutputSpec> Design::GetOutputSpec() {
     OutputSpec orecbatch;
     orecbatch.comp = recbatch;
     // Always overwrite readers/writers, as users should not modify.
-    orecbatch.meta[cerata::vhdl::metakeys::BACKUP_EXISTING] = backup;
+    orecbatch.meta[cerata::vhdl::meta::BACKUP_EXISTING] = backup;
     result.push_back(orecbatch);
   }
 

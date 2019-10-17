@@ -14,34 +14,23 @@
 
 #include <gmock/gmock.h>
 #include <cerata/api.h>
-#include <iostream>
 #include <string>
 
+#include "cerata/test_utils.h"
 #include "cerata/test_designs.h"
 #include "cerata/type.h"
 
 namespace cerata {
 
-#ifdef TEST_CERATA_DUMP_VHDL
-// Macro to save the test to some VHDL files that can be used to syntax check the tests with e.g. GHDL
-// At some point the reverse might be more interesting - load the test cases from file into the test.
-#define VHDL_DUMP_TEST(str) \
-    std::ofstream(std::string(::testing::UnitTest::GetInstance()->current_test_info()->test_suite_name()) \
-    + "_" + ::testing::UnitTest::GetInstance()->current_test_info()->name() + ".vhd") << str
-#else
-#define VHDL_DUMP_TEST(str)
-#endif
-
 TEST(VHDL_DESIGN, Simple) {
   default_component_pool()->Clear();
   auto static_vec = vector<8>();
-  auto param = parameter("vec_width", natural(), intl(8));
+  auto param = parameter("vec_width", integer(), intl(8));
   auto param_vec = vector("param_vec_type", param);
   auto veca = port("static_vec", static_vec);
   auto vecb = port("param_vec", param_vec);
   auto comp = component("simple", {param, veca, vecb});
-  auto design = vhdl::Design(comp);
-  auto design_source = design.Generate().ToString();
+  auto generated = GenerateDebugOutput(comp);
   auto expected =
       "library ieee;\n"
       "use ieee.std_logic_1164.all;\n"
@@ -60,8 +49,7 @@ TEST(VHDL_DESIGN, Simple) {
       "architecture Implementation of simple is\n"
       "begin\n"
       "end architecture;\n";
-  ASSERT_EQ(design_source, expected);
-  VHDL_DUMP_TEST(expected);
+  ASSERT_EQ(generated, expected);
 }
 
 TEST(VHDL_DESIGN, CompInst) {
@@ -74,14 +62,7 @@ TEST(VHDL_DESIGN, CompInst) {
   auto ia = top->AddInstanceOf(ca.get());
   auto ib = top->AddInstanceOf(cb.get());
   Connect(ia->prt("a"), ib->prt("b"));
-  auto design = vhdl::Design(top);
-  auto design_source = design.Generate().ToString();
-
-  dot::Grapher dot;
-  dot.style.config = dot::Config::all();
-  dot.GenFile(*top, "VHDL_CompInst.dot");
-
-  std::cout << design_source;
+  auto generated = GenerateDebugOutput(top);
   auto expected =
       "library ieee;\n"
       "use ieee.std_logic_1164.all;\n"
@@ -120,9 +101,7 @@ TEST(VHDL_DESIGN, CompInst) {
       "    );\n"
       "\n"
       "end architecture;\n";
-  ASSERT_EQ(design_source, expected);
-  VHDL_DUMP_TEST(expected);
-
+  ASSERT_EQ(generated, expected);
 }
 
 }  // namespace cerata

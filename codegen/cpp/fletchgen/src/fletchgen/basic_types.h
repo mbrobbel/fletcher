@@ -24,17 +24,17 @@ namespace fletchgen {
 
 /// Metadata keys
 namespace metakeys {
-  /// Key for automated type mapping.
-  constexpr char ARRAY_DATA[] = "fletchgen_array_data";
+/// Key for automated type mapping.
+constexpr char ARRAY_DATA[] = "fletchgen_array_data";
 
-  /// Key to mark the count field in Arrow streams.
-  constexpr char COUNT[] = "fletchgen_count";
+/// Key to mark the count field in Arrow streams.
+constexpr char COUNT[] = "fletchgen_count";
 
-  /// Key for elements-per-cycle on streams.
-  constexpr char EPC[] = "fletcher_epc";
+/// Key for elements-per-cycle on streams.
+constexpr char EPC[] = "fletcher_epc";
 
-  /// Key for length-elements-per-cycle on length streams. Must be seperate from EPC for "listprim" config string.
-  constexpr char LEPC[] = "fletcher_lepc";
+/// Key for length-elements-per-cycle on length streams. Must be seperate from EPC for "listprim" config string.
+constexpr char LEPC[] = "fletcher_lepc";
 }
 
 using cerata::Type;
@@ -84,18 +84,22 @@ PARAM_DECL_FACTORY(tag_width)
 std::shared_ptr<ClockDomain> kernel_cd();
 /// @brief Fletcher bus clock domain
 std::shared_ptr<ClockDomain> bus_cd();
-/// @brief Fletcher data
-std::shared_ptr<Type> data(const std::shared_ptr<Node> &width);
-/// @brief Fletcher length
-std::shared_ptr<Type> length(const std::shared_ptr<Node> &width);
-/// @brief Fletcher count
-std::shared_ptr<Type> count(const std::shared_ptr<Node> &width);
-/// @brief Fletcher dvalid
-std::shared_ptr<Type> dvalid();
-/// @brief Fletcher last
-std::shared_ptr<Type> last();
 /// @brief Fletcher clock/reset;
 std::shared_ptr<Type> cr();
+/// @brief Fletcher valid
+std::shared_ptr<Type> valid(int width = 1, bool on_primitive = false);
+/// @brief Fletcher ready
+std::shared_ptr<Type> ready(int width = 1, bool on_primitive = false);
+/// @brief Fletcher data
+std::shared_ptr<Type> data(int width);
+/// @brief Fletcher length
+std::shared_ptr<Type> length(int width);
+/// @brief Fletcher count
+std::shared_ptr<Type> count(int width);
+/// @brief Fletcher dvalid
+std::shared_ptr<Type> dvalid(int width = 1, bool on_primitive = false);
+/// @brief Fletcher last
+std::shared_ptr<Type> last(int width = 1, bool on_primitive = false);
 
 /**
  * @brief Convert a fixed-width arrow::DataType to a fixed-width Fletcher Type.

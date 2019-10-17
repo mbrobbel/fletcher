@@ -53,11 +53,11 @@ MultiBlock Design::Generate() {
 
   // Figure out potential libs and packages used for primitive components.
   std::unordered_map<std::string, std::vector<std::string>> libs_and_packages;
-  for (const auto &c : component_->GetAllUniqueComponents()) {
-    if (c->meta().count(metakeys::PRIMITIVE) > 0) {
-      if (c->meta().at(metakeys::PRIMITIVE) == "true") {
-        std::string lib = c->meta().at(metakeys::LIBRARY);
-        std::string pkg = c->meta().at(metakeys::PACKAGE);
+  for (const auto &c : component_->GetAllInstanceComponents()) {
+    if (c->meta().count(meta::PRIMITIVE) > 0) {
+      if (c->meta().at(meta::PRIMITIVE) == "true") {
+        std::string lib = c->meta().at(meta::LIBRARY);
+        std::string pkg = c->meta().at(meta::PACKAGE);
         // Create the kv-pair if there is none yet
         if (libs_and_packages.count(lib) == 0) {
           libs_and_packages[lib] = std::vector<std::string>({pkg});

@@ -119,6 +119,11 @@ void RecordBatch::AddArrays(const std::shared_ptr<FletcherSchema> &fletcher_sche
       // Drive the RecordBatch Arrow data port with the ArrayReader/Writer data port, or vice versa
       if (mode_ == Mode::READ) {
         auto array_data_port = a->prt("out");
+        // Rebind the type because now we know the field (also see array())
+        auto spec = GetArrayDataSpec(*field);
+        auto actual_type = array_reader_out(spec.first, spec.second);
+        array_data_port->SetType(actual_type);
+
         auto array_data_type = array_data_port->type();
         // Create a mapper between the Arrow port and the Array data port
         auto mapper = GetStreamTypeMapper(kernel_arrow_type, array_data_type);
@@ -127,6 +132,11 @@ void RecordBatch::AddArrays(const std::shared_ptr<FletcherSchema> &fletcher_sche
         kernel_arrow_port <<= array_data_port;
       } else {
         auto array_data_port = a->prt("in");
+        // Rebind the type because now we know the field (also see array())
+        auto spec = GetArrayDataSpec(*field);
+        auto actual_type = array_writer_in(spec.first, spec.second);
+        array_data_port->SetType(actual_type);
+
         auto array_data_type = array_data_port->type();
         // Create a mapper between the Arrow port and the Array data port
         auto mapper = GetStreamTypeMapper(kernel_arrow_type, array_data_type);
@@ -178,9 +188,9 @@ RecordBatch::GetFieldPorts(const std::optional<FieldPort::Function> &function) c
   return result;
 }
 
-std::shared_ptr<RecordBatch> recordbatch(const std::string &name,
-                                         const std::shared_ptr<FletcherSchema> &fletcher_schema,
-                                         const fletcher::RecordBatchDescription &batch_desc) {
+std::shared_ptr<RecordBatch> record_batch(const std::string &name,
+                                          const std::shared_ptr<FletcherSchema> &fletcher_schema,
+                                          const fletcher::RecordBatchDescription &batch_desc) {
   auto rb = new RecordBatch(name, fletcher_schema, batch_desc);
   auto shared_rb = std::shared_ptr<RecordBatch>(rb);
   cerata::default_component_pool()->Add(shared_rb);

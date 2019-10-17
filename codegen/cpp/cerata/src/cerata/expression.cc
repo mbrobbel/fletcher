@@ -18,13 +18,21 @@
 
 namespace cerata {
 
+std::string ToString(std::shared_ptr<const Node> n) {
+  std::stringstream ss;
+  ss << n;
+  return ss.str();
+}
+
 std::shared_ptr<Expression> Expression::Make(Op op, std::shared_ptr<const Node> lhs, std::shared_ptr<const Node> rhs) {
   auto e = new Expression(op, std::move(lhs), std::move(rhs));
   return std::shared_ptr<Expression>(e);
 }
 
 Expression::Expression(Expression::Op op, std::shared_ptr<const Node> lhs, std::shared_ptr<const Node> rhs)
-    : MultiOutputNode(::cerata::ToString(op), NodeID::EXPRESSION, string()),
+    : MultiOutputNode(::cerata::ToString(lhs) + ::cerata::ToString(op) + ::cerata::ToString(rhs),
+                      NodeID::EXPRESSION,
+                      string()),
       operation_(op),
       lhs_(std::move(lhs)),
       rhs_(std::move(rhs)) {}

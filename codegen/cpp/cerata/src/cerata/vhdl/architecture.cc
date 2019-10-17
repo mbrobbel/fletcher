@@ -29,105 +29,79 @@
 
 namespace cerata::vhdl {
 
-MultiBlock Arch::Generate(const Component &comp) {
-  MultiBlock ret;
-  Line header_line;
-  header_line << "architecture Implementation of " + comp.name() + " is";
-  ret << header_line;
-
+MultiBlock GenerateCompDeclarations(const Component &comp, int indent = 0) {
+  MultiBlock result(indent);
   // Component declarations
-  auto components_used = comp.GetAllUniqueComponents();
-  for (const auto &c : components_used) {
+  auto inst_comps = comp.GetAllInstanceComponents();
+  for (const auto &ic : inst_comps) {
     // Check for metadata that this component is not marked primitive
     // In this case, a library package has been added at the top of the design file.
-    if ((c->meta().count(metakeys::PRIMITIVE) == 0) || (c->meta().at(metakeys::PRIMITIVE) != "true")) {
+    if ((ic->meta().count(meta::PRIMITIVE) == 0) || (ic->meta().at(meta::PRIMITIVE) != "true")) {
       // TODO(johanpel): generate packages with component declarations
-      auto comp_decl = Decl::Generate(*c);
-      ret << comp_decl;
-      ret << Line();
+      auto decl = Decl::Generate(*ic);
+      result << decl;
+      result << Line();
     }
   }
+  return result;
+}
 
-  // Signal declarations
-  auto signals = comp.GetAll<Signal>();
-  for (const auto &s : signals) {
-    auto signal_decl = Decl::Generate(*s, 1);
-    ret << signal_decl;
-    if (signal_decl.lines.size() > 1) {
-      ret << Line();
-    }
-    if (s == signals.back()) {
-      ret << Line();
-    }
-  }
-
-  // Signal array declarations
-  auto signal_arrays = comp.GetAll<SignalArray>();
-  for (const auto &s : signal_arrays) {
-    auto signal_array_decl = Decl::Generate(*s, 1);
-    ret << signal_array_decl;
-    if (signal_array_decl.lines.size() > 1) {
-      ret << Line();
-    }
-    if (s == signal_arrays.back()) {
-      ret << Line();
-    }
-  }
-
-  Line header_end;
-  header_end << "begin";
-  ret << header_end;
-
-  // Port connections
-  auto ports = comp.GetAll<Port>();
-  for (const auto &p : ports) {
-    auto port_assign = Generate(comp, *p, 1);
-    ret << port_assign;
-    if (port_assign.lines.size() > 1) {
-      ret << Line();
-    }
-    if (p == ports.back()) {
-      ret << Line();
-    }
-  }
-
-  // Signal connections
-  for (const auto &s : signals) {
-    auto signal_assign = Generate(comp, *s, 1);
-    ret << signal_assign;
-    if (signal_assign.lines.size() > 1) {
-      ret << Line();
-    }
-    if (s == signals.back()) {
-      ret << Line();
-    }
-  }
-
-  // Signal array connections
-  for (const auto &s : signal_arrays) {
-    auto signal_assign = Generate(comp, *s, 1);
-    ret << signal_assign;
-    if (signal_assign.lines.size() > 1) {
-      ret << Line();
-    }
-    if (s == signal_arrays.back()) {
-      ret << Line();
-    }
-  }
-
-  // Component instantiations
+MultiBlock GenerateCompInstantiations(const Component &comp, int indent = 0) {
+  MultiBlock result(indent);
   auto instances = comp.children();
   for (const auto &i : instances) {
     auto inst_decl = Inst::Generate(*i);
-    ret << inst_decl;
-    ret << Line();
+    result << inst_decl;
+    result << Line();
   }
+  return result;
+}
 
-  Line footer;
-  footer << "end architecture;";
-  ret << footer;
+template<typename T>
+Block GenerateNodeDeclarations(const Component &comp, int indent = 0) {
+  Block result(indent);
+  auto objs = comp.GetAll<T>();
+  for (const auto &o : objs) {
+    auto decl = Decl::Generate(*o, 1);
+    result << decl;
+    if (decl.lines.size() > 1) {
+      result << Line();
+    } else if ((o == objs.back()) && !decl.lines.empty()) {
+      result << Line();
+    }
+  }
+  return result;
+}
 
-  return ret;
+template<typename T>
+Block GenerateAssignments(const Component &comp, int indent = 0) {
+  Block result(indent);
+  auto objs = comp.GetAll<T>();
+  for (const auto &o : objs) {
+    auto assignment = Arch::Generate(*o, 1);
+    result << assignment;
+    if (assignment.lines.size() > 1) {
+      result << Line();
+    } else if ((o == objs.back()) && !assignment.lines.empty()) {
+      result << Line();
+    }
+  }
+  return result;
+}
+
+MultiBlock Arch::Generate(const Component &comp) {
+  MultiBlock result;
+  result << Line("architecture Implementation of " + comp.name() + " is");
+  result << GenerateCompDeclarations(comp, 1);
+  result << GenerateNodeDeclarations<Signal>(comp, 1);
+  result << GenerateNodeDeclarations<SignalArray>(comp, 1);
+  result << Line("begin");
+  result << GenerateAssignments<Port>(comp, 1);
+  result << GenerateAssignments<Signal>(comp, 1);
+  result << GenerateAssignments<SignalArray>(comp, 1);
+  result << GenerateCompInstantiations(comp, 1);
+  result << Line("end architecture;");
+  return result;
 }
 
 // TODO(johanpel): make this something less arcane
@@ -165,7 +139,7 @@ static Block GenerateMappingPair(const MappingPair &p,
       if (p.flat_type_a(ia).type_->Is(Type::BIT)) {
         a += "(" + offset_a->ToString() + ")";
       } else {
-        a += "(" + (next_offset_a - 1)->ToString();
+        a += "(" + (next_offset_a - 1ul)->ToString();
         a += " downto " + offset_a->ToString() + ")";
       }
     }
@@ -174,7 +148,7 @@ static Block GenerateMappingPair(const MappingPair &p,
       if (p.flat_type_b(ib).type_->Is(Type::BIT)) {
         b += "(" + offset_b->ToString() + ")";
       } else {
-        b += "(" + (next_offset_b - 1)->ToString();
+        b += "(" + (next_offset_b - 1ul)->ToString();
         b += " downto " + offset_b->ToString() + ")";
       }
     }
@@ -208,12 +182,6 @@ static Block GenerateAssignmentPair(std::vector<MappingPair> pairs, const Node &
   if (b.array()) {
     b_array = true;
     b_idx = b.array().value()->IndexOf(b);
-  }
-  if (a.type()->meta.count(metakeys::FORCE_VECTOR) > 0) {
-    a_array = true;
-  }
-  if (b.type()->meta.count(metakeys::FORCE_VECTOR) > 0) {
-    b_array = true;
   }
   // Loop over all pairs
   for (const auto &pair : pairs) {
@@ -259,76 +227,70 @@ static Block GenerateNodeAssignment(const Node &dst, const Node &src) {
   return result;
 }
 
-Block Arch::Generate(const Component &comp, const Port &port, int indent) {
+Block Arch::Generate(const Port &port, int indent) {
   Block ret(indent);
   // We need to assign this port. If we properly resolved VHDL issues, and didn't do weird stuff like loop a
   // port back up, the only thing that could drive this port is a signal. We're going to sanity check this anyway.
 
-  // Check if the port node is sourced at all.
-  if (port.sources().empty()) {
+  // Check if the port node is sourced at all. If it isn't, we don't have to assign it.
+  if (!port.input()) {
     return ret;
   }
-
-  // Generate the assignments for every source.
-  for (const auto &edge : port.sources()) {
-    if (edge->src()->IsPort()) {
-      CERATA_LOG(FATAL, "Component port is unexpectedly sourced by another port.");
-    }
-    ret << GenerateNodeAssignment(*edge->dst(), *edge->src());
+  // Generate the assignment.
+  auto edge = port.input().value();
+  if (edge->src()->IsPort()) {
+    CERATA_LOG(FATAL, "Component port is unexpectedly sourced by another port.");
   }
+  ret << GenerateNodeAssignment(*edge->dst(), *edge->src());
+
   return ret;
 }
 
-Block Arch::Generate(const Component &comp, const Signal &sig, int indent) {
+Block Arch::Generate(const Signal &sig, int indent) {
   Block ret(indent);
   // We need to assign this signal when it is sourced by a node that is not an instance port.
   // If the source is, then this is done in the associativity list of the port map of the component instantiation.
 
   // Check if the signal node is sourced at all.
-  if (sig.sources().empty()) {
+  if (!sig.input()) {
     return ret;
   }
-
-  for (const auto &edge : sig.sources()) {
-    Block b;
-    Node *src = edge->src();
-    Node *dst = edge->dst();
-    // Check if the source is a port, has a parent and if its parent is an instance.
-    // Then, we can skip the assignment, it is done elsewhere.
-    if (src->IsPort() && src->parent() && src->parent().value()->IsInstance()) {
-      continue;
-    }
-    // Get the node on the other side of the connection
-    auto other = src;
-    // Get the other type.
-    auto other_type = other->type();
-    // Check if a type mapping exists
-    auto optional_type_mapper = dst->type()->GetMapper(other_type);
-    if (optional_type_mapper) {
-      auto type_mapper = optional_type_mapper.value();
-      // Obtain the unique mapping pairs for this mapping
-      auto pairs = type_mapper->GetUniqueMappingPairs();
-      // Generate the mapping for this port-node pair.
-      b << GenerateAssignmentPair(pairs, *dst, *other);
-      b << ";";
-      ret << b;
-    } else {
-      CERATA_LOG(FATAL, "No type mapping available for: Signal[" + dst->name() + ": " + dst->type()->name()
-          + "] to Other[" + other->name() + " : " + other->type()->name() + "]");
-    }
+  auto edge = sig.input().value();
+  Block b;
+  Node *src = edge->src();
+  Node *dst = edge->dst();
+  // Check if the source is a port, has a parent and if its parent is an instance.
+  // In that case, the source is coming from an instance, and we don't have to make the assignment since that is done
+  // at the instance port map.
+  if (src->IsPort() && src->parent() && src->parent().value()->IsInstance()) {
+    return ret;
+  }
+  // Check if a type mapping exists
+  auto type_mapper = dst->type()->GetMapper(src->type());
+  if (type_mapper) {
+    // Obtain the unique mapping pairs for this mapping
+    auto pairs = type_mapper.value()->GetUniqueMappingPairs();
+    // Generate the mapping for this port-node pair.
+    b << GenerateAssignmentPair(pairs, *dst, *src);
+    b << ";";
+    ret << b;
+  } else {
+    CERATA_LOG(FATAL, "Assignment of signal " + src->ToString()
+        + " from " + dst->ToString()
+        + " failed. No type mapper available.");
   }
   return ret;
 }
 
-Block Arch::Generate(const Component &comp, const SignalArray &sig_array, int indent) {
+Block Arch::Generate(const SignalArray &sig_array, int indent) {
   Block ret(indent);
   // Go over each node in the array
   for (const auto &node : sig_array.nodes()) {
     if (node->IsSignal()) {
       const auto &sig = dynamic_cast<const Signal &>(*node);
-      ret << Generate(comp, sig, indent);
+      ret << Generate(sig, indent);
     } else {
-      throw std::runtime_error("Signal Array contains non-signal node.");
+      CERATA_LOG(FATAL, "Signal Array contains non-signal node.");
     }
   }
   return ret.Sort('(');

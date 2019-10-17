@@ -199,13 +199,13 @@ std::shared_ptr<Component> GetArrayTypeConvComponent() {
   auto t_wide = vector<4>();
   auto t_narrow = vector<2>();
   // Flat indices:
-  auto tA = record("Type _A", {  // 0
-      field("q", t_wide),        // 1
+  auto tA = record("TA", {   // 0
+      field("q", t_wide),    // 1
   });
 
-  auto tB = record("Type B", {  // 0
-      field("r", t_narrow),     // 1
-      field("s", t_narrow),     // 2
+  auto tB = record("TB", {   // 0
+      field("r", t_narrow),  // 1
+      field("s", t_narrow),  // 2
   });
 
   // Create a type mapping from tA to tE
@@ -222,7 +222,7 @@ std::shared_ptr<Component> GetArrayTypeConvComponent() {
 
   // Components and instantiations
   auto top = component("top", {pB, pC});
-  auto x_comp = component("X", {pA});
+  auto x_comp = component("X", {parSize, pA});
   auto x = instance(x_comp.get());
   auto xr = x.get();
   top->AddChild(std::move(x));
@@ -236,10 +236,10 @@ std::shared_ptr<Component> GetArrayTypeConvComponent() {
 
 std::shared_ptr<Component> GetStreamConcatComponent() {
   // Flat indices:
-  auto tA = stream("split",                                 // 0
-                   record("a", {                      // 1
+  auto tA = stream("split",                  // 0
+                   record("a", {             // 1
                        field("other",
-                             bit()),               // 2
+                             bit()),         // 2
                        field("child",
                              stream("se",    // 3
                                     bit()))  // 4
@@ -278,9 +278,9 @@ std::shared_ptr<Component> GetStreamConcatComponent() {
   // Components and instantiations
   auto x_comp = component("X", {pA0, pA1});
   auto y_comp = component("Y", {pB, pC});
-  y_comp->meta()[vhdl::metakeys::PRIMITIVE] = "true";
-  y_comp->meta()[vhdl::metakeys::LIBRARY] = "test";
-  y_comp->meta()[vhdl::metakeys::PACKAGE] = "test";
+  y_comp->meta()[vhdl::meta::PRIMITIVE] = "true";
+  y_comp->meta()[vhdl::meta::LIBRARY] = "test";
+  y_comp->meta()[vhdl::meta::PACKAGE] = "test";
   auto y = instance(y_comp.get());
   auto yr = y.get();
   x_comp->AddChild(std::move(y));

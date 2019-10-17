@@ -43,9 +43,9 @@ std::shared_ptr<Type> cmd(const std::shared_ptr<Node> &tag_width,
 /// @brief Fletcher unlock stream
 std::shared_ptr<Type> unlock(const std::shared_ptr<Node> &tag_width = intl(1));
 /// @brief Fletcher read data
-std::shared_ptr<Type> read_data(const std::shared_ptr<Node> &data_width = intl(1));
+std::shared_ptr<Type> array_reader_out(int num_streams = 0, int full_width = 0);
 /// @brief Fletcher write data
-std::shared_ptr<Type> write_data(const std::shared_ptr<Node> &data_width = intl(1));
+std::shared_ptr<Type> array_writer_in(int num_streams = 0, int full_width = 0);
 
 /// @brief Types for ArrayReader/Writer configuration string.
 enum class ConfigType {
@@ -97,6 +97,13 @@ std::shared_ptr<TypeMapper> GetStreamTypeMapper(Type *stream_type, Type *other);
  * @return The Stream Type.
  */
 std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::Mode mode, int level = 0);
+
+/**
+ * @brief Get the ArrayR/W number of streams and data width from an Arrow Field.
+ * @param arrow_field   The field
+ * @return              A tuple containing the {no. streams, full data width}.
+ */
+std::pair<int, int> GetArrayDataSpec(const arrow::Field &arrow_field);
 
 /**
  * @brief Return a Cerata component model of an ArrayReader/Writers.

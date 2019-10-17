@@ -34,7 +34,7 @@ static void TestReadKernel(const std::string &test_name, const std::shared_ptr<a
   fletcher::RecordBatchDescription rbd;
   fletcher::SchemaAnalyzer sa(&rbd);
   sa.Analyze(*schema);
-  auto rbr = recordbatch("Test_" + fs->name(), fs, rbd);
+  auto rbr = record_batch("Test_" + fs->name(), fs, rbd);
   auto mmio_comp = mmio({rbd}, {});
   auto top = kernel("Test" + test_name, {rbr}, mmio_comp);
   auto design = cerata::vhdl::Design(top);
