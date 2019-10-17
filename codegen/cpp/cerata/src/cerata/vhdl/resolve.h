@@ -43,14 +43,6 @@ struct Resolve {
    */
   // TODO(johanpel): this should create a transformed copy, but currently mutates the component.
   static Component *SignalizePorts(Component *comp);
-
-  /**
-   * @brief Transforms the component, materialize the abstract Stream type by expanding it with a ready and valid bit.
-   * @param comp  The component to transform.
-   * @return      The transformed component.
-   */
-  // TODO(johanpel): this should create a transformed copy, but currently mutates the component.
-  static Component *ExpandStreams(Component *comp);
 };
 
 }  // namespace cerata::vhdl

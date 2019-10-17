@@ -60,10 +60,6 @@ static std::string GenerateTypeDecl(const Type &type,
     case Type::INTEGER: {
       return "integer";
     }
-    case Type::STREAM: {
-      auto stream = dynamic_cast<const Stream &>(type);
-      return GenerateTypeDecl(*stream.element_type());
-    }
     case Type::STRING: {
       return "string";
     }
@@ -77,8 +73,8 @@ Block Decl::Generate(const Parameter &par, int depth) {
   Block ret(depth);
   Line l;
   l << ToUpper(par.name()) << " : " << GenerateTypeDecl(*par.type());
-  if (par.GetValue()) {
-    Node *val = par.GetValue().value();
+  if (par.value()) {
+    Node *val = par.value();
     l << " := " << val->ToString();
   }
   ret << l;

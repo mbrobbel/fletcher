@@ -73,8 +73,7 @@ class Type : public Named, public std::enable_shared_from_this<Type> {
     STRING,   ///<  No       | No        | No
     BOOLEAN,  ///<  No       | No        | No
 
-    RECORD,   ///<  ?        | Yes       | ?
-    STREAM    ///<  ?        | Yes       | ?
+    RECORD    ///<  ?        | Yes       | ?
   };
 
   // TODO(johanpel): potentially remove stream as it could be just a record
@@ -168,59 +167,45 @@ struct Bit : public Type {
 
 /// @brief Return a static Nul type.
 std::shared_ptr<Type> nul();
-/// @brief Void type. Useful for e.g. empty streams.
+/// Null type. Useful for e.g. empty streams (or not anymore?)
 struct Nul : public Type {
+  explicit Nul(std::string name) : Type(std::move(name), Type::NUL) {}
   bool IsPhysical() const override { return false; }
   bool IsGeneric() const override { return false; }
   bool IsNested() const override { return false; }
-
-  /// Void type constructor.
-  explicit Nul(std::string name) : Type(std::move(name), Type::NUL) {}
-
   std::shared_ptr<Type> Copy(std::unordered_map<Node *, Node *> generic_map) const override { return nul(); }
 };
 
-/// @brief Static boolean type.
+/// @brief Return a static boolean type.
 std::shared_ptr<Type> boolean();
-
-/// @brief Boolean type.
+/// Boolean type.
 struct Boolean : public Type {
+  explicit Boolean(std::string name) : Type(std::move(name), Type::BOOLEAN) {}
   bool IsPhysical() const override { return false; }
   bool IsGeneric() const override { return false; }
   bool IsNested() const override { return false; }
-
-  /// @brief Boolean type constructor.
-  explicit Boolean(std::string name) : Type(std::move(name), Type::BOOLEAN) {}
-
   std::shared_ptr<Type> Copy(std::unordered_map<Node *, Node *> generic_map) const override { return boolean(); }
 };
 
 /// @brief Return a static integer type.
 std::shared_ptr<Type> integer();
-/// @brief Integer type.
+/// Integer type.
 struct Integer : public Type {
+  explicit Integer(std::string name) : Type(std::move(name), Type::INTEGER) {}
   bool IsPhysical() const override { return false; }
   bool IsGeneric() const override { return false; }
   bool IsNested() const override { return false; }
-
-  /// @brief Integer type constructor.
-  explicit Integer(std::string name) : Type(std::move(name), Type::INTEGER) {}
-
   std::shared_ptr<Type> Copy(std::unordered_map<Node *, Node *> generic_map) const override { return integer(); }
 };
 
-/// @brief Static string type.
+/// @brief Return a static string type.
 std::shared_ptr<Type> string();
-
 /// @brief String type.
 struct String : public Type {
+  explicit String(std::string name) : Type(std::move(name), Type::STRING) {}
   bool IsPhysical() const override { return false; }
   bool IsGeneric() const override { return false; }
   bool IsNested() const override { return false; }
-
-  /// @brief String type constructor.
-  explicit String(std::string name) : Type(std::move(name), Type::STRING) {}
-
   std::shared_ptr<Type> Copy(std::unordered_map<Node *, Node *> generic_map) const override { return string(); }
 };
 
@@ -279,6 +264,8 @@ class Field : public Named {
  public:
   /// @brief RecordField constructor.
   Field(std::string name, std::shared_ptr<Type> type, bool invert = false, bool sep = true);
+  /// @brief Change the type of this field.
+  Field &SetType(std::shared_ptr<Type> type);
   /// @brief Return the type of the RecordField.
   std::shared_ptr<Type> type() const { return type_; }
   /// @brief Return if this individual field should be inverted w.r.t. parent Record type itself on graph edges.
@@ -315,7 +302,7 @@ std::shared_ptr<Field> field(const std::shared_ptr<Type> &type, bool invert = fa
 /// @brief Convenience function to disable the separator for a record field.
 std::shared_ptr<Field> NoSep(std::shared_ptr<Field> field);
 
-/// @brief A Record type containing zero or more RecordFields.
+/// @brief A Record type containing zero or more fields.
 class Record : public Type {
  public:
   bool IsPhysical() const override;
@@ -324,10 +311,12 @@ class Record : public Type {
 
   /// @brief Record constructor.
   explicit Record(std::string name, std::vector<std::shared_ptr<Field>> fields = {});
-  /// @brief Add a RecordField to this Record.
+  /// @brief Add a field to this Record.
   Record &AddField(const std::shared_ptr<Field> &field, std::optional<size_t> index = std::nullopt);
-  /// @brief Return the RecordField at index i contained by this record.
-  std::shared_ptr<Field> field(size_t i) const { return fields_[i]; }
+  /// @brief Return the field at index i contained by this record.
+  Field *at(size_t i) const;
+  /// @brief Return the field at index i contained by this record.
+  Field *operator()(size_t i) const;
   /// @brief Return all fields contained by this record.
   std::vector<std::shared_ptr<Field>> fields() const { return fields_; }
   /// @brief Return the number of fields in this record.
@@ -341,7 +330,7 @@ class Record : public Type {
 
   std::shared_ptr<Type> Copy(std::unordered_map<Node *, Node *> rebinding) const override;
 
- private:
+ protected:
   std::vector<std::shared_ptr<Field>> fields_;
 };
 
@@ -350,68 +339,5 @@ std::shared_ptr<Record> record(const std::string &name,
                                const std::vector<std::shared_ptr<Field>> &fields = {});
 
 std::shared_ptr<Record> record(const std::vector<std::shared_ptr<Field>> &fields);
-
-/// @brief A Stream type.
-// TODO(johanpel): revamp the implementation of this type. It doesn't make much sense. It should overload a Record and
-//  override a bunch of things to automatically add ready/valid bits
-class Stream : public Type {
- public:
-  bool IsPhysical() const override;
-  bool IsGeneric() const override;
-  bool IsNested() const override { return true; }
-  /**
-   * @brief                 Construct a Stream type
-   * @param type_name       The name of the Stream type.
-   * @param element_type    The type of the elements transported by the stream
-   * @param element_name    The name of the elements transported by the stream
-   * @param epc             Maximum elements per cycle
-   */
-  Stream(const std::string &type_name, std::shared_ptr<Type> element_type, std::string element_name, int epc = 1);
-  /// @brief Set the type of the elements of this stream. Forgets any existing mappers.
-  void SetElementType(std::shared_ptr<Type> type);
-  /// @brief Return the type of the elements of this stream.
-  std::shared_ptr<Type> element_type() const { return element_type_; }
-  /// @brief Set the name of the elements of this stream.
-  void SetElementName(std::string name) { element_name_ = std::move(name); }
-  /// @brief Return the name of the elements of this stream.
-  std::string element_name() const { return element_name_; }
-
-  /// @brief Return the maximum number of elements per cycle this stream can deliver.
-  // TODO(johanpel): turn EPC into a parameter or literal node
-  int epc() { return epc_; }
-
-  /// @brief Determine if this Stream is exactly equal to another Stream.
-  bool IsEqual(const Type &other) const override;
-
-  /// @brief Check if a mapper can be generated to another specific type.
-  bool CanGenerateMapper(const Type &other) const override;
-  /// @brief Generate a new mapper to a specific other type. Should be checked with CanGenerateMapper first, or throws.
-  std::shared_ptr<TypeMapper> GenerateMapper(Type *other) override;
-
-  std::vector<Type *> GetNested() const override;
-
-  std::shared_ptr<Type> Copy(std::unordered_map<Node *, Node *> rebinding) const override;
-
- private:
-  /// @brief The type of the elements traveling over this stream.
-  std::shared_ptr<Type> element_type_;
-  /// @brief The name of the elements traveling over this stream.
-  std::string element_name_;
-
-  /// TODO(johanpel): let streams have a clock domain so we can instantiate CDC automatically.
-
-  /// @brief Elements Per Cycle
-  int epc_ = 1;
-};
-
-/// @brief Create a smart pointer to a new Stream type. Stream name will be stream:\<type name\>, the elements "data".
-std::shared_ptr<Stream> stream(const std::shared_ptr<Type> &element_type, int epc = 1);
-/// @brief Shorthand to create a smart pointer to a new Stream type. The elements are named "data".
-std::shared_ptr<Stream> stream(const std::string &name, const std::shared_ptr<Type> &element_type, int epc = 1);
-/// @brief Shorthand to create a smart pointer to a new Stream type.
-std::shared_ptr<Stream> stream(const std::string &name,
-                               const std::shared_ptr<Type> &element_type,
-                               const std::string &element_name,
-                               int epc = 1);
 
 }  // namespace cerata

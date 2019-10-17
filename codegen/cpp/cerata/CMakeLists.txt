@@ -32,11 +32,13 @@ add_compile_unit(
     src/cerata/port.cc
     src/cerata/transform.cc
     src/cerata/type.cc
+    src/cerata/stream.cc
     src/cerata/utils.cc
   TSTS
     test/cerata/test_expressions.cc
     test/cerata/test_pool.cc
     test/cerata/test_types.cc
+    test/cerata/test_nodes.cc
 )
 
 add_compile_unit(

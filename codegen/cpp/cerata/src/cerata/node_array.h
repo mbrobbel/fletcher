@@ -34,10 +34,7 @@ class NodeArray : public Object {
   Node::NodeID node_id() { return node_id_; }
 
   /// @brief ArrayNode constructor.
-  NodeArray(std::string name, Node::NodeID id, std::shared_ptr<Node> base, std::shared_ptr<Node> size)
-      : Object(std::move(name), Object::ARRAY), node_id_(id), base_(std::move(base)), size_(std::move(size)) {
-    base_->SetArray(this);
-  }
+  NodeArray(std::string name, Node::NodeID id, std::shared_ptr<Node> base, const std::shared_ptr<Node> &size);
 
   /// @brief Set the parent of this NodeArray base node and array nodes.
   void SetParent(Graph *new_parent) override;
@@ -91,8 +88,8 @@ class NodeArray : public Object {
 class SignalArray : public NodeArray {
  public:
   /// SignalArray constructor.
-  SignalArray(const std::shared_ptr<Signal> &base, std::shared_ptr<Node> size) :
-      NodeArray(base->name(), Node::NodeID::SIGNAL, std::dynamic_pointer_cast<Node>(base), std::move(size)) {}
+  SignalArray(const std::shared_ptr<Signal> &base, const std::shared_ptr<Node> &size)
+      : NodeArray(base->name(), Node::NodeID::SIGNAL, base, size) {}
 };
 
 /**
@@ -114,7 +111,7 @@ std::shared_ptr<SignalArray> signal_array(const std::string &name,
 class PortArray : public NodeArray, public Term {
  public:
   /// @brief Construct a new port array.
-  PortArray(const std::shared_ptr<Port> &base, std::shared_ptr<Node> size, Term::Dir dir);
+  PortArray(const std::shared_ptr<Port> &base, const std::shared_ptr<Node> &size, Term::Dir dir);
   /// @brief Make a copy of this port array
   std::shared_ptr<Object> Copy() const override;
 };
@@ -122,12 +119,12 @@ class PortArray : public NodeArray, public Term {
 /// @brief Get a smart pointer to a new ArrayPort.
 std::shared_ptr<PortArray> port_array(const std::string &name,
                                       const std::shared_ptr<Type> &type,
-                                      std::shared_ptr<Node> size,
+                                      const std::shared_ptr<Node> &size,
                                       Port::Dir dir = Port::Dir::IN,
                                       const std::shared_ptr<ClockDomain> &domain = default_domain());
 
 /// @brief Get a smart pointer to a new ArrayPort with a base type other than the default Port.
 std::shared_ptr<PortArray> port_array(const std::shared_ptr<Port> &base_node,
-                                      std::shared_ptr<Node> size);
+                                      const std::shared_ptr<Node> &size);
 
 }  // namespace cerata

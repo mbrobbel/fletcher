@@ -12,32 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <memory>
-#include <string>
-#include <utility>
+#include <gmock/gmock.h>
 
-#include "cerata/domain.h"
-#include "cerata/node.h"
-#include "cerata/port.h"
+#include <string>
+#include <fstream>
+#include <cerata/api.h>
 
 namespace cerata {
 
-ClockDomain::ClockDomain(std::string name) : Named(std::move(name)) {}
+TEST(Nodes, ParamTrace) {
+  auto lit = strl("foo");
+  auto a = parameter("a", string(), lit);
+  auto b = parameter("b", string(), a);
+  auto c = parameter("c", string(), b);
 
-std::shared_ptr<ClockDomain> default_domain() {
-  static std::shared_ptr<ClockDomain> result = std::make_shared<ClockDomain>("default");
-  return result;
-}
+  std::vector<Node *> trace;
+  c->Trace(&trace);
 
-std::optional<std::shared_ptr<ClockDomain>> GetDomain(const Node &node) {
-  if (node.IsPort()) {
-    return node.AsPort()->domain();
-  } else if (node.IsSignal()) {
-    return node.AsSignal()->domain();
-  }
-  return std::nullopt;
+  ASSERT_EQ(trace[0], b.get());
+  ASSERT_EQ(trace[1], a.get());
+  ASSERT_EQ(trace[2], lit.get());
 }
 
 }  // namespace cerata
-
-

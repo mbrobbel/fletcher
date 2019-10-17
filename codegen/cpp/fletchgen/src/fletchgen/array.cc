@@ -75,7 +75,7 @@ std::shared_ptr<Type> cmd(const std::shared_ptr<Node> &tag_width = intl(1),
 
 std::shared_ptr<Type> unlock(const std::shared_ptr<Node> &tag_width) {
   auto tag = vector("tag", tag_width);
-  std::shared_ptr<Type> unlock_stream = stream("unlock", tag, "tag");
+  std::shared_ptr<Type> unlock_stream = stream("unlock", "tag", tag);
   return unlock_stream;
 }
 
@@ -303,14 +303,12 @@ std::shared_ptr<TypeMapper> GetStreamTypeMapper(Type *stream_type, Type *other) 
   auto flat_stream = conversion->flat_a();
   for (size_t i = 0; i < flat_stream.size(); i++) {
     auto t = flat_stream[i].type_;
-    if (t->Is(Type::STREAM)) {
+    if (t->Is(Type::RECORD)) {
       conversion->Add(i, idx_stream);
     } else if (t == dvalid().get()) {
       conversion->Add(i, idx_dvalid);
     } else if (t == last().get()) {
       conversion->Add(i, idx_last);
-    } else if (t->Is(Type::RECORD)) {
-      // do nothing
     } else {
       // If it's not any of the default control signals on the stream, it must be data.
       conversion->Add(i, idx_data);
@@ -342,7 +340,6 @@ std::pair<int, int> GetArrayDataSpec(const arrow::Field &arrow_field) {
       // list values, as there is no explicit child field to place this metadata in.
       auto data_width = epc * 8;
       auto length_width = lepc * 32;
-      epc = lepc;
       return {2, e_count_width + l_count_width + data_width + length_width};
     }
 
@@ -411,19 +408,16 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
       auto data_width = epc * 8;
       auto length_width = lepc * 32;
 
-      auto slave = stream(name,
-                          record("slave_rec", {
-                              field("dvalid", dvalid()),
-                              field("count", count(e_count_width)),
-                              field("last", last()),
-                              field("data", data(data_width)),
-                          }), "", epc);
-      type = record(name + "_rec", {
-          field("length", length(length_width)),
-          field("count", count(l_count_width)),
-          field("bytes", slave)
-      });
-      epc = lepc;
+      auto child = stream(record("slave_rec", {
+          field("dvalid", dvalid()),
+          field("count", count(e_count_width)),
+          field("last", last()),
+          field("data", data(data_width)),
+      }));
+      type = record({field("length", length(length_width)),
+                     field("count", count(l_count_width)),
+                     field("bytes", child)
+                    });
       e_count_width = l_count_width;
       break;
     }
@@ -434,19 +428,16 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
       auto data_width = epc * 8;
       auto length_width = lepc * 32;
 
-      auto slave = stream(name,
-                          record("slave_rec", {
-                              field("dvalid", dvalid()),
-                              field("count", count(e_count_width)),
-                              field("last", last()),
-                              field("data", data(data_width))
-                          }), "", epc);
-      type = record(name + "_rec", {
-          field("length", length(length_width)),
-          field("count", count(l_count_width)),
-          field("chars", slave)
-      });
-      epc = lepc;
+      auto child = stream(record("slave_rec", {
+          field("dvalid", dvalid()),
+          field("count", count(e_count_width)),
+          field("last", last()),
+          field("data", data(data_width))
+      }));
+      type = record({field("length", length(length_width)),
+                     field("count", count(l_count_width)),
+                     field("chars", child)
+                    });
       e_count_width = l_count_width;
       break;
     }
@@ -454,26 +445,25 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
       // Lists
     case arrow::Type::LIST: {
       if (arrow_field.type()->num_children() != 1) {
-        throw std::runtime_error("Encountered Arrow list type with other than 1 child.");
+        FLETCHER_LOG(FATAL, "Encountered Arrow list type with other than 1 child.");
       }
-
+      if (epc > 1) {
+        FLETCHER_LOG(FATAL, "Elements per cycle on non-primitive list is unsupported.");
+      }
       auto arrow_child = arrow_field.type()->child(0);
       auto element_type = GetStreamType(*arrow_child, mode, level + 1);
       auto length_width = 32;
 
-      auto slave = stream(name,
-                          record("slave_rec", {
-                              field("dvalid", dvalid()),
-                              field("count", count(e_count_width)),
-                              field("last", last()),
-                              field("data", element_type)}),
-                          "", epc);
+      auto child = stream(record("slave_rec", {
+          field("dvalid", dvalid()),
+          field("count", count(e_count_width)),
+          field("last", last()),
+          field("data", element_type)}));
       type = record(name + "_rec", {
           field("length", length(length_width)),
           field("count", count(l_count_width)),
-          field(arrow_child->name(), slave)
+          field(arrow_child->name(), child)
       });
-      epc = lepc;
       e_count_width = l_count_width;
       break;
     }
@@ -481,7 +471,7 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
       // Structs
     case arrow::Type::STRUCT: {
       if (arrow_field.type()->num_children() < 1) {
-        throw std::runtime_error("Encountered Arrow struct type without any children.");
+        FLETCHER_LOG(FATAL, "Encountered Arrow struct type without any children.");
       }
       std::vector<std::shared_ptr<cerata::Field>> children;
       for (const auto &f : arrow_field.type()->children()) {
@@ -501,20 +491,15 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
 
   // If this is a top level field, create a stream out of it
   if (level == 0) {
-    // Element name is empty by default.
-    std::string elements_name;
-
     // Create the stream record
-    auto rec = record("data", {
-        field("dvalid", dvalid()),
-        field("count", count(e_count_width)),
-        field("last", last()),
-        field("", type)});
+    auto rec = record({field("dvalid", dvalid()),
+                       field("count", count(e_count_width)),
+                       field("last", last()),
+                       field("", type)});
     if (arrow_field.nullable()) {
       rec->AddField(field("validity", validity()));
     }
-    auto strm = stream(name, rec, epc);
-    return strm;
+    return stream(rec);
   } else {
     // Otherwise just return the type
     return type;

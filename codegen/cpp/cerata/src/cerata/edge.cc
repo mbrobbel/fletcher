@@ -78,11 +78,14 @@ std::shared_ptr<Edge> Connect(Node *dst, Node *src) {
   // in place yet. Just generate a warning for now:
   CheckDomains(src, dst);
 
-  // Check if the types can be mapped onto each other
-  if (!src->type()->GetMapper(dst->type())) {
-    CERATA_LOG(FATAL, "No known type mapping available for connection between node ["
-        + dst->ToString() + "] and ["
-        + src->ToString() + "]");
+  // Check if either source or destination is a signal or port.
+  if (src->IsPort() || src->IsSignal()) {
+    // Check if the types can be mapped onto each other
+    if (!src->type()->GetMapper(dst->type())) {
+      CERATA_LOG(FATAL, "No known type mapping available for connection between node ["
+          + dst->ToString() + "] and ["
+          + src->ToString() + "]");
+    }
   }
 
   // If the destination is a terminator
@@ -203,8 +206,8 @@ std::shared_ptr<Signal> insert(Edge *edge,
 
   // When they were connected, their clock domains must have matched. Just grab the domain from the source.
   std::shared_ptr<ClockDomain> domain;
-  if (src->IsPort()) domain = src->AsPort().domain();
-  if (src->IsSignal()) domain = src->AsSignal().domain();
+  if (src->IsPort()) domain = src->AsPort()->domain();
+  if (src->IsSignal()) domain = src->AsSignal()->domain();
 
   // Get the destination type
   auto type = src->type()->shared_from_this();
@@ -244,19 +247,6 @@ std::shared_ptr<Signal> insert(Edge *edge,
   return sig;
 }
 
-std::shared_ptr<Signal> extend(Port *port, const std::string &name_prefix, std::optional<Graph *> new_owner) {
-  auto sig = signal(name_prefix + "_" + port->name(), port->type()->shared_from_this(), port->domain());
-  if (port->IsInput()) {
-    Connect(sig.get(), port);
-  } else {
-    Connect(port, sig.get());
-  }
-  if (new_owner) {
-    (*new_owner)->Add(sig);
-  }
-  return sig;
-}
-
 std::shared_ptr<Edge> Connect(Node *dst, const std::shared_ptr<Node> &src) {
   return Connect(dst, src.get());
 }
@@ -276,6 +266,180 @@ std::optional<Node *> Edge::GetOtherNode(const Node &node) const {
     return src_;
   } else {
     return std::nullopt;
+  }
+}
+
+static std::shared_ptr<ClockDomain> DomainOf(NodeArray *node_array) {
+  std::shared_ptr<ClockDomain> result;
+  auto base = node_array->base();
+  if (base->IsSignal()) {
+    result = std::dynamic_pointer_cast<Signal>(base)->domain();
+  } else if (base->IsPort()) {
+    result = std::dynamic_pointer_cast<Port>(base)->domain();
+  } else {
+    throw std::runtime_error("Base node is not a signal or port.");
+  }
+  return result;
+}
+
+void AttachSignalToNode(Component *comp,
+                        NormalNode *node,
+                        std::vector<Object *> *resolved,
+                        std::unordered_map<Node *, Node *> *rebinding) {
+  std::shared_ptr<Type> type = node->type()->shared_from_this();
+  // Figure out if the type is a generic type.
+  if (type->IsGeneric()) {
+    // In that case, obtain the type generic nodes.
+    auto generics = type->GetGenerics();
+    // We need to copy over any type generic nodes that are not on the component yet.
+    // Potentially produce new generics in the rebind map.
+    for (const auto &g : generics) {
+      RebindGeneric(comp, g, rebinding);
+    }
+    // Now we must rebind the type generics to the nodes on the component graph.
+    // Copy the type and provide the rebind map.
+    type = type->Copy(*rebinding);
+  }
+
+  // Get the clock domain of the node.
+  auto domain = default_domain();
+  if (node->IsSignal()) domain = node->AsSignal()->domain();
+  if (node->IsPort()) domain = node->AsPort()->domain();
+
+  // Get the name of the node.
+  auto name = node->name();
+  // Check if the node is on an instance, and prepend that.
+  if (node->parent()) {
+    if (node->parent().value()->IsInstance()) {
+      name = node->parent().value()->name() + "_" + name;
+    }
+  }
+  auto new_name = name;
+  // Check if a node with this name already exists, generate a new name suffixed with a number if it does.
+  int i = 0;
+  while (comp->Has(new_name)) {
+    i++;
+    new_name = name + "_" + std::to_string(i);
+  }
+
+  // Create the new signal.
+  auto new_signal = signal(new_name, type, domain);
+  comp->Add(new_signal);
+  resolved->push_back(new_signal.get());
+
+  // Iterate over any existing edges that are sinked by the original node.
+  for (auto &e : node->sinks()) {
+    // Figure out the original destination of this edge.
+    auto dst = e->dst();
+    // Remove the edge from the original node and the destination node.
+    node->RemoveEdge(e);
+    dst->RemoveEdge(e);
+    // Create a new edge, driving the destination with the new signal.
+    Connect(dst, new_signal);
+    Connect(new_signal, node);
+  }
+
+  // Iterate over any existing edges that source the original node.
+  for (auto &e : node->sources()) {
+    // Get the destination node.
+    auto src = e->src();
+    // Remove the original edge from the port array child node and source node.
+    node->RemoveEdge(e);
+    src->RemoveEdge(e);
+    // Create a new edge, driving the new signal with the original sourc.
+    Connect(new_signal, src);
+    Connect(node, new_signal);
+  }
+}
+
+void AttachSignalArrayToNodeArray(Component *comp,
+                                  NodeArray *array,
+                                  std::vector<Object *> *resolved,
+                                  std::unordered_map<Node *, Node *> *rebinding) {
+  // Get the base node.
+  auto base = array->base();
+
+  std::shared_ptr<Type> type = base->type()->shared_from_this();
+  // Figure out if the type is a generic type.
+  if (type->IsGeneric()) {
+    // In that case, obtain the type generic nodes.
+    auto generics = base->type()->GetGenerics();
+    // We need to copy over any type generic nodes that are not on the component yet.
+    // Potentially produce new generics in the rebind map.
+    for (const auto &g : generics) {
+      RebindGeneric(comp, g, rebinding);
+    }
+    // Now we must rebind the type generics to the nodes on the component graph.
+    // Copy the type and provide the rebind map.
+    type = array->type()->Copy(*rebinding);
+  }
+
+  // The size parameter must potentially be "rebound" as well.
+  RebindGeneric(comp, array->size(), rebinding);
+  auto size = rebinding->at(array->size())->shared_from_this();
+
+  // Get the clock domain of the array node
+  auto domain = DomainOf(array);
+  auto name = array->name();
+  // Check if the array is on an instance, and prepend that.
+  if (array->parent()) {
+    if (array->parent().value()->IsInstance()) {
+      name = array->parent().value()->name() + "_" + name;
+    }
+  }
+  auto new_name = name;
+  // Check if a node with this name already exists, generate a new name suffixed with a number if it does.
+  int i = 0;
+  while (comp->Has(new_name)) {
+    i++;
+    new_name = name + "_" + std::to_string(i);
+  }
+
+  // Create the new array.
+  auto new_array = signal_array(new_name, type, size, domain);
+  comp->Add(new_array);
+  resolved->push_back(new_array.get());
+
+  // Now iterate over all original nodes on the NodeArray and reconnect them.
+  for (size_t n = 0; n < array->num_nodes(); n++) {
+    // Create a new child node inside the array, but don't increment the size.
+    // We've already (potentially) rebound the size from some other source and it should be set properly already.
+    auto new_sig = new_array->Append(false);
+    resolved->push_back(new_sig);
+
+    bool has_sinks = false;
+    bool has_sources = false;
+
+    // Iterate over any existing edges that are sinked by the original array node.
+    for (auto &e : array->node(n)->sinks()) {
+      // Figure out the original destination.
+      auto dst = e->dst();
+      // Source the destination with the new signal.
+      Connect(dst, new_sig);
+      // Remove the original edge from the port array child node and destination node.
+      array->node(n)->RemoveEdge(e);
+      dst->RemoveEdge(e);
+      has_sinks = true;
+    }
+
+    // Iterate over any existing edges that source the original array node.
+    for (auto &e : array->node(n)->sources()) {
+      // Get the destination node.
+      auto src = e->src();
+      Connect(new_sig, src);
+      // Remove the original edge from the port array child node and source node.
+      array->node(n)->RemoveEdge(e);
+      src->RemoveEdge(e);
+      has_sources = true;
+    }
+
+    // Source the new signal node with the original node, depending on whether it had any sinks or sources.
+    if (has_sinks) {
+      Connect(new_sig, array->node(n));
+    }
+    if (has_sources) {
+      Connect(array->node(n), new_sig);
+    }
   }
 }
 

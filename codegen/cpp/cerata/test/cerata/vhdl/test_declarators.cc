@@ -17,6 +17,7 @@
 #include <cerata/api.h>
 
 #include "cerata/test_designs.h"
+#include "cerata/test_utils.h"
 
 namespace cerata {
 
@@ -84,9 +85,33 @@ TEST(VHDL_DECL, Component) {
 
 TEST(VHDL_DECL, ArrayPort) {
   default_component_pool()->Clear();
-  auto top = GetArrayComponent();
-  auto design = vhdl::Design(top);
-  std::cout << design.Generate().ToString() << std::endl;
+
+  auto size = parameter("size", integer(), intl(0));
+  auto data = vector<8>();
+  auto A = port_array("A", data, size, Term::OUT);
+  auto B = port("B", data, Term::IN);
+  auto C = port("C", data, Term::IN);
+  auto top = component("top");
+  auto X = component("X", {size, A});
+  auto Y = component("Y", {B, C});
+  auto x_inst = top->AddInstanceOf(X);
+  auto y_inst = top->AddInstanceOf(Y);
+
+  auto xa = x_inst->prta("A");
+  auto xa0 = xa->Append();
+  ASSERT_EQ(xa->size()->AsParameter()->value()->ToString(), "1");
+  auto xa1 = xa->Append();
+  ASSERT_EQ(xa->size()->AsParameter()->value()->ToString(), "2");
+
+  ASSERT_NE(xa, A.get());
+
+  auto yb = y_inst->prt("B");
+  auto yc = y_inst->prt("C");
+
+  Connect(yb, xa0);
+  Connect(yc, xa1);
+
+  GenerateDebugOutput(top);
 }
 
 }  // namespace cerata

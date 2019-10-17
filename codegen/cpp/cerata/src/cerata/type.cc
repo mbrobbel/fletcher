@@ -46,8 +46,6 @@ std::string Type::ToString(bool show_meta, bool show_mappers) const {
       break;
     case RECORD : ret = name() + ":Rec";
       break;
-    case STREAM : ret = name() + ":Stm";
-      break;
     default :throw std::runtime_error("Corrupted Type ID.");
   }
 
@@ -214,31 +212,6 @@ Type &Vector::SetWidth(std::shared_ptr<Node> width) {
   return *this;
 }
 
-std::shared_ptr<Stream> stream(const std::string &name, const std::shared_ptr<Type> &element_type, int epc) {
-  return std::make_shared<Stream>(name, element_type, "", epc);
-}
-
-std::shared_ptr<Stream> stream(const std::string &name,
-                               const std::shared_ptr<Type> &element_type,
-                               const std::string &element_name,
-                               int epc) {
-  return std::make_shared<Stream>(name, element_type, element_name, epc);
-}
-
-std::shared_ptr<Stream> stream(const std::shared_ptr<Type> &element_type, int epc) {
-  return std::make_shared<Stream>("stream-" + element_type->name(), element_type, "", epc);
-}
-
-Stream::Stream(const std::string &type_name, std::shared_ptr<Type> element_type, std::string element_name, int epc)
-    : Type(type_name, Type::STREAM),
-      element_type_(std::move(element_type)),
-      element_name_(std::move(element_name)),
-      epc_(epc) {
-  if (element_type_ == nullptr) {
-    throw std::runtime_error("Stream element type cannot be nullptr.");
-  }
-}
-
 std::shared_ptr<Type> bit(const std::string &name) {
   std::shared_ptr<Type> result = std::make_shared<Bit>(name);
   return result;
@@ -305,76 +278,6 @@ std::shared_ptr<Record> record(const std::vector<std::shared_ptr<Field>> &fields
   return record("", fields);
 }
 
-bool Stream::IsEqual(const Type &other) const {
-  if (other.Is(Type::STREAM)) {
-    auto &other_stream = dynamic_cast<const Stream &>(other);
-    bool eq = element_type()->IsEqual(*other_stream.element_type());
-    return eq;
-  }
-  return false;
-}
-
-void Stream::SetElementType(std::shared_ptr<Type> type) {
-  // Invalidate mappers that point to this type from the other side
-  for (auto &mapper : mappers_) {
-    mapper->b()->RemoveMappersTo(this);
-  }
-  // Invalidate all mappers from this type
-  mappers_ = {};
-  // Set the new element type
-  element_type_ = std::move(type);
-}
-
-bool Stream::CanGenerateMapper(const Type &other) const {
-  switch (other.id()) {
-    case Type::STREAM:
-      // If this and the other streams are "equal", a mapper can be generated
-      if (IsEqual(other)) {
-        return true;
-      } else {
-        // We can also map an empty stream, without mapping the elements. In practise, a back-end might emit e.g.
-        // additional ready/valid/count wires, connect those, but not any data elements.
-        if ((this->element_type() == nul()) || (dynamic_cast<const Stream &>(other).element_type() == nul())) {
-          return true;
-        }
-      }
-    default:return false;
-  }
-}
-
-std::shared_ptr<TypeMapper> Stream::GenerateMapper(Type *other) {
-  // Check if we can even do this:
-  if (!CanGenerateMapper(*other)) {
-    CERATA_LOG(FATAL, "No mapper generator known from Stream to " + other->name() + ToString(other->id()));
-  }
-  if (IsEqual(*other)) {
-    return TypeMapper::MakeImplicit(this, other);
-  } else {
-    // If this or the other stream has a no element type:
-    if ((this->element_type() == nul()) || (dynamic_cast<Stream *>(other)->element_type() == nul())) {
-      auto mapper = TypeMapper::Make(this, other);
-      // Only connect the two stream flat types.
-      auto matrix = mapper->map_matrix();
-      matrix(0, 0) = 1;
-      mapper->SetMappingMatrix(matrix);
-      return mapper;
-    }
-  }
-  return nullptr;
-}
-
-bool Stream::IsPhysical() const { return element_type_->IsPhysical(); }
-bool Stream::IsGeneric() const { return element_type_->IsGeneric(); }
-
-std::vector<Type *> Stream::GetNested() const {
-  std::vector<Type *> result;
-  result.push_back(element_type().get());
-  // Push back any nested types.
-  auto nested = element_type()->GetNested();
-  result.insert(result.end(), nested.begin(), nested.end());
-  return result;
-}
-
 bool Record::IsEqual(const Type &other) const {
   if (&other == this) {
     return true;
@@ -390,8 +293,8 @@ bool Record::IsEqual(const Type &other) const {
   }
   // Each field must also be of equal type
   for (size_t i = 0; i < this->num_fields(); i++) {
-    auto a = this->field(i)->type();
-    auto b = other_record.field(i)->type();
+    auto a = this->at(i)->type();
+    auto b = other_record.at(i)->type();
     if (!a->IsEqual(*b)) {
       return false;
     }
@@ -484,6 +387,11 @@ std::shared_ptr<Field> Field::Copy(std::unordered_map<Node *, Node *> rebinding)
   return result;
 }
 
+Field &Field::SetType(std::shared_ptr<Type> type) {
+  type_ = type;
+  return *this;
+}
+
 std::shared_ptr<Type> Record::Copy(std::unordered_map<Node *, Node *> rebinding) const {
   std::shared_ptr<Type> result;
   std::vector<std::shared_ptr<Field>> fields;
@@ -503,19 +411,13 @@ std::shared_ptr<Type> Record::Copy(std::unordered_map<Node *, Node *> rebinding)
   return result;
 }
 
-std::shared_ptr<Type> Stream::Copy(std::unordered_map<Node *, Node *> rebinding) const {
-  std::shared_ptr<Type> result;
-  result = stream(name(), element_type()->Copy(rebinding), element_name(), epc_);
-
-  result->meta = meta;
-
-  for (const auto &mapper : mappers_) {
-    auto new_mapper = mapper->Make(result.get(), mapper->b());
-    new_mapper->SetMappingMatrix(mapper->map_matrix());
-    result->AddMapper(new_mapper);
+Field *Record::at(size_t i) const {
+  if (i > fields_.size()) {
+    CERATA_LOG(FATAL, "Field index out of bounds.");
   }
-
-  return result;
+  return fields_[i].get();
 }
+
+Field *Record::operator()(size_t i) const { return at(i); }
 
 }  // namespace cerata

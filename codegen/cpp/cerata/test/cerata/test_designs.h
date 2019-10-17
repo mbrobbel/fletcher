@@ -124,29 +124,6 @@ std::shared_ptr<Component> GetArrayToArrayComponent(bool invert = false) {
   return top_comp;
 }
 
-std::shared_ptr<Component> GetArrayComponent() {
-  auto size = parameter("size", integer(), intl(0));
-  auto data = vector<8>();
-  auto pA = port_array("A", data, size, Term::OUT);
-  auto pB = port("B", data, Term::IN);
-  auto pC = port("C", data, Term::IN);
-
-  auto top = component("top");
-  auto x_comp = component("X", {size, pA});
-  auto y_comp = component("Y", {pB, pC});
-
-  auto x = instance(x_comp.get());
-  auto y = instance(y_comp.get());
-
-  Connect(y->prt("B"), x->prta("A")->Append());
-  Connect(y->prt("C"), x->prta("A")->Append());
-
-  top->AddChild(std::move(x))
-      .AddChild(std::move(y));
-
-  return top;
-}
-
 std::shared_ptr<Component> GetTypeConvComponent() {
   auto t_wide = vector<4>();
   auto t_narrow = vector<2>();
@@ -246,12 +223,13 @@ std::shared_ptr<Component> GetStreamConcatComponent() {
                    }));
 
   auto tB = stream("concat",  // 0
-                   bit(),     // 1
-                   "data");
+                   "data",
+                   bit());    // 1
+
 
   auto tC = stream("concat",  // 0
-                   bit(),     // 1
-                   "data");
+                   "data",
+                   bit());    // 1
 
   // Create a type mapping from tA to tB
   auto mapperB = std::make_shared<TypeMapper>(tA.get(), tB.get());

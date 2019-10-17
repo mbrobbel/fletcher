@@ -24,13 +24,16 @@ namespace cerata {
 
 TEST(VHDL_DESIGN, Simple) {
   default_component_pool()->Clear();
+
   auto static_vec = vector<8>();
   auto param = parameter("vec_width", integer(), intl(8));
   auto param_vec = vector("param_vec_type", param);
   auto veca = port("static_vec", static_vec);
   auto vecb = port("param_vec", param_vec);
   auto comp = component("simple", {param, veca, vecb});
+
   auto generated = GenerateDebugOutput(comp);
+
   auto expected =
       "library ieee;\n"
       "use ieee.std_logic_1164.all;\n"
@@ -38,7 +41,7 @@ TEST(VHDL_DESIGN, Simple) {
       "\n"
       "entity simple is\n"
       "  generic (\n"
-      "    VEC_WIDTH : natural := 8\n"
+      "    VEC_WIDTH : integer := 8\n"
       "  );\n"
       "  port (\n"
       "    static_vec : in std_logic_vector(7 downto 0);\n"
@@ -49,11 +52,13 @@ TEST(VHDL_DESIGN, Simple) {
       "architecture Implementation of simple is\n"
       "begin\n"
       "end architecture;\n";
+
   ASSERT_EQ(generated, expected);
 }
 
 TEST(VHDL_DESIGN, CompInst) {
   default_component_pool()->Clear();
+
   auto a = port("a", bit(), Port::Dir::IN);
   auto b = port("b", bit(), Port::Dir::OUT);
   auto ca = component("comp_a", {a});
@@ -62,7 +67,9 @@ TEST(VHDL_DESIGN, CompInst) {
   auto ia = top->AddInstanceOf(ca.get());
   auto ib = top->AddInstanceOf(cb.get());
   Connect(ia->prt("a"), ib->prt("b"));
+
   auto generated = GenerateDebugOutput(top);
+
   auto expected =
       "library ieee;\n"
       "use ieee.std_logic_1164.all;\n"
@@ -101,6 +108,7 @@ TEST(VHDL_DESIGN, CompInst) {
       "    );\n"
       "\n"
       "end architecture;\n";
+
   ASSERT_EQ(generated, expected);
 }
 

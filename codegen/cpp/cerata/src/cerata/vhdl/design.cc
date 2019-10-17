@@ -36,7 +36,7 @@ MultiBlock Design::Generate() {
   CERATA_LOG(DEBUG, "VHDL: Transforming Cerata graph to VHDL-compatible.");
 
   Resolve::SignalizePorts(component_.get());
-  Resolve::ExpandStreams(component_.get());
+  //Resolve::ExpandStreams(component_.get());
 
   // Place header
   Block h;

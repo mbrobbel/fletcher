@@ -29,6 +29,7 @@
 #include "cerata/transform.h"
 #include "cerata/port.h"
 #include "cerata/type.h"
+#include "cerata/stream.h"
 
 // Cerata utilities
 #include "cerata/logging.h"

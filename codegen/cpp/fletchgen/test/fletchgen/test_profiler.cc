@@ -27,7 +27,7 @@ TEST(Profiler, Connect) {
   cerata::logger().enable(fletchgen::LogCerata);
   cerata::default_component_pool()->Clear();
 
-  auto stream_type = cerata::stream("test_stream", cerata::vector(8), "data");
+  auto stream_type = cerata::stream("test_stream", "data", cerata::vector(8));
   auto stream_port = port(stream_type);
   auto crp = port("bcd", cr());
   auto top = cerata::component("top", {crp, stream_port});

@@ -66,11 +66,9 @@ Block GenerateNodeDeclarations(const Component &comp, int indent = 0) {
     result << decl;
     if (decl.lines.size() > 1) {
       result << Line();
-    } else if ((o == objs.back()) && !decl.lines.empty()) {
-      result << Line();
     }
   }
-  return result;
+  return result.AppendBlankLineIfNotEmpty();
 }
 
 template<typename T>
@@ -82,11 +80,9 @@ Block GenerateAssignments(const Component &comp, int indent = 0) {
     result << assignment;
     if (assignment.lines.size() > 1) {
       result << Line();
-    } else if ((o == objs.back()) && !assignment.lines.empty()) {
-      result << Line();
     }
   }
-  return result;
+  return result.AppendBlankLineIfNotEmpty();
 }
 
 MultiBlock Arch::Generate(const Component &comp) {
@@ -125,9 +121,7 @@ static Block GenerateMappingPair(const MappingPair &p,
   next_offset_a = (offset_a + (b_width ? b_width.value() : rintl(0)));
   next_offset_b = (offset_b + (a_width ? a_width.value() : rintl(0)));
 
-  if (p.flat_type_a(0).type_->Is(Type::STREAM)) {
-    // Don't output anything for the abstract stream type.
-  } else if (p.flat_type_a(0).type_->Is(Type::RECORD)) {
+  if (p.flat_type_a(0).type_->Is(Type::RECORD)) {
     // Don't output anything for the abstract record type.
   } else {
     std::string a;

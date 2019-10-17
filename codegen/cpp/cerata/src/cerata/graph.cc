@@ -26,25 +26,6 @@
 
 namespace cerata {
 
-static void GetParamSources(const Parameter &par,
-                            std::vector<std::shared_ptr<Object>> *out,
-                            bool include_literals = false) {
-  // If the parameter node has edges
-  auto opt_val = par.GetValue();
-  if (opt_val) {
-    // Obtain shared ownership of the value and add it to the graph
-    auto val = opt_val.value()->shared_from_this();
-    // Append it to the output if its not a literal or we want to include literals.
-    if (!val->IsLiteral() || include_literals) {
-      out->push_back(val);
-    }
-    // If the value is a parameter itself, recurse into this function again for the value.
-    if (val->IsParameter()) {
-      GetParamSources(val->AsParameter(), out);
-    }
-  }
-}
-
 void GetSubObjects(const Object &obj, std::vector<Object *> *out) {
   if (obj.IsNode()) {
     // If the object is a normal node, its type may be a generic type.
@@ -177,6 +158,10 @@ std::vector<const Component *> Component::GetAllInstanceComponents() const {
     }
   }
   return ret;
+}
+
+Instance *Component::AddInstanceOf(std::shared_ptr<Component> comp, const std::string &name) {
+  return AddInstanceOf(comp.get(), name);
 }
 
 std::optional<NodeArray *> Graph::GetArray(Node::NodeID node_id, const std::string &array_name) const {
@@ -414,7 +399,7 @@ void RebindGeneric(Component *comp, Node *generic, std::unordered_map<Node *, No
     bool rebound = false;
     if (generic->IsParameter()) {
       std::vector<Node *> param_sources;
-      generic->AsParameter().GetSourceTrace(&param_sources);
+      generic->AsParameter()->Trace(&param_sources);
       for (const auto &ps : param_sources) {
         if (ps->parent() == comp || ps->IsLiteral()) {
           (*rebinding)[generic] = ps;

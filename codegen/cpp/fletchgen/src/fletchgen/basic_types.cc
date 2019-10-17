@@ -67,10 +67,10 @@ VEC_FACTORY(byte, 8)
 VEC_FACTORY(offset, 32)
 
 /// Creates generic Fletcher parameters.
-#define PARAM_FACTORY(NAME, SIZE)                                  \
-std::shared_ptr<Parameter> NAME() {                                \
-  auto result = parameter(#NAME, cerata::integer(), std::nullopt); \
-  return result;                                                   \
+#define PARAM_FACTORY(NAME, SIZE)                                \
+std::shared_ptr<Parameter> NAME() {                              \
+  auto result = parameter(#NAME, cerata::integer(), intl(SIZE)); \
+  return result;                                                 \
 }
 
 PARAM_FACTORY(bus_addr_width, 64)

@@ -28,6 +28,17 @@ struct Line {
   explicit Line(const std::string &str) {
     parts.push_back(str);
   }
+  [[nodiscard]] bool IsBlank() const {
+    if (parts.size() == 0) {
+      return true;
+    }
+    if (parts.size() == 1) {
+      if (parts[0] == "\n") {
+        return true;
+      }
+    }
+    return false;
+  }
   /// @brief Return the line as a single string.
   [[nodiscard]] std::string ToString() const;
   /// The parts of the line of code.
@@ -42,6 +53,8 @@ struct Block {
   [[nodiscard]] std::vector<size_t> GetAlignments() const;
   /// @brief Return the block in reverse.
   Block &Reverse();
+  /// @brief Append a blank line if the block is not empty.
+  Block &AppendBlankLineIfNotEmpty();
 
   /**
    * @brief Sort the lines in the block. Supply a character to stop sorting per line after encountering the character.

@@ -96,6 +96,15 @@ Block &Block::Sort(std::optional<char> c) {
   return *this;
 }
 
+Block &Block::AppendBlankLineIfNotEmpty() {
+  if (!lines.empty()) {
+    if (!lines.back().IsBlank()) {
+      lines.emplace_back();
+    }
+  }
+  return *this;
+}
+
 Block &operator<<(Block &lhs, const Line &line) {
   lhs.lines.push_back(line);
   return lhs;

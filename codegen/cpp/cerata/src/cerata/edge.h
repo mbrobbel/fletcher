@@ -108,12 +108,23 @@ std::shared_ptr<Signal> insert(Edge *edge,
                                std::unordered_map<Node *, Node *> *rebinding,
                                const std::string &name_prefix = "int_");
 
-/// @brief Create a signal node based on a port, and create an edge in between.
-std::shared_ptr<Signal> extend(Port *port,
-                               const std::string &name_prefix = "int_",
-                               std::optional<Graph *> new_owner = std::nullopt);
-
 /// @brief Obtain all edges in a graph.
 std::vector<Edge *> GetAllEdges(const Graph &graph);
+
+/**
+* @brief Insert a signal array based on a node array and connect every node.
+*/
+void AttachSignalArrayToNodeArray(Component *comp,
+                                  NodeArray *array,
+                                  std::vector<Object *> *resolved,
+                                  std::unordered_map<Node *, Node *> *rebinding);
+
+/**
+ * @brief Insert a signal based on a node and reconnect every edge.
+ */
+void AttachSignalToNode(Component *comp,
+                        NormalNode *node,
+                        std::vector<Object *> *resolved,
+                        std::unordered_map<Node *, Node *> *rebinding);
 
 }  // namespace cerata

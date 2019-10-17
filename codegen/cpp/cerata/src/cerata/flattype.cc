@@ -69,13 +69,6 @@ void FlattenRecord(std::vector<FlatType> *list,
   }
 }
 
-void FlattenStream(std::vector<FlatType> *list,
-                   const Stream *stream,
-                   const std::optional<FlatType> &parent,
-                   bool invert) {
-  Flatten(list, stream->element_type().get(), parent, "", invert);
-}
-
 void Flatten(std::vector<FlatType> *list,
              Type *type,
              const std::optional<FlatType> &parent,
@@ -95,8 +88,6 @@ void Flatten(std::vector<FlatType> *list,
   list->push_back(result);
 
   switch (type->id()) {
-    case Type::STREAM:FlattenStream(list, dynamic_cast<Stream *>(type), result, invert);
-      break;
     case Type::RECORD:FlattenRecord(list, dynamic_cast<Record *>(type), result, invert);
       break;
     default:break;

@@ -76,11 +76,6 @@ std::string Grapher::GenEdges(const Graph &graph, int level) {
       StyleBuilder sb;
       ret << " [";
       switch (src->type()->id()) {
-        case Type::STREAM: {
-          sb << style.edge.stream;
-          sb << awq("color", style.edge.color.stream);
-          break;
-        }
         default: {
           sb << style.edge.base;
           break;
@@ -138,25 +133,7 @@ std::string Style::GenHTMLTableCell(const Type &t,
                                     int level) {
   std::stringstream str;
   // Ph'nglui mglw'nafh Cthulhu R'lyeh wgah'nagl fhtagn
-  if (t.Is(Type::STREAM)) {
-    auto stream = dynamic_cast<const Stream &>(t);
-    str << R"(<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0")";
-    if (level == 0) {
-      str << R"( PORT="cell")";
-    }
-    str << ">";
-    str << "<TR>";
-    str << "<TD";
-    str << R"( BGCOLOR=")" + node.color.stream + R"(">)";
-    str << name;
-    str << "</TD>";
-    str << "<TD ";
-    str << R"( BGCOLOR=")" + node.color.stream_child + R"(">)";
-    str << GenHTMLTableCell(*stream.element_type(), stream.element_name(), level + 1);
-    str << "</TD>";
-    str << "</TR>";
-    str << "</TABLE>";
-  } else if (t.Is(Type::RECORD)) {
+  if (t.Is(Type::RECORD)) {
     auto rec = dynamic_cast<const Record &>(t);
     str << R"(<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0")";
     if (level == 0) {
@@ -202,17 +179,7 @@ std::string Style::GenDotRecordCell(const Type &t,
                                     int level) {
   std::stringstream str;
   // Ph'nglui mglw'nafh Cthulhu R'lyeh wgah'nagl fhtagn
-  if (t.Is(Type::STREAM)) {
-    auto stream = dynamic_cast<const Stream &>(t);
-    if (level == 0) {
-      str << "<cell>";
-    }
-    str << name;
-    str << "|";
-    str << "{";
-    str << GenDotRecordCell(*stream.element_type(), stream.element_name(), level + 1);
-    str << "}";
-  } else if (t.Is(Type::RECORD)) {
+  if (t.Is(Type::RECORD)) {
     auto rec = dynamic_cast<const Record &>(t);
     if (level == 0) {
       str << "<cell>";

@@ -59,7 +59,7 @@ std::vector<MmioReg> GetProfilingRegs(const std::vector<std::shared_ptr<RecordBa
       // Check if we should profile the field-derived port node.
       if (fp->profile_) {
         for (const auto &ft : cerata::Flatten(fp->type())) {
-          if (ft.type_->Is(cerata::Type::STREAM)) {
+          if (ft.type_->Is(cerata::Type::RECORD)) {
             auto prefix = ft.name(cerata::NamePart(fp->name()));
             MmioReg e{MmioReg::Function::PROFILE, MmioReg::Behavior::STATUS, prefix + "_ecount", ecount, COUNT_WIDTH};
             MmioReg v{MmioReg::Function::PROFILE, MmioReg::Behavior::STATUS, prefix + "_rcount", vcount, COUNT_WIDTH};
@@ -154,7 +154,7 @@ NodeProfilerPorts EnableStreamProfiling(cerata::Component *comp,
     // Iterate over all flattened types. If we encounter a stream, we must profile it.
     size_t fti = 0;
     while (fti < flat_types.size()) {
-      if (flat_types[fti].type_->Is(Type::STREAM)) {
+      if (flat_types[fti].type_->Is(Type::RECORD)) {
         FLETCHER_LOG(DEBUG, "Inserting profiler for stream node " + node->name()
             + ", sub-stream " + std::to_string(s)
             + " of flattened type " + node->type()->name()
@@ -205,18 +205,16 @@ NodeProfilerPorts EnableStreamProfiling(cerata::Component *comp,
         fti++;
         while (fti < flat_types.size()) {
           auto ft = flat_types[fti];
-          if (ft.type_->Is(Type::STREAM)) {
-            // We've found the next stream, continue the function.
-            break;
+          if (ft.type_->Is(Type::RECORD)) {
+            if (ft.type_->meta.count(metakeys::COUNT) > 0) {
+              auto width = std::strtol(flat_types[fti].type_->meta.at(metakeys::COUNT).c_str(), nullptr, 10);
+              p_in_count_width <<= intl(static_cast<int>(width));
+              // We've found the count field.
+              matrix(fti, 2) = 2;  // Connect the count.
+              break;
+            }
+            fti++;
           }
-          if (ft.type_->meta.count(metakeys::COUNT) > 0) {
-            auto width = std::strtol(flat_types[fti].type_->meta.at(metakeys::COUNT).c_str(), nullptr, 10);
-            p_in_count_width <<= intl(static_cast<int>(width));
-            // We've found the count field.
-            matrix(fti, 2) = 2;  // Connect the count.
-            break;
-          }
-          fti++;
         }
 
         // Set the mapping matrix of the new mapper, and add it to the probe.

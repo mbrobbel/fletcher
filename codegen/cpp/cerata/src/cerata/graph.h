@@ -150,12 +150,14 @@ class Component : public Graph {
  public:
   /// @brief Construct an empty Component.
   explicit Component(std::string name) : Graph(std::move(name), COMPONENT) {}
+
   /**
    * @brief Add and take ownership of an Instance graph.
    * @param child   The child graph to add.
    * @return        This component if successful.
    */
   Component &AddChild(std::unique_ptr<Instance> child);
+
   /**
    * @brief Add a child Instance from a component.
    * @param comp    The component to instantiate and add.
@@ -163,8 +165,18 @@ class Component : public Graph {
    * @return        A pointer to the instantiated component.
    */
   Instance *AddInstanceOf(Component *comp, const std::string &name = "");
+
+  /**
+   * @brief Add a child Instance from a component.
+   * @param comp    The component to instantiate and add.
+   * @param name    The name of the new instance. If left blank, it will use the Component name + "_inst".
+   * @return        A pointer to the instantiated component.
+   */
+  Instance *AddInstanceOf(std::shared_ptr<Component> comp, const std::string &name = "");
+
   /// @brief Returns all Instance graphs from this Component.
   std::vector<Instance *> children() const { return ToRawPointers(children_); }
+
   /// @brief Returns all unique Components that are referred to by child Instances of this graph.
   virtual std::vector<const Component *> GetAllInstanceComponents() const;
 

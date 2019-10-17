@@ -55,7 +55,7 @@ std::vector<FlatType> FilterForVHDL(const std::vector<FlatType> &list) {
   for (const auto &ft : list) {
     // Only keep types that are not abstract, or boolean.
     if (ft.type_->IsPhysical() || ft.type_->Is(Type::BOOLEAN)) {
-      if (!ft.type_->Is(Type::ID::RECORD) && !ft.type_->Is(Type::ID::STREAM)) {
+      if (!ft.type_->Is(Type::ID::RECORD)) {
         result.push_back(ft);
       }
     }

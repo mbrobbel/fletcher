@@ -28,67 +28,78 @@
 
 namespace cerata {
 
-static std::shared_ptr<Node> IncrementNode(const Node &node) {
-  if (node.IsLiteral() || node.IsExpression()) {
-    return node + 1;
-  } else if (node.IsParameter()) {
-    // If the node is a parameter.
-    auto &param = dynamic_cast<const Parameter &>(node);
-    // Make a copy of the parameter.
-    std::shared_ptr<Node> new_param = std::dynamic_pointer_cast<Node>(param.Copy());
-    // Figure out who should own the copy.
-    if (param.parent()) {
-      param.parent().value()->Add(new_param);
-    } else {
-      // If there's no parent, place it in the default node pool.
-      // TODO(johanpel): this is a bit ugly.
-      default_node_pool()->Add(new_param);
+static std::shared_ptr<Node> IncrementNode(Node *node) {
+  if (node->IsLiteral() || node->IsExpression()) {
+    return node->shared_from_this() + 1;
+  } else if (node->IsParameter()) {
+    // If the node is a parameter, we should be able to trace its source back to a literal node.
+    // We then replace the last parameter node in the trace by a copy and source the copy from an incremented literal.
+    auto param = dynamic_cast<Parameter *>(node);
+    // Initialize the trace with the parameter node.
+    std::vector<Node *> trace{param};
+    param->Trace(&trace);
+    // Sanity check the trace.
+    if (!trace.back()->IsLiteral()) {
+      CERATA_LOG(FATAL, "Parameter node " + param->ToString() + " not (indirectly) sourced by literal.");
     }
-    if (param.GetValue()) {
-      auto param_value = param.GetValue().value();
-      // Recurse until we reach the literal.
-      new_param <<= IncrementNode(*param_value);
+    // The second-last node is of importance, because this is the final parameter node.
+    auto second_last = trace[trace.size() - 2];
+    // Create a copy of the second last node.
+    auto copy = std::dynamic_pointer_cast<Parameter>(second_last->Copy());
+    // Source the copy with whatever literal was at the end of the trace, plus one.
+    auto incremented = trace.back()->shared_from_this() + 1;
+    Connect(copy, incremented);
+    // Replace the second-last node in the trace with our copy.
+    // This is often the parameter node itself, when it is directly sourced by a literal.
+    second_last->Replace(copy.get());
+    // If the parameter node was the second last node, we should return the copy.
+    if (param == second_last) {
+      return copy->shared_from_this();
     } else {
-      // Otherwise connect an integer literal of 1 to the parameter.
-      new_param <<= intl(1);
+      return trace[0]->shared_from_this();
     }
-    return new_param;
   } else {
-    CERATA_LOG(FATAL, "Cannot increment node " + node.name() + " of type " + ToString(node.node_id()));
+    CERATA_LOG(FATAL, "Can only increment literal, expression or parameter size node " + node->ToString());
   }
 }
 
 void NodeArray::SetSize(const std::shared_ptr<Node> &size) {
-  if (size == nullptr) {
-    throw std::runtime_error("Cannot set ArrayNode size to nullptr.");
-  } else {
-    size_ = size;
+  if (!(size->IsLiteral() || size->IsParameter() || size->IsExpression())) {
+    CERATA_LOG(FATAL, "NodeArray size node must be literal, parameter or expression.");
   }
+  if (size->IsParameter()) {
+    auto param = size->AsParameter();
+    if (param->node_array_parent) {
+      auto na = size->AsParameter()->node_array_parent.value();
+      if (na != this) {
+        CERATA_LOG(FATAL, "NodeArray size can only be used by a single NodeArray.");
+      }
+    }
+    param->node_array_parent = this;
+  }
+  size_ = size;
 }
 
 void NodeArray::IncrementSize() {
-  if (size_ != nullptr) {
-    if (parent_) {
-      parent_.value()->Remove(size_.get());
-    }
-    auto new_size = IncrementNode(*size_);
-    SetSize(new_size);
-  } else {
-    throw std::runtime_error("Corrupted NodeArray. Size is nullptr.");
-  }
+  SetSize(IncrementNode(size_.get()));
 }
 
 Node *NodeArray::Append(bool increment_size) {
-  auto elem = std::dynamic_pointer_cast<Node>(base_->Copy());
+  // Create a new copy of the base node.
+  auto new_node = std::dynamic_pointer_cast<Node>(base_->Copy());
   if (parent()) {
-    elem->SetParent(*parent());
+    new_node->SetParent(*parent());
   }
-  elem->SetArray(this);
-  nodes_.push_back(elem);
+  new_node->SetArray(this);
+  nodes_.push_back(new_node);
+
+  // Increment this NodeArray's size node.
   if (increment_size) {
     IncrementSize();
   }
-  return elem.get();
+
+  // Return the new node.
+  return new_node.get();
 }
 
 Node *NodeArray::node(size_t i) const {
@@ -132,24 +143,30 @@ void NodeArray::SetType(const std::shared_ptr<Type> &type) {
   }
 }
 
+NodeArray::NodeArray(std::string name, Node::NodeID id, std::shared_ptr<Node> base, const std::shared_ptr<Node> &size)
+    : Object(std::move(name), Object::ARRAY), node_id_(id), base_(std::move(base)) {
+  base_->SetArray(this);
+  SetSize(size);
+}
+
 PortArray::PortArray(const std::shared_ptr<Port> &base,
-                     std::shared_ptr<Node> size,
+                     const std::shared_ptr<Node> &size,
                      Term::Dir dir) :
-    NodeArray(base->name(), Node::NodeID::PORT, base, std::move(size)), Term(base->dir()) {}
+    NodeArray(base->name(), Node::NodeID::PORT, base, size), Term(base->dir()) {}
 
 std::shared_ptr<PortArray> port_array(const std::string &name,
                                       const std::shared_ptr<Type> &type,
-                                      std::shared_ptr<Node> size,
+                                      const std::shared_ptr<Node> &size,
                                       Port::Dir dir,
                                       const std::shared_ptr<ClockDomain> &domain) {
   auto base_node = port(name, type, dir, domain);
-  auto *port_array = new PortArray(base_node, std::move(size), dir);
+  auto *port_array = new PortArray(base_node, size, dir);
   return std::shared_ptr<PortArray>(port_array);
 }
 
 std::shared_ptr<PortArray> port_array(const std::shared_ptr<Port> &base_node,
-                                      std::shared_ptr<Node> size) {
-  auto *port_array = new PortArray(base_node, std::move(size), base_node->dir());
+                                      const std::shared_ptr<Node> &size) {
+  auto *port_array = new PortArray(base_node, size, base_node->dir());
   return std::shared_ptr<PortArray>(port_array);
 }
 

@@ -18,7 +18,7 @@
 
 namespace cerata {
 
-std::string ToString(std::shared_ptr<const Node> n) {
+static std::string ToString(std::shared_ptr<const Node> n) {
   std::stringstream ss;
   ss << n;
   return ss.str();

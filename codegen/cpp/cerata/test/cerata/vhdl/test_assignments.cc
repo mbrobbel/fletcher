@@ -74,14 +74,19 @@ TEST(VHDL_ASSIGN, SignalRecordArray) {
 }
 
 TEST(VHDL_ASSIGN, SignalRecordArrayParam) {
-  auto size = parameter("SIZE", integer(), intl(0));
+  auto a_size = parameter("A_SIZE", integer(), intl(0));
+  auto b_size = parameter("B_SIZE", integer(), intl(0));
   auto rec = record({field("x", vector(8)),
                      field("y", bit())});
-  auto a = signal_array("a", rec, size);
-  auto b = signal_array("b", rec, size);
+  auto a = signal_array("a", rec, a_size);
+  auto b = signal_array("b", rec, b_size);
 
-  Connect(a->Append(), b->Append());
-  Connect(a->Append(), b->Append());
+  auto a0 = a->Append();
+  auto a1 = a->Append();
+  auto b0 = b->Append();
+  auto b1 = b->Append();
+  Connect(a0, b0);
+  Connect(a1, b1);
 
   auto ca = vhdl::Arch::Generate(*a).ToString();
   auto cb = vhdl::Arch::Generate(*b).ToString();

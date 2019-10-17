@@ -61,16 +61,13 @@ Block Inst::GenerateGenericMap(const Parameter &par) {
   Line l;
   l << ToUpper(par.name()) << " => ";
   // Get the value to apply
-  auto optional_value = par.GetValue();
-  if (optional_value.has_value()) {
-    const Node *val = optional_value.value();
-    // If it is a literal, make it VHDL compatible
-    if (val->IsLiteral()) {
-      auto *lit = dynamic_cast<const Literal *>(val);
-      l << lit2vhdl(*lit);
-    } else {
-      l << ToUpper(val->ToString());
-    }
+  auto val = par.value();
+  // If it is a literal, make it VHDL compatible
+  if (val->IsLiteral()) {
+    auto *lit = dynamic_cast<const Literal *>(val);
+    l << lit2vhdl(*lit);
+  } else {
+    l << ToUpper(val->ToString());
   }
   ret << l;
   return ret;
@@ -97,9 +94,7 @@ static Block GenerateMappingPair(const MappingPair &p,
   next_offset_a = (offset_a + (b_width ? b_width.value() : rintl(0)));
   next_offset_b = (offset_b + (a_width ? a_width.value() : rintl(0)));
 
-  if (p.flat_type_a(0).type_->Is(Type::STREAM)) {
-    // Don't output anything for the abstract stream type.
-  } else if (p.flat_type_a(0).type_->Is(Type::RECORD)) {
+  if (p.flat_type_a(0).type_->Is(Type::RECORD)) {
     // Don't output anything for the abstract record type.
   } else {
     Line l;

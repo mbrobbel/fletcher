@@ -178,7 +178,6 @@ std::string Style::GetStyle(const Node &n) {
   // Add label
   switch (n.type()->id()) {
     case Type::RECORD:break;
-    case Type::STREAM:break;
     case Type::VECTOR: sb << node.type.vector;
       break;
     case Type::BIT:sb << node.type.bit;
@@ -214,15 +213,8 @@ std::string Style::GetStyle(const Node &n) {
 std::string Style::GetLabel(const Node &n) {
   StyleBuilder sb;
   bool expand = false;
-  if (n.type()->Is(Type::STREAM)) {
-    expand |= config.nodes.expand.stream;
-    if (config.nodes.expand.stream) {
-      sb << awq("fillcolor", node.color.stream_child);
-      sb << awq("color", node.color.stream_border);
-    } else {
-      sb << node.type.stream;
-    }
-  } else if (n.type()->Is(Type::RECORD)) {
+
+  if (n.type()->Is(Type::RECORD)) {
     expand |= config.nodes.expand.record;
     if (config.nodes.expand.record) {
       sb << awq("fillcolor", node.color.record_child);
@@ -244,10 +236,8 @@ std::string Style::GetLabel(const Node &n) {
   } else if (n.IsParameter()) {
     auto par = dynamic_cast<const Parameter &>(n);
     str << "label=\"" + sanitize(par.name());
-    if (par.GetValue()) {
-      auto val = *par.GetValue();
-      str << ":" << sanitize(val->ToString());
-    }
+    auto val = par.value();
+    str << ":" << sanitize(val->ToString());
     str << "\"";
   } else {
     str << "label=\"" + sanitize(n.name()) + "\"";

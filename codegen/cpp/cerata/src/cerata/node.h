@@ -64,16 +64,16 @@ class Node : public Object, public std::enable_shared_from_this<Node> {
 
   /// Casting convenience functions
 #ifndef NODE_CAST_DECL_FACTORY
-#define NODE_CAST_DECL_FACTORY(NODENAME, IDNAME)                            \
-  inline bool Is##NODENAME() const { return node_id_ == NodeID::IDNAME; }   \
-  NODENAME& As##NODENAME();                                                 \
-  const NODENAME& As##NODENAME() const;
+#define NODE_CAST_DECL_FACTORY(NODENAME, IDNAME)                          \
+  inline bool Is##NODENAME() const { return node_id_ == NodeID::IDNAME; } \
+  NODENAME* As##NODENAME();                                               \
+  const NODENAME* As##NODENAME() const;
+#endif
   NODE_CAST_DECL_FACTORY(Port, PORT)
   NODE_CAST_DECL_FACTORY(Signal, SIGNAL)
   NODE_CAST_DECL_FACTORY(Parameter, PARAMETER)
   NODE_CAST_DECL_FACTORY(Literal, LITERAL)
   NODE_CAST_DECL_FACTORY(Expression, EXPRESSION)
-#endif
 
   /// @brief Add an input to this node.
   virtual std::shared_ptr<Edge> AddSource(Node *input) = 0;
@@ -91,6 +91,13 @@ class Node : public Object, public std::enable_shared_from_this<Node> {
   virtual std::vector<Edge *> sinks() const { return {}; }
   /// @brief Recursively list any nodes that this node owns.
   virtual std::vector<const Node *> ownees() const { return {}; }
+  /**
+ * @brief Replace some node with another node, reconnecting all original edges.
+ * @param original      The original node to replace.
+ * @param replacement   The replacement node.
+ * @return              A pointer to the replaced node for function chaining.
+ */
+  Node *Replace(Node *replacement);
 
   /// @brief Set parent array.
   void SetArray(NodeArray *array) { array_ = array; }
@@ -214,24 +221,25 @@ std::shared_ptr<Signal> signal(const std::shared_ptr<Type> &type,
 class Parameter : public NormalNode {
  public:
   /// @brief Construct a new Parameter, optionally defining a default value Literal.
-  Parameter(std::string name,
-            const std::shared_ptr<Type> &type,
-            std::optional<std::shared_ptr<Literal>> default_value = {});
+  Parameter(std::string name, const std::shared_ptr<Type> &type, const std::shared_ptr<Node> &default_value);
   /// @brief Create a copy of this Parameter.
   std::shared_ptr<Object> Copy() const override;
   /// @brief Short hand to get value node.
-  std::optional<Node *> GetValue() const;
+  Node *value() const;
   /// @brief Obtain all nodes that source this parameter and append it to output.
-  void GetSourceTrace(std::vector<Node *> *out) const;
- protected:
-  /// @brief An optional default value.
-  std::optional<std::shared_ptr<Literal>> default_value_;
-};
+  void Trace(std::vector<Node *> *out) const;
 
+  bool RemoveEdge(Edge *edge) override;
+
+  // TODO(johanpel): Work-around for parameters nodes that are size nodes of arrays.
+  //  To prevent this, it requires a restructuring of node arrays.
+  std::optional<NodeArray *> node_array_parent;
+
+};
 /// @brief Get a smart pointer to a new Parameter, optionally owning a default value Literal.
 std::shared_ptr<Parameter> parameter(const std::string &name,
                                      const std::shared_ptr<Type> &type,
-                                     const std::optional<std::shared_ptr<Literal>> &default_value = {});
+                                     const std::shared_ptr<Node> &default_value = nullptr);
 
 /// @brief Convert a Node ID to a human-readable string.
 std::string ToString(Node::NodeID id);

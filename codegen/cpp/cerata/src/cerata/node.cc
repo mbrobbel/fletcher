@@ -35,6 +35,36 @@ std::string Node::ToString() const {
   return name();
 }
 
+Node *Node::Replace(Node *replacement) {
+  // Iterate over all sourcing edges of the original node.
+  for (const auto &e : this->sources()) {
+    auto src = e->src();
+    src->RemoveEdge(e);
+    this->RemoveEdge(e);
+    Connect(replacement, src);
+  }
+  // Iterate over all sinking edges of the original node.
+  for (const auto &e : this->sinks()) {
+    auto dst = e->src();
+    dst->RemoveEdge(e);
+    this->RemoveEdge(e);
+    Connect(dst, replacement);
+  }
+  // Remove the node from its parent, if it has one.
+  if (this->parent()) {
+    this->parent().value()->Remove(this);
+    this->parent().value()->Add(this->shared_from_this());
+  }
+  // Set array size node, if this is one.
+  if (this->IsParameter()) {
+    auto param = this->AsParameter();
+    if (param->node_array_parent) {
+      param->node_array_parent.value()->SetSize(replacement->shared_from_this());
+    }
+  }
+  return replacement;
+}
+
 std::vector<Edge *> Node::edges() const {
   auto snk = sinks();
   auto src = sources();
@@ -46,15 +76,26 @@ std::vector<Edge *> Node::edges() const {
 
 // Generate node casting convenience functions.
 #ifndef NODE_CAST_IMPL_FACTORY
-#define NODE_CAST_IMPL_FACTORY(NODENAME)                                                     \
-NODENAME& Node::As##NODENAME() { return dynamic_cast<NODENAME &>(*this); }                   \
-const NODENAME &Node::As##NODENAME() const { return dynamic_cast<const NODENAME &>(*this); }
+#define NODE_CAST_IMPL_FACTORY(NODENAME)                                                        \
+NODENAME* Node::As##NODENAME() { auto result = dynamic_cast<NODENAME*>(this);                   \
+  if (result != nullptr) {                                                                      \
+    return result;                                                                              \
+  } else {                                                                                      \
+    CERATA_LOG(FATAL, "Node is not " + std::string(#NODENAME));                                 \
+}}                                                                                              \
+const NODENAME* Node::As##NODENAME() const { auto result = dynamic_cast<const NODENAME*>(this); \
+  if (result != nullptr) {                                                                      \
+    return result;                                                                              \
+  } else {                                                                                      \
+    CERATA_LOG(FATAL, "Node is not " + std::string(#NODENAME));                                 \
+}}
+#endif
+
 NODE_CAST_IMPL_FACTORY(Port)
 NODE_CAST_IMPL_FACTORY(Signal)
 NODE_CAST_IMPL_FACTORY(Parameter)
 NODE_CAST_IMPL_FACTORY(Literal)
 NODE_CAST_IMPL_FACTORY(Expression)
-#endif
 
 bool MultiOutputNode::AddEdge(const std::shared_ptr<Edge> &edge) {
   bool success = false;
@@ -153,40 +194,47 @@ std::string ToString(Node::NodeID id) {
   throw std::runtime_error("Corrupted node type.");
 }
 
+Parameter::Parameter(std::string name, const std::shared_ptr<Type> &type, const std::shared_ptr<Node> &default_value)
+    : NormalNode(std::move(name), Node::NodeID::PARAMETER, type) {
+  Connect(this, default_value);
+}
+
+Node *Parameter::value() const {
+  return input().value()->src();
+}
+
+void Parameter::Trace(std::vector<Node *> *out) const {
+  if (input()) {
+    out->push_back(input().value()->src());
+    if (input().value()->src()->IsParameter()) {
+      input().value()->src()->AsParameter()->Trace(out);
+    }
+  }
+}
+
 std::shared_ptr<Object> Parameter::Copy() const {
-  auto result = parameter(name(), type()->shared_from_this(), default_value_);
+  auto result = parameter(name(), type()->shared_from_this(), value()->shared_from_this());
   result->meta = this->meta;
   return result;
 }
 
 std::shared_ptr<Parameter> parameter(const std::string &name,
                                      const std::shared_ptr<Type> &type,
-                                     const std::optional<std::shared_ptr<Literal>> &default_value) {
-  auto p = new Parameter(name, type, default_value);
+                                     const std::shared_ptr<Node> &default_value) {
+  auto val = default_value;
+  if (val == nullptr) {
+    val = intl(0);
+  }
+  auto p = new Parameter(name, type, val);
   return std::shared_ptr<Parameter>(p);
 }
 
-Parameter::Parameter(std::string name,
-                     const std::shared_ptr<Type> &type,
-                     std::optional<std::shared_ptr<Literal>> default_value)
-    : NormalNode(std::move(name), Node::NodeID::PARAMETER, type), default_value_(std::move(default_value)) {}
-
-std::optional<Node *> Parameter::GetValue() const {
-  if (input()) {
-    return input().value()->src();
-  } else if (default_value_) {
-    return default_value_->get();
+bool Parameter::RemoveEdge(Edge *edge) {
+  if ((edge == input_.get()) && (!outputs_.empty())) {
+    CERATA_LOG(FATAL,
+               "Attempting to remove incoming edge from parameter, while parameter is still sourcing other nodes.");
   }
-  return std::nullopt;
-}
-
-void Parameter::GetSourceTrace(std::vector<Node *> *out) const {
-  if (input()) {
-    out->push_back(input().value()->src());
-    if (input().value()->src()->IsParameter()) {
-      input().value()->src()->AsParameter().GetSourceTrace(out);
-    }
-  }
+  return NormalNode::RemoveEdge(edge);
 }
 
 Signal::Signal(std::string name, std::shared_ptr<Type> type, std::shared_ptr<ClockDomain> domain)
