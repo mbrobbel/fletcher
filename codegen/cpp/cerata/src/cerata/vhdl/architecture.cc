@@ -20,6 +20,7 @@
 #include <memory>
 
 #include "cerata/node.h"
+#include "cerata/edge.h"
 #include "cerata/expression.h"
 #include "cerata/graph.h"
 #include "cerata/vhdl/block.h"

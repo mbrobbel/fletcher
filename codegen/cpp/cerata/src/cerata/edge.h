@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include  <algorithm>
+#include <algorithm>
 #include <iostream>
 #include <utility>
 #include <memory>
@@ -23,6 +23,7 @@
 
 #include "cerata/utils.h"
 #include "cerata/node.h"
+#include "cerata/array.h"
 
 namespace cerata {
 
@@ -102,29 +103,22 @@ std::shared_ptr<Edge> operator<<=(const std::weak_ptr<Node> &dst, const std::sha
 /// @brief Create an edge, connecting the src node to the dst node.
 std::shared_ptr<Edge> operator<<=(const std::shared_ptr<Node> &dst, const std::shared_ptr<Node> &src);
 
-/// @brief Split an edge up to create two new edges with a signal node in the middle. Returns the new signal.
-std::shared_ptr<Signal> insert(Edge *edge,
-                               Component *comp,
-                               std::unordered_map<Node *, Node *> *rebinding,
-                               const std::string &name_prefix = "int_");
-
 /// @brief Obtain all edges in a graph.
 std::vector<Edge *> GetAllEdges(const Graph &graph);
 
 /**
 * @brief Insert a signal array based on a node array and connect every node.
 */
-void AttachSignalArrayToNodeArray(Component *comp,
-                                  NodeArray *array,
-                                  std::vector<Object *> *resolved,
-                                  std::unordered_map<Node *, Node *> *rebinding);
+SignalArray *AttachSignalArrayToNodeArray(Component *comp,
+                                          NodeArray *array,
+                                          std::unordered_map<Node *, Node *> *rebinding);
 
 /**
  * @brief Insert a signal based on a node and reconnect every edge.
  */
-void AttachSignalToNode(Component *comp,
-                        NormalNode *node,
-                        std::vector<Object *> *resolved,
-                        std::unordered_map<Node *, Node *> *rebinding);
+Signal *AttachSignalToNode(Component *comp,
+                           NormalNode *node,
+                           std::unordered_map<Node *, Node *> *rebinding,
+                           std::string name = "");
 
 }  // namespace cerata

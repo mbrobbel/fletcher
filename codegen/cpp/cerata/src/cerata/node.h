@@ -64,15 +64,15 @@ class Node : public Object, public std::enable_shared_from_this<Node> {
 
   /// Casting convenience functions
 #ifndef NODE_CAST_DECL_FACTORY
-#define NODE_CAST_DECL_FACTORY(NODENAME, IDNAME)                          \
-  inline bool Is##NODENAME() const { return node_id_ == NodeID::IDNAME; } \
-  NODENAME* As##NODENAME();                                               \
-  const NODENAME* As##NODENAME() const;
+#define NODE_CAST_DECL_FACTORY(NODE_TYPE, NODE_ID)                          \
+  inline bool Is##NODE_TYPE() const { return node_id_ == NodeID::NODE_ID; } \
+  NODE_TYPE* As##NODE_TYPE();                                               \
+  const NODE_TYPE* As##NODE_TYPE() const;
 #endif
   NODE_CAST_DECL_FACTORY(Port, PORT)
   NODE_CAST_DECL_FACTORY(Signal, SIGNAL)
-  NODE_CAST_DECL_FACTORY(Parameter, PARAMETER)
   NODE_CAST_DECL_FACTORY(Literal, LITERAL)
+  NODE_CAST_DECL_FACTORY(Parameter, PARAMETER)
   NODE_CAST_DECL_FACTORY(Expression, EXPRESSION)
 
   /// @brief Add an input to this node.
@@ -115,6 +115,11 @@ class Node : public Object, public std::enable_shared_from_this<Node> {
   /// Parent if this belongs to an array
   std::optional<NodeArray *> array_ = {};
 };
+
+template<typename T>
+std::string ToString() {
+  return "UNKOWN TYPE";
+}
 
 /**
  * @brief A MultiOutputNode is a Node that can drive multiple outputs.

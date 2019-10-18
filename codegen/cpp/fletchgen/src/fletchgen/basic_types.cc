@@ -30,20 +30,6 @@ using cerata::field;
 using cerata::record;
 using cerata::stream;
 
-/// Creates basic, single-bit types similar to Arrow cpp/type.cc for convenience
-#define BIT_FACTORY(NAME)                        \
-  std::shared_ptr<Type> NAME() {                 \
-    static std::shared_ptr<Type> result = bit(); \
-    return result;                               \
-  }
-
-/// Creates basic, multi-bit types similar to Arrow cpp/type.cc for convenience, including their nullable versions.
-#define VEC_FACTORY(NAME, WIDTH)                                \
-  std::shared_ptr<Type> NAME() {                                \
-    static std::shared_ptr<Type> result = vector(#NAME, WIDTH); \
-    return result;                                              \
-  }
-
 // Validity bit
 BIT_FACTORY(validity)
 
@@ -66,21 +52,9 @@ VEC_FACTORY(utf8c, 8)
 VEC_FACTORY(byte, 8)
 VEC_FACTORY(offset, 32)
 
-/// Creates generic Fletcher parameters.
-#define PARAM_FACTORY(NAME, SIZE)                                \
-std::shared_ptr<Parameter> NAME() {                              \
-  auto result = parameter(#NAME, cerata::integer(), intl(SIZE)); \
-  return result;                                                 \
-}
-
-PARAM_FACTORY(bus_addr_width, 64)
-PARAM_FACTORY(bus_data_width, 512)
-PARAM_FACTORY(bus_strobe_width, 64)
-PARAM_FACTORY(bus_len_width, 8)
-PARAM_FACTORY(bus_burst_step_len, 4)
-PARAM_FACTORY(bus_burst_max_len, 16)
-PARAM_FACTORY(index_width, 32)
-PARAM_FACTORY(tag_width, 1)
+// Other params
+PARAM_FACTORY(index_width)
+PARAM_FACTORY(tag_width)
 
 // Create basic clock domains
 std::shared_ptr<ClockDomain> kernel_cd() {
@@ -121,7 +95,7 @@ std::shared_ptr<Type> ready(int width, bool on_primitive) {
 std::shared_ptr<Type> data(int width) {
   std::shared_ptr<Type> result = vector("data", width);
   // Mark this type so later we can figure out that it was concatenated onto the data port of an ArrayReader/Writer.
-  result->meta[metakeys::ARRAY_DATA] = "true";
+  result->meta[meta::ARRAY_DATA] = "true";
   return result;
 }
 
@@ -129,15 +103,15 @@ std::shared_ptr<Type> data(int width) {
 std::shared_ptr<Type> length(int width) {
   std::shared_ptr<Type> result = vector("length", width);
   // Mark this type so later we can figure out that it was concatenated onto the data port of an ArrayReader/Writer.
-  result->meta[metakeys::ARRAY_DATA] = "true";
+  result->meta[meta::ARRAY_DATA] = "true";
   return result;
 }
 
 std::shared_ptr<Type> count(int width) {
   std::shared_ptr<Type> result = vector(width);
   // Mark this type so later we can figure out that it was concatenated onto the data port of an ArrayReader/Writer.
-  result->meta[metakeys::ARRAY_DATA] = "true";
-  result->meta[metakeys::COUNT] = std::to_string(width);
+  result->meta[meta::ARRAY_DATA] = "true";
+  result->meta[meta::COUNT] = std::to_string(width);
   return result;
 }
 
@@ -179,8 +153,8 @@ std::optional<cerata::Port *> GetClockResetPort(cerata::Graph *graph, const Cloc
   for (auto crn : graph->GetNodes()) {
     if (crn->type()->IsEqual(*cr()) && crn->IsPort()) {
       // TODO(johanpel): better comparison
-      if (crn->AsPort().domain().get() == &domain) {
-        return &crn->AsPort();
+      if (crn->AsPort()->domain().get() == &domain) {
+        return crn->AsPort();
       }
     }
   }

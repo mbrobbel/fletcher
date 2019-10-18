@@ -152,15 +152,6 @@ struct RecordBatch : public Component {
               fletcher::RecordBatchDescription batch_desc);
   /// @brief Obtain all ports derived from an Arrow field with a specific function.
   std::vector<std::shared_ptr<FieldPort>> GetFieldPorts(const std::optional<FieldPort::Function> &function = {}) const;
-  /// @brief Obtain the data port derived from a specific Arrow field. Field must point to the exact same field object.
-  std::shared_ptr<FieldPort> GetArrowPort(const arrow::Field &field) const;
-
-  /// @brief Return the Fletcher schema this RecordBatch(Reader/Writer) is based on.
-  std::shared_ptr<FletcherSchema> fletcher_schema() const { return fletcher_schema_; }
-  /// @brief Return pointers to all Array(Reader/Writer) instances of this component.
-  std::vector<Instance *> reader_instances() const { return array_instances_; }
-  /// @brief Return the Fletcher schema this RecordBatch(Reader/Writer) is based on.
-  std::vector<std::shared_ptr<BusPort>> bus_ports() const { return bus_ports_; }
   /// @brief Return the description of the RecordBatch this component is based on.
   fletcher::RecordBatchDescription batch_desc() const { return batch_desc_; }
   /// @brief Return the mode (read or write) of this RecordBatch.
@@ -176,12 +167,11 @@ struct RecordBatch : public Component {
    */
   void AddArrays(const std::shared_ptr<FletcherSchema> &fletcher_schema);
 
+  /// A mapping from ArrayReader/Writer instances to their bus ports.
+  std::vector<Instance *> array_instances_;
+
   /// Fletcher schema implemented by this RecordBatch(Reader/Writer)
   std::shared_ptr<FletcherSchema> fletcher_schema_;
-  /// Array(Readers/Writers) instantiated
-  std::vector<Instance *> array_instances_ = {};
-  /// Bus ports
-  std::vector<std::shared_ptr<BusPort>> bus_ports_ = {};
   /// Mode
   Mode mode_ = Mode::READ;
   /// The RecordBatch description.

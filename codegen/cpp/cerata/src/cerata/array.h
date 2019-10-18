@@ -22,7 +22,6 @@
 
 #include "cerata/node.h"
 #include "cerata/port.h"
-#include "cerata/edge.h"
 #include "cerata/type.h"
 
 namespace cerata {

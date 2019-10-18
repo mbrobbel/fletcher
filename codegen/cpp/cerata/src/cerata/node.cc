@@ -97,6 +97,18 @@ NODE_CAST_IMPL_FACTORY(Parameter)
 NODE_CAST_IMPL_FACTORY(Literal)
 NODE_CAST_IMPL_FACTORY(Expression)
 
+#ifndef TYPE_STRINGIFICATION_FACTORY
+#define TYPE_STRINGIFICATION_FACTORY(NODE_TYPE)             \
+  template<>                                                \
+  std::string ToString<NODE_TYPE>() { return #NODE_TYPE; }
+#endif
+TYPE_STRINGIFICATION_FACTORY(Port)
+TYPE_STRINGIFICATION_FACTORY(Signal)
+TYPE_STRINGIFICATION_FACTORY(Literal)
+TYPE_STRINGIFICATION_FACTORY(Parameter)
+TYPE_STRINGIFICATION_FACTORY(Expression)
+
+
 bool MultiOutputNode::AddEdge(const std::shared_ptr<Edge> &edge) {
   bool success = false;
   // Check if this edge has a source

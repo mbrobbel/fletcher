@@ -23,10 +23,11 @@
 #include "cerata/logging.h"
 #include "cerata/object.h"
 #include "cerata/pool.h"
+#include "cerata/edge.h"
 
 namespace cerata {
 
-void GetSubObjects(const Object &obj, std::vector<Object *> *out) {
+void GetTypeGenerics(const Object &obj, std::vector<Object *> *out) {
   if (obj.IsNode()) {
     // If the object is a normal node, its type may be a generic type.
     auto &node = dynamic_cast<const Node &>(obj);
@@ -39,7 +40,7 @@ void GetSubObjects(const Object &obj, std::vector<Object *> *out) {
     // If the object is an array, we can obtain the generic nodes from the base type.
     auto &array = dynamic_cast<const NodeArray &>(obj);
     // Add the type generic nodes of the base node first.
-    GetSubObjects(*array.base(), out);
+    GetTypeGenerics(*array.base(), out);
     // An array has a size node. Add that as well.
     out->push_back(array.size());
   }
@@ -58,23 +59,28 @@ Graph &Graph::Add(const std::shared_ptr<Object> &object) {
     }
   }
   // Get any sub-objects used by this object. They must already be on this graph.
-  std::vector<Object *> sub_objects;
-  GetSubObjects(*object, &sub_objects);
-  for (const auto &sub_object : sub_objects) {
+  std::vector<Object *> generics;
+  GetTypeGenerics(*object, &generics);
+  for (const auto &gen : generics) {
     // If the sub-object has a parent and it is this graph, everything is OK.
-    if (sub_object->parent()) {
-      if (sub_object->parent().value() == this) {
+    if (gen->parent()) {
+      if (gen->parent().value() == this) {
         continue;
       }
     }
     // Literals are owned by the literal pool, so everything is OK as well in that case.
-    if (sub_object->IsNode()) {
-      if (dynamic_cast<Node *>(sub_object)->IsLiteral()) {
+    // Also expressions are OK.
+    if (gen->IsNode()) {
+      auto gen_node = dynamic_cast<Node *>(gen);
+      if (gen_node->IsLiteral()) {
+        continue;
+      }
+      if (gen_node->IsExpression()) {
         continue;
       }
     }
     // Otherwise throw an error.
-    CERATA_LOG(FATAL, "Object [" + sub_object->name()
+    CERATA_LOG(FATAL, "Object [" + gen->name()
         + "] bound to object [" + object->name()
         + "] is not present on Graph " + name());
   }
@@ -164,15 +170,7 @@ Instance *Component::AddInstanceOf(std::shared_ptr<Component> comp, const std::s
   return AddInstanceOf(comp.get(), name);
 }
 
-std::optional<NodeArray *> Graph::GetArray(Node::NodeID node_id, const std::string &array_name) const {
-  for (const auto &a : GetAll<NodeArray>()) {
-    if ((a->name() == array_name) && (a->node_id() == node_id)) return a;
-  }
-  CERATA_LOG(DEBUG, "NodeArray " + array_name + " does not exist on Graph " + this->name());
-  return std::nullopt;
-}
-
-std::optional<Node *> Graph::GetNode(const std::string &node_name) const {
+std::optional<Node *> Graph::FindNode(const std::string &node_name) const {
   for (const auto &n : GetAll<Node>()) {
     if (n->name() == node_name) {
       return n;
@@ -181,15 +179,13 @@ std::optional<Node *> Graph::GetNode(const std::string &node_name) const {
   return std::nullopt;
 }
 
-Node *Graph::GetNode(Node::NodeID node_id, const std::string &node_name) const {
+Node *Graph::GetNode(const std::string &node_name) const {
   for (const auto &n : GetAll<Node>()) {
     if (n->name() == node_name) {
-      if (n->Is(node_id)) {
-        return n;
-      }
+      return n;
     }
   }
-  CERATA_LOG(FATAL, "Node " + node_name + " does not exist on Graph " + this->name());
+  CERATA_LOG(FATAL, "Node with name " + node_name + " does not exist on Graph " + this->name());
 }
 
 size_t Graph::CountNodes(Node::NodeID id) const {
@@ -233,33 +229,32 @@ std::vector<NodeArray *> Graph::GetArraysOfType(Node::NodeID id) const {
   return result;
 }
 
-Port *Graph::prt(const std::string &port_name) const {
-  return dynamic_cast<Port *>(GetNode(Node::NodeID::PORT, port_name));
+Port *Graph::prt(const std::string &name) const {
+  return Get<Port>(name);
 }
 
-Signal *Graph::sig(const std::string &signal_name) const {
-  return dynamic_cast<Signal *>(GetNode(Node::NodeID::SIGNAL, signal_name));
+Signal *Graph::sig(const std::string &name) const {
+  return Get<Signal>(name);
 }
 
-Parameter *Graph::par(const std::string &signal_name) const {
-  return dynamic_cast<Parameter *>(GetNode(Node::NodeID::PARAMETER, signal_name));
+Parameter *Graph::par(const std::string &name) const {
+  return Get<Parameter>(name);
 }
 
 Parameter *Graph::par(const Parameter &param) const {
-  return dynamic_cast<Parameter *>(GetNode(Node::NodeID::PARAMETER, param.name()));
+  return Get<Parameter>(param.name());
 }
 
 Parameter *Graph::par(const std::shared_ptr<Parameter> &param) const {
-  return dynamic_cast<Parameter *>(GetNode(Node::NodeID::PARAMETER, param->name()));
+  return Get<Parameter>(param->name());
 }
 
-PortArray *Graph::prta(const std::string &port_name) const {
-  auto opa = GetArray(Node::NodeID::PORT, port_name);
-  if (opa) {
-    return dynamic_cast<PortArray *>(*opa);
-  } else {
-    return nullptr;
-  }
+PortArray *Graph::prt_arr(const std::string &name) const {
+  return Get<PortArray>(name);
+}
+
+SignalArray *Graph::sig_arr(const std::string &name) const {
+  return Get<SignalArray>(name);
 }
 
 std::vector<Node *> Graph::GetImplicitNodes() const {
@@ -305,6 +300,17 @@ bool Graph::Has(const std::string &name) {
   return false;
 }
 
+std::string Graph::ToStringAllOjects() const {
+  std::stringstream ss;
+  for (const auto &o : objects_) {
+    ss << o->name();
+    if (o != objects_.back()) {
+      ss << ", ";
+    }
+  }
+  return ss.str();
+}
+
 std::unique_ptr<Instance> instance(Component *component, const std::string &name) {
   auto n = name;
   if (name.empty()) {
@@ -314,7 +320,8 @@ std::unique_ptr<Instance> instance(Component *component, const std::string &name
   return std::unique_ptr<Instance>(inst);
 }
 
-Instance::Instance(Component *comp, std::string name) : Graph(std::move(name), INSTANCE), component_(comp) {
+Instance::Instance(Component *comp, std::string
+name) : Graph(std::move(name), INSTANCE), component_(comp) {
   // Create a map that maps a component node to an instance node for type generic rebinding.
   std::unordered_map<Node *, Node *> rebind_map;
 

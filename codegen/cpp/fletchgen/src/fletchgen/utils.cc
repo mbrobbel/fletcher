@@ -16,6 +16,7 @@
 
 #include <fletcher/common.h>
 #include <cerata/api.h>
+#include <cstdlib>
 
 namespace fletchgen {
 
@@ -57,11 +58,11 @@ void LogCerata(cerata::LogLevel level,
     }
     case cerata::CERATA_LOG_ERROR: {
       FLETCHER_LOG(ERROR, message);
-      return;
+      std::abort();
     }
     case cerata::CERATA_LOG_FATAL: {
       FLETCHER_LOG(FATAL, message);
-      return;
+      std::abort();
     }
   }
 }

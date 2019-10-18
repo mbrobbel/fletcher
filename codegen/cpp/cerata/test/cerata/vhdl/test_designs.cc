@@ -112,5 +112,97 @@ TEST(VHDL_DESIGN, CompInst) {
   ASSERT_EQ(generated, expected);
 }
 
+TEST(VHDL_DESIGN, Streams) {
+  default_component_pool()->Clear();
+
+  auto a = port("a",
+                stream(
+                    record(
+                        {field("q", bit()),
+                         field("r", vector(8))})),
+                Port::Dir::IN);
+
+  auto b = port("b",
+                stream(
+                    record(
+                        {field("s", bit()),
+                         field("t", vector(8))})),
+                Port::Dir::OUT);
+
+  // A and B can be implicitly mapped.
+
+  auto x = component("x", {a});
+  auto y = component("y", {b});
+  auto top = component("top");
+  auto ix = top->AddInstanceOf(x);
+  auto iy = top->AddInstanceOf(y);
+  Connect(ix->prt("a"), iy->prt("b"));
+
+  auto generated = GenerateDebugOutput(top);
+
+  auto expected =
+      "library ieee;\n"
+      "use ieee.std_logic_1164.all;\n"
+      "use ieee.numeric_std.all;\n"
+      "\n"
+      "entity top is\n"
+      "end entity;\n"
+      "\n"
+      "architecture Implementation of top is\n"
+      "  component x is\n"
+      "    port (\n"
+      "      a_valid : in std_logic;\n"
+      "      a_ready : in std_logic;\n"
+      "      a_q     : in std_logic;\n"
+      "      a_r     : in std_logic_vector(7 downto 0)\n"
+      "    );\n"
+      "  end component;\n"
+      "\n"
+      "  component y is\n"
+      "    port (\n"
+      "      b_valid : out std_logic;\n"
+      "      b_ready : out std_logic;\n"
+      "      b_s     : out std_logic;\n"
+      "      b_t     : out std_logic_vector(7 downto 0)\n"
+      "    );\n"
+      "  end component;\n"
+      "\n"
+      "  signal x_inst_a_valid : std_logic;\n"
+      "  signal x_inst_a_ready : std_logic;\n"
+      "  signal x_inst_a_q     : std_logic;\n"
+      "  signal x_inst_a_r     : std_logic_vector(7 downto 0);\n"
+      "\n"
+      "  signal y_inst_b_valid : std_logic;\n"
+      "  signal y_inst_b_ready : std_logic;\n"
+      "  signal y_inst_b_s     : std_logic;\n"
+      "  signal y_inst_b_t     : std_logic_vector(7 downto 0);\n"
+      "\n"
+      "begin\n"
+      "  x_inst_a_valid <= y_inst_b_valid;\n"
+      "  x_inst_a_ready <= y_inst_b_ready;\n"
+      "  x_inst_a_q     <= y_inst_b_s;\n"
+      "  x_inst_a_r     <= y_inst_b_t;\n"
+      "\n"
+      "  x_inst : x\n"
+      "    port map (\n"
+      "      a_valid => x_inst_a_valid,\n"
+      "      a_ready => x_inst_a_ready,\n"
+      "      a_q     => x_inst_a_q,\n"
+      "      a_r     => x_inst_a_r\n"
+      "    );\n"
+      "\n"
+      "  y_inst : y\n"
+      "    port map (\n"
+      "      b_valid => y_inst_b_valid,\n"
+      "      b_ready => y_inst_b_ready,\n"
+      "      b_s     => y_inst_b_s,\n"
+      "      b_t     => y_inst_b_t\n"
+      "    );\n"
+      "\n"
+      "end architecture;\n";
+
+  ASSERT_EQ(generated, expected);
+}
+
 }  // namespace cerata
 

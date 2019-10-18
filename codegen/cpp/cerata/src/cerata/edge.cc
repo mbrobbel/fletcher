@@ -192,61 +192,6 @@ std::vector<Edge *> GetAllEdges(const Graph &graph) {
   return all_edges;
 }
 
-std::shared_ptr<Signal> insert(Edge *edge,
-                               Component *comp,
-                               std::unordered_map<Node *, Node *> *rebinding,
-                               const std::string &name_prefix) {
-  auto src = edge->src();
-  auto dst = edge->dst();
-
-  // Make sure we're inserting between signal/port nodes.
-  if (!(src->IsPort() || src->IsSignal()) && (dst->IsPort() || dst->IsSignal())) {
-    CERATA_LOG(FATAL, "Attempting to insert signal node on edge between non-port/signal node.");
-  }
-
-  // When they were connected, their clock domains must have matched. Just grab the domain from the source.
-  std::shared_ptr<ClockDomain> domain;
-  if (src->IsPort()) domain = src->AsPort()->domain();
-  if (src->IsSignal()) domain = src->AsSignal()->domain();
-
-  // Get the destination type
-  auto type = src->type()->shared_from_this();
-  // Rebind generics if the type
-  if (type->IsGeneric()) {
-    for (const auto g : type->GetGenerics()) {
-      RebindGeneric(comp, g, rebinding);
-    }
-    type = type->Copy(*rebinding);
-  }
-
-  // Determine name.
-  auto name = name_prefix + "_" + src->name();
-  // Perhaps a node with this name exists already. Just add a number behind the name until we find an empty name.
-  if (comp->GetNode(name)) {
-    int i = 1;
-    name = name_prefix + "_" + src->name() + "_" + std::to_string(i);
-    while (comp->GetNode(name)) {
-      i++;
-    }
-  }
-  // Create the signal and take shared ownership of the type
-  auto sig = signal(name, type, domain);
-
-  // Share ownership of the new signal with the potential new_owner
-  comp->Add(sig);
-
-
-  // Remove the original edge from the source and destination node
-  src->RemoveEdge(edge);
-  dst->RemoveEdge(edge);
-  // From this moment onward, the edge may be deconstructed and should not be used anymore.
-  // Make the new connections, effectively creating two new edges on either side of the signal node.
-  sig <<= src;
-  dst <<= sig;
-  // Return the new signal
-  return sig;
-}
-
 std::shared_ptr<Edge> Connect(Node *dst, const std::shared_ptr<Node> &src) {
   return Connect(dst, src.get());
 }
@@ -282,10 +227,10 @@ static std::shared_ptr<ClockDomain> DomainOf(NodeArray *node_array) {
   return result;
 }
 
-void AttachSignalToNode(Component *comp,
-                        NormalNode *node,
-                        std::vector<Object *> *resolved,
-                        std::unordered_map<Node *, Node *> *rebinding) {
+Signal *AttachSignalToNode(Component *comp,
+                           NormalNode *node,
+                           std::unordered_map<Node *, Node *> *rebinding,
+                           std::string name) {
   std::shared_ptr<Type> type = node->type()->shared_from_this();
   // Figure out if the type is a generic type.
   if (type->IsGeneric()) {
@@ -306,28 +251,30 @@ void AttachSignalToNode(Component *comp,
   if (node->IsSignal()) domain = node->AsSignal()->domain();
   if (node->IsPort()) domain = node->AsPort()->domain();
 
-  // Get the name of the node.
-  auto name = node->name();
-  // Check if the node is on an instance, and prepend that.
-  if (node->parent()) {
-    if (node->parent().value()->IsInstance()) {
-      name = node->parent().value()->name() + "_" + name;
+  // Get the name of the node if no name was supplied.
+  if (name.empty()) {
+    name = node->name();
+    // Check if the node is on an instance, and prepend that.
+    if (node->parent()) {
+      if (node->parent().value()->IsInstance()) {
+        name = node->parent().value()->name() + "_" + name;
+      }
     }
-  }
-  auto new_name = name;
-  // Check if a node with this name already exists, generate a new name suffixed with a number if it does.
-  int i = 0;
-  while (comp->Has(new_name)) {
-    i++;
-    new_name = name + "_" + std::to_string(i);
+    auto new_name = name;
+    // Check if a node with this name already exists, generate a new name suffixed with a number if it does.
+    int i = 0;
+    while (comp->Has(new_name)) {
+      i++;
+      new_name = name + "_" + std::to_string(i);
+    }
+    name = new_name;
   }
 
   // Create the new signal.
-  auto new_signal = signal(new_name, type, domain);
+  auto new_signal = signal(name, type, domain);
   comp->Add(new_signal);
-  resolved->push_back(new_signal.get());
 
-  // Iterate over any existing edges that are sinked by the original node.
+  // Iterate over any existing edges that are sinks of the original node.
   for (auto &e : node->sinks()) {
     // Figure out the original destination of this edge.
     auto dst = e->dst();
@@ -346,16 +293,17 @@ void AttachSignalToNode(Component *comp,
     // Remove the original edge from the port array child node and source node.
     node->RemoveEdge(e);
     src->RemoveEdge(e);
-    // Create a new edge, driving the new signal with the original sourc.
+    // Create a new edge, driving the new signal with the original source.
     Connect(new_signal, src);
     Connect(node, new_signal);
   }
+
+  return new_signal.get();
 }
 
-void AttachSignalArrayToNodeArray(Component *comp,
-                                  NodeArray *array,
-                                  std::vector<Object *> *resolved,
-                                  std::unordered_map<Node *, Node *> *rebinding) {
+SignalArray *AttachSignalArrayToNodeArray(Component *comp,
+                                          NodeArray *array,
+                                          std::unordered_map<Node *, Node *> *rebinding) {
   // Get the base node.
   auto base = array->base();
 
@@ -398,14 +346,12 @@ void AttachSignalArrayToNodeArray(Component *comp,
   // Create the new array.
   auto new_array = signal_array(new_name, type, size, domain);
   comp->Add(new_array);
-  resolved->push_back(new_array.get());
 
   // Now iterate over all original nodes on the NodeArray and reconnect them.
   for (size_t n = 0; n < array->num_nodes(); n++) {
     // Create a new child node inside the array, but don't increment the size.
     // We've already (potentially) rebound the size from some other source and it should be set properly already.
     auto new_sig = new_array->Append(false);
-    resolved->push_back(new_sig);
 
     bool has_sinks = false;
     bool has_sources = false;
@@ -441,6 +387,7 @@ void AttachSignalArrayToNodeArray(Component *comp,
       Connect(array->node(n), new_sig);
     }
   }
+  return new_array.get();
 }
 
 }  // namespace cerata

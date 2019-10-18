@@ -15,7 +15,6 @@
 #include <gtest/gtest.h>
 
 #include <cerata/api.h>
-#include <utility>
 
 #include "fletchgen/bus.h"
 #include "fletchgen/test_utils.h"
@@ -28,14 +27,11 @@ using cerata::Port;
 
 TEST(Bus, BusArbiter) {
   cerata::default_component_pool()->Clear();
-  BusParam param;
   auto top = cerata::component("top");
+  BusParam param(top);
   top->AddInstanceOf(bus_arbiter(BusFunction::READ));
-  auto design = cerata::vhdl::Design(top);
-  auto code = design.Generate().ToString();
-  std::cerr.flush();
-  std::cout << code << std::endl;
-  VHDL_DUMP_TEST(code);
+
+  GenerateDebugOutput(top);
 }
 
 }  // namespace fletchgen

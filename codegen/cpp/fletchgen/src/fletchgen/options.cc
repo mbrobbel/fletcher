@@ -51,8 +51,8 @@ bool Options::Parse(Options *options, int argc, char **argv) {
                  "Select the output languages for your design. Each type of output will be stored in a "
                  "seperate subfolder (e.g. <output folder>/vhdl/...). \n"
                  "Available languages:\n"
-                 "  vhdl: Export as VHDL files (default).\n"
-                 "  dot : Export as DOT graphs.");
+                 "  vhdl : Export as VHDL files (default).\n"
+                 "  dot  : Export as DOT graphs.");
 
   app.add_flag("-b,--backup", options->backup,
                "Backup generated source code files if they exists already. If this flag is used and the source "
@@ -65,6 +65,18 @@ bool Options::Parse(Options *options, int argc, char **argv) {
                  "  c : (control) register content is controlled by host-side software.\n"
                  "  s : (status) register content is controlled by hardware kernel.\n"
                  "Example: \"-reg32 c:my_host_to_kernel_signaling_reg s:my_kernel_to_host_signaling_reg\"");
+
+  app.add_option("--bus_specs", options->bus_specs,
+                 "Specify top-level bus parameters.\n"
+                 "Value must be a tuple of the following form: \"aw,dw,sw,lw,bs,bm\"\n"
+                 "Where:\n"
+                 "  aw : Bus address width.\n"
+                 "  dw : Bus data width.\n"
+                 "  sw : Bus strobe width.\n"
+                 "  lw : Bus burst length width.\n"
+                 "  bs : Bus minimum burst size.\n"
+                 "  bm : Bus maximum burst size.\n"
+                 "Currently supports only one top-level bus specification. Default: \"64,512,64,8,1,16\"");
 
   app.add_flag("--axi", options->axi_top,
                "Generate AXI top-level template (VHDL only).");

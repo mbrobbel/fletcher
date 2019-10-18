@@ -21,12 +21,17 @@ namespace meta {
 
 // Schema metadata:
 
+constexpr char TRUE[] = "true";
+constexpr char FALSE[] = "false";
+
 /// Schema name.
 constexpr char NAME[] = "fletcher_name";
 
 /// Schema mode.
 /// Can be either "read" or "write".
 constexpr char MODE[] = "fletcher_mode";
+constexpr char READ[] = "read";
+constexpr char WRITE[] = "write";
 
 // Field metadata:
 
@@ -49,6 +54,20 @@ constexpr char LIST_EPC[] = "fletcher_lepc";
 /// Key to set the tag width for the command and unlock streams.
 /// Values can by any positive, e.g. "1", "2", "3", ...
 constexpr char TAG_WIDTH[] = "fletcher_tag_width";
+
+/// Key to set the bus specification of a schema (future releases: fields or even sub-streams of fields).
+///
+/// Value must be a tuple of the following form: "aw,dw,sw,lw,bs,bm" where:
+///
+/// aw : Bus address width
+/// dw : Bus data width
+/// sw : Bus strobe width
+/// lw : Bus burst length width
+/// bs : Bus minimum burst size
+/// bm : Bus maximum burst size
+///
+/// All values should be supplied as a decimal ASCII string.
+constexpr char BUS_SPEC[] = "fletcher_bus_spec";
 
 }
 }

@@ -106,6 +106,27 @@ bool GetBoolMeta(const arrow::Field &field, const std::string &key, bool default
 std::shared_ptr<arrow::Schema> WithMetaRequired(const arrow::Schema &schema, std::string schema_name, Mode schema_mode);
 
 /**
+ * @brief Append bus specification metadata for the resulting RecordBatch(Reader/Writer) to use.
+ *
+ * This functionality will be made available at the field sub-stream level in future releases.
+ *
+ * @param schema   The schema.
+ * @param aw       Bus address width
+ * @param dw       Bus data width.
+ * @param sw       Bus strobe width.
+ * @param lw       Bus burst length width.
+ * @param bs       Bus minimum burst size.
+ * @param bm       Bus maximum burst size.
+ * @return         A copy of the Schema with metadata appended.
+ */
+std::shared_ptr<arrow::Schema> WithMetaBusSpec(const arrow::Schema &schema,
+                                               int aw = 64,
+                                               int dw = 512,
+                                               int sw = 64,
+                                               int lw = 8,
+                                               int bs = 1,
+                                               int bm = 16);
+/**
  * @brief Append Elements-Per-Cycle metadata to a field. Returns a copy of the field.
  *
  * This works only for primitive and list<primitive> fields.

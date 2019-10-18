@@ -19,7 +19,7 @@
 #include "cerata/edge.h"
 #include "cerata/node.h"
 #include "cerata/expression.h"
-#include "cerata/node_array.h"
+#include "cerata/array.h"
 #include "cerata/type.h"
 #include "cerata/graph.h"
 #include "cerata/pool.h"

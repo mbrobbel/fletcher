@@ -20,7 +20,7 @@
 #include "cerata/type.h"
 #include "cerata/object.h"
 #include "cerata/node.h"
-#include "cerata/node_array.h"
+#include "cerata/array.h"
 
 namespace cerata {
 

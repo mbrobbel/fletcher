@@ -14,11 +14,31 @@
 
 #pragma once
 
+#include <cerata/api.h>
 #include <fstream>
 #include <string>
 
-// Macro to save the test to some VHDL files that can be used to syntax check the tests with e.g. GHDL
-// At some point the reverse might be more interesting - load the test cases from file into the test.
-#define VHDL_DUMP_TEST(str) \
-  std::ofstream(std::string(::testing::UnitTest::GetInstance()->current_test_info()->test_suite_name()) \
-  + "_" + ::testing::UnitTest::GetInstance()->current_test_info()->name() + ".vhd") << str
+namespace fletchgen {
+
+inline std::string GenerateDebugOutput(const std::shared_ptr<cerata::Component> &comp, std::string name = "") {
+  if (name.empty()) {
+    name = comp->name();
+  }
+
+  auto design = cerata::vhdl::Design(comp);
+  auto src = design.Generate().ToString();
+  auto o = std::ofstream(name + ".gen.vhd");
+  o << src;
+  o.close();
+
+  std::cout << "VHDL SOURCE:\n";
+  std::cout << src << std::endl;
+
+  cerata::dot::Grapher dot;
+  dot.style.config = cerata::dot::Config::all();
+  dot.GenFile(*comp, name);
+
+  return src;
+}
+
+}  // namespace fletchgen

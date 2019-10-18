@@ -24,6 +24,7 @@
 #include "fletchgen/recordbatch.h"
 #include "fletchgen/mmio.h"
 #include "fletchgen/profiler.h"
+#include "fletchgen/bus.h"
 
 namespace fletchgen {
 
@@ -196,6 +197,8 @@ Design::Design(const std::shared_ptr<Options> &opts) {
     FLETCHER_LOG(FATAL, "vhdmmio exited with status " << vhdmmio_result);
   }
 
+  auto bus_spec = BusSpec::FromString(opts->bus_specs[0], BusSpec());
+
   // Generate the MMIO component.
   mmio_comp = mmio(batch_desc, regs);
   // Generate the kernel.
@@ -203,7 +206,7 @@ Design::Design(const std::shared_ptr<Options> &opts) {
   // Generate the nucleus.
   nucleus_comp = nucleus(opts->kernel_name + "_Nucleus", recordbatches, kernel_comp, mmio_comp);
   // Generate the mantle.
-  mantle_comp = mantle(opts->kernel_name + "_Mantle", recordbatches, nucleus_comp);
+  mantle_comp = mantle(opts->kernel_name + "_Mantle", recordbatches, nucleus_comp, bus_spec);
 }
 
 std::vector<cerata::OutputSpec> Design::GetOutputSpec() {

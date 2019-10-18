@@ -22,7 +22,7 @@
 #include "cerata/graph.h"
 #include "cerata/literal.h"
 #include "cerata/node.h"
-#include "cerata/node_array.h"
+#include "cerata/array.h"
 #include "cerata/object.h"
 #include "cerata/output.h"
 #include "cerata/pool.h"

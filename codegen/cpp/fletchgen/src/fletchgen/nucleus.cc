@@ -169,7 +169,7 @@ Nucleus::Nucleus(const std::string &name,
       // Get the ports on either side of the ACCM.
       auto accm_nucleus_cmd = accms[accm_idx]->prt("nucleus_cmd");
       auto accm_kernel_cmd = accms[accm_idx]->prt("kernel_cmd");
-      auto accm_ctrl = accms[accm_idx]->prta("ctrl");
+      auto accm_ctrl = accms[accm_idx]->prt_arr("ctrl");
 
       // Get the corresponding cmd ports on this nucleus and the kernel.
       auto nucleus_cmd = prt(cmd->name());
@@ -216,11 +216,11 @@ Nucleus::Nucleus(const std::string &name,
     if (p->profile_) {
       // At this point, these ports should only have one edge straight into the kernel.
       if (p->edges().size() != 1) {
-        FLETCHER_LOG(ERROR, "Nucleus port has other than exactly one edge.")
+        FLETCHER_LOG(ERROR, "Nucleus port has other than exactly one edge.");
       }
       // Insert a signal node in between that we can attach the profiler probe onto.
-      auto s = cerata::insert(p->edges()[0], this, &rebinding, "pr");
-      profile_nodes.push_back(dynamic_cast<Node *>(s.get()));
+      auto s = AttachSignalToNode(this, p, &rebinding);
+      profile_nodes.push_back(s);
     }
   }
 

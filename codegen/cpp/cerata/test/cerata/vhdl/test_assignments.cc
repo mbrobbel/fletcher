@@ -99,12 +99,13 @@ TEST(VHDL_ASSIGN, SignalRecordArrayParam) {
 }
 
 TEST(VHDL_ASSIGN, SignalRecordParamArrayParam) {
-  auto size = parameter("SIZE", integer(), intl(0));
+  auto a_size = parameter("A_SIZE", integer(), intl(0));
+  auto b_size = parameter("B_SIZE", integer(), intl(0));
   auto width = parameter("WIDTH", integer(), intl(8));
   auto rec = record({field("x", vector(width)),
                      field("y", bit())});
-  auto a = signal_array("a", rec, size);
-  auto b = signal_array("b", rec, size);
+  auto a = signal_array("a", rec, a_size);
+  auto b = signal_array("b", rec, b_size);
 
   Connect(a->Append(), b->Append());
   Connect(a->Append(), b->Append());

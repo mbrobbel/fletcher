@@ -22,6 +22,7 @@
 #include <optional>
 #include <string>
 
+#include "fletchgen/bus.h"
 #include "fletchgen/utils.h"
 
 namespace fletchgen {
@@ -60,6 +61,8 @@ class FletcherSchema {
   Mode mode_;
   /// The name of this schema used to identify the components generated from it.
   std::string name_;
+  /// The bus specification for this schema.
+  BusSpec bus_spec_;
 };
 
 /**
@@ -70,17 +73,17 @@ class SchemaSet : public cerata::Named {
   /// @brief SchemaSet constructor.
   explicit SchemaSet(std::string name);
   /// @brief Make a new, empty SchemaSet, and return a shared pointer to it.
-  static std::shared_ptr<SchemaSet> Make(const std::string& name);
+  static std::shared_ptr<SchemaSet> Make(const std::string &name);
   /// @brief Determine whether any schema in this set requires reading from memory.
   [[nodiscard]] bool RequiresReading() const;
   /// @brief Determine whether any schema in this set requires writing to memory.
   [[nodiscard]] bool RequiresWriting() const;
   /// @brief Return true if set contains schema with some name, false otherwise.
-  [[nodiscard]] bool HasSchemaWithName(const std::string& name) const;
+  [[nodiscard]] bool HasSchemaWithName(const std::string &name) const;
   /// @brief Optionally return a schema with name, if it exists.
-  [[nodiscard]] std::optional<std::shared_ptr<FletcherSchema>> GetSchema(const std::string& name) const;
+  [[nodiscard]] std::optional<std::shared_ptr<FletcherSchema>> GetSchema(const std::string &name) const;
   /// @brief Append a schema
-  void AppendSchema(const std::shared_ptr<arrow::Schema>& schema);
+  void AppendSchema(const std::shared_ptr<arrow::Schema> &schema);
   /// @brief Return all schemas of this schemaset.
   [[nodiscard]] std::vector<std::shared_ptr<FletcherSchema>> schemas() const { return schemas_; }
   /// @brief Return all schemas with read mode.

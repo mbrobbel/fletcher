@@ -97,7 +97,7 @@ TEST(VHDL_DECL, ArrayPort) {
   auto x_inst = top->AddInstanceOf(X);
   auto y_inst = top->AddInstanceOf(Y);
 
-  auto xa = x_inst->prta("A");
+  auto xa = x_inst->prt_arr("A");
   auto xa0 = xa->Append();
   ASSERT_EQ(xa->size()->AsParameter()->value()->ToString(), "1");
   auto xa1 = xa->Append();

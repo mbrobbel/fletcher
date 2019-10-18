@@ -133,10 +133,10 @@ TEST(VHDL_INST, NonLocallyStaticArrayMap) {
   auto child_inst = top->AddInstanceOf(child.get());
 
   Connect(child_inst->par("WIDTH"), top_width);
-  Connect(top_po0, child_inst->prta("po")->Append());
-  Connect(top_po1, child_inst->prta("po")->Append());
-  Connect(child_inst->prta("pi")->Append(), top_pi0);
-  Connect(child_inst->prta("pi")->Append(), top_pi1);
+  Connect(top_po0, child_inst->prt_arr("po")->Append());
+  Connect(top_po1, child_inst->prt_arr("po")->Append());
+  Connect(child_inst->prt_arr("pi")->Append(), top_pi0);
+  Connect(child_inst->prt_arr("pi")->Append(), top_pi1);
 
   GenerateDebugOutput(top);
 }

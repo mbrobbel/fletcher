@@ -25,7 +25,7 @@ add_compile_unit(
     src/cerata/graph.cc
     src/cerata/literal.cc
     src/cerata/node.cc
-    src/cerata/node_array.cc
+    src/cerata/array.cc
     src/cerata/object.cc
     src/cerata/output.cc
     src/cerata/pool.cc

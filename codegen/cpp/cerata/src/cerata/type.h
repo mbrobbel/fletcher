@@ -260,7 +260,7 @@ std::shared_ptr<Type> vector(unsigned int width);
 std::shared_ptr<Type> vector(std::string name, unsigned int width);
 
 /// @brief A Record field.
-class Field : public Named {
+class Field : public Named, public std::enable_shared_from_this<Field> {
  public:
   /// @brief RecordField constructor.
   Field(std::string name, std::shared_ptr<Type> type, bool invert = false, bool sep = true);
@@ -269,7 +269,9 @@ class Field : public Named {
   /// @brief Return the type of the RecordField.
   std::shared_ptr<Type> type() const { return type_; }
   /// @brief Return if this individual field should be inverted w.r.t. parent Record type itself on graph edges.
-  bool invert() const { return invert_; }
+  bool inverted() const { return invert_; }
+  /// @brief Invert this field and return itself.
+  std::shared_ptr<Field> Invert();
   /// @brief Return true if in name generation of this field name for flattened types a separator should be placed.
   bool sep() const { return sep_; }
   /// @brief Disable the separator in name generation of this field.

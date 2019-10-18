@@ -21,6 +21,7 @@
 #include <vector>
 #include <iostream>
 #include <unordered_map>
+#include <sstream>
 
 #include "fletcher/arrow-utils.h"
 #include "fletcher/logging.h"
@@ -89,31 +90,45 @@ bool GetBoolMeta(const arrow::Field &field, const std::string &key, bool default
 std::shared_ptr<arrow::Schema> WithMetaRequired(const arrow::Schema &schema,
                                                 std::string schema_name,
                                                 Mode mode) {
-  std::vector<std::string> keys = {"fletcher_name", "fletcher_mode"};
+  std::vector<std::string> keys = {meta::NAME, meta::MODE};
   std::vector<std::string> values = {std::move(schema_name)};
   if (mode == Mode::READ)
-    values.emplace_back("read");
+    values.emplace_back(meta::READ);
   else
-    values.emplace_back("write");
+    values.emplace_back(meta::WRITE);
   auto meta = std::make_shared<arrow::KeyValueMetadata>(keys, values);
   return schema.WithMetadata(meta);
 }
 
+std::shared_ptr<arrow::Schema> WithMetaBusSpec(const arrow::Schema &schema,
+                                               int aw,
+                                               int dw,
+                                               int sw,
+                                               int lw,
+                                               int bs,
+                                               int bm) {
+  std::stringstream ss;
+  ss << aw << "," << aw << "," << dw << "," << sw << "," << lw << "," << bs << "," << bm;
+  auto meta = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>({meta::BUS_SPEC}),
+                                                        std::vector<std::string>({ss.str()}));
+  return schema.WithMetadata(meta);
+}
+
 std::shared_ptr<arrow::Field> WithMetaEPC(const arrow::Field &field, int epc) {
-  auto meta = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>({"fletcher_epc"}),
+  auto meta = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>({meta::VALUE_EPC}),
                                                         std::vector<std::string>({std::to_string(epc)}));
   return field.WithMetadata(meta);
 }
 
 std::shared_ptr<arrow::Field> WithMetaIgnore(const arrow::Field &field) {
-  std::vector<std::string> ignore_key = {"fletcher_ignore"};
+  std::vector<std::string> ignore_key = {meta::IGNORE};
   std::vector<std::string> ignore_value = {"true"};
   auto meta = std::make_shared<arrow::KeyValueMetadata>(ignore_key, ignore_value);
   return field.WithMetadata(meta);
 }
 
 std::shared_ptr<arrow::Field> WithMetaProfile(const arrow::Field &field) {
-  std::vector<std::string> profile_key = {"fletcher_profile"};
+  std::vector<std::string> profile_key = {meta::PROFILE};
   std::vector<std::string> profile_value = {"true"};
   auto meta = std::make_shared<arrow::KeyValueMetadata>(profile_key, profile_value);
   return field.WithMetadata(meta);

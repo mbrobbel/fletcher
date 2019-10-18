@@ -67,26 +67,26 @@ std::shared_ptr<Component> GetArrayToArrayInternalComponent(bool invert = false)
   auto y_comp = component(y, {y_size, y_array});
   auto y_inst = instance(y_comp.get());
 
-  a_inst->prta("array")->Append();
-  a_inst->prta("array")->Append();
-  a_inst->prta("array")->Append();
-  a_inst->prta("array")->Append();
+  a_inst->prt_arr("array")->Append();
+  a_inst->prt_arr("array")->Append();
+  a_inst->prt_arr("array")->Append();
+  a_inst->prt_arr("array")->Append();
 
-  x_inst->prta("array")->Append();
-  x_inst->prta("array")->Append();
-  y_inst->prta("array")->Append();
-  y_inst->prta("array")->Append();
+  x_inst->prt_arr("array")->Append();
+  x_inst->prt_arr("array")->Append();
+  y_inst->prt_arr("array")->Append();
+  y_inst->prt_arr("array")->Append();
 
   if (!invert) {
-    Connect(x_inst->prta("array")->node(0), a_inst->prta("array")->node(1));
-    Connect(x_inst->prta("array")->node(1), a_inst->prta("array")->node(0));
-    Connect(y_inst->prta("array")->node(0), a_inst->prta("array")->node(3));
-    Connect(y_inst->prta("array")->node(1), a_inst->prta("array")->node(2));
+    Connect(x_inst->prt_arr("array")->node(0), a_inst->prt_arr("array")->node(1));
+    Connect(x_inst->prt_arr("array")->node(1), a_inst->prt_arr("array")->node(0));
+    Connect(y_inst->prt_arr("array")->node(0), a_inst->prt_arr("array")->node(3));
+    Connect(y_inst->prt_arr("array")->node(1), a_inst->prt_arr("array")->node(2));
   } else {
-    Connect(a_inst->prta("array")->node(1), x_inst->prta("array")->node(0));
-    Connect(a_inst->prta("array")->node(0), x_inst->prta("array")->node(1));
-    Connect(a_inst->prta("array")->node(3), y_inst->prta("array")->node(0));
-    Connect(a_inst->prta("array")->node(2), y_inst->prta("array")->node(1));
+    Connect(a_inst->prt_arr("array")->node(1), x_inst->prt_arr("array")->node(0));
+    Connect(a_inst->prt_arr("array")->node(0), x_inst->prt_arr("array")->node(1));
+    Connect(a_inst->prt_arr("array")->node(3), y_inst->prt_arr("array")->node(0));
+    Connect(a_inst->prt_arr("array")->node(2), y_inst->prt_arr("array")->node(1));
   }
 
   top_comp->AddChild(std::move(a_inst));
@@ -108,17 +108,17 @@ std::shared_ptr<Component> GetArrayToArrayComponent(bool invert = false) {
   auto child_inst = instance(child_comp.get());
 
   if (invert) {
-    child_inst->prta("child_array")->Append();
+    child_inst->prt_arr("child_array")->Append();
     top_array->Append();
     top_array->Append();
-    Connect(top_array->node(0), child_inst->prta("child_array")->node(0));
-    Connect(top_array->node(1), child_inst->prta("child_array")->node(0));
+    Connect(top_array->node(0), child_inst->prt_arr("child_array")->node(0));
+    Connect(top_array->node(1), child_inst->prt_arr("child_array")->node(0));
   } else {
-    child_inst->prta("child_array")->Append();
-    child_inst->prta("child_array")->Append();
+    child_inst->prt_arr("child_array")->Append();
+    child_inst->prt_arr("child_array")->Append();
     top_array->Append();
-    Connect(child_inst->prta("child_array")->node(0), top_array->node(0));
-    Connect(child_inst->prta("child_array")->node(1), top_array->node(0));
+    Connect(child_inst->prt_arr("child_array")->node(0), top_array->node(0));
+    Connect(child_inst->prt_arr("child_array")->node(1), top_array->node(0));
   }
   top_comp->AddChild(std::move(child_inst));
   return top_comp;
@@ -205,8 +205,8 @@ std::shared_ptr<Component> GetArrayTypeConvComponent() {
   top->AddChild(std::move(x));
 
   // Drive B and C from A
-  pB <<= xr->prta("A")->Append();
-  pC <<= xr->prta("A")->Append();
+  pB <<= xr->prt_arr("A")->Append();
+  pC <<= xr->prt_arr("A")->Append();
 
   return top;
 }
@@ -306,6 +306,7 @@ std::shared_ptr<Component> GetExampleDesign() {
   // Construct two components with a port made from these types
   auto my_array_size = parameter("array_size", integer());
   auto my_comp = component("my_comp", {vec_width,
+                                       my_array_size,
                                        port_array("my_array", my_type, my_array_size, Port::OUT)});
 
   auto my_other_comp = component("my_other_comp", {vec_width,
@@ -319,7 +320,7 @@ std::shared_ptr<Component> GetExampleDesign() {
   std::vector<Instance *> my_other_instances;
   for (int i = 0; i < 10; i++) {
     my_other_instances.push_back(my_top->AddInstanceOf(my_other_comp.get(), "my_inst_" + std::to_string(i)));
-    Connect(my_other_instances[i]->prt("my_port"), my_inst->prta("my_array")->Append());
+    Connect(my_other_instances[i]->prt("my_port"), my_inst->prt_arr("my_array")->Append());
   }
 
   return my_top;

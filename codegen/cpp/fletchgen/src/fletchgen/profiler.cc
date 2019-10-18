@@ -52,20 +52,24 @@ static constexpr char pcount[] = "Packet count. Increments each time the last si
                                  "Writing to the register subtracts the written value.";
 
 std::vector<MmioReg> GetProfilingRegs(const std::vector<std::shared_ptr<RecordBatch>> &recordbatches) {
+  using Function = MmioReg::Function;
+  using Behavior = MmioReg::Behavior;
+  using std::to_string;
   std::vector<MmioReg> profile_regs;
   for (const auto &rb : recordbatches) {
     auto fps = rb->GetFieldPorts();
     for (const auto &fp : fps) {
       // Check if we should profile the field-derived port node.
       if (fp->profile_) {
-        for (const auto &ft : cerata::Flatten(fp->type())) {
-          if (ft.type_->Is(cerata::Type::RECORD)) {
-            auto prefix = ft.name(cerata::NamePart(fp->name()));
-            MmioReg e{MmioReg::Function::PROFILE, MmioReg::Behavior::STATUS, prefix + "_ecount", ecount, COUNT_WIDTH};
-            MmioReg v{MmioReg::Function::PROFILE, MmioReg::Behavior::STATUS, prefix + "_rcount", vcount, COUNT_WIDTH};
-            MmioReg r{MmioReg::Function::PROFILE, MmioReg::Behavior::STATUS, prefix + "_vcount", rcount, COUNT_WIDTH};
-            MmioReg t{MmioReg::Function::PROFILE, MmioReg::Behavior::STATUS, prefix + "_tcount", tcount, COUNT_WIDTH};
-            MmioReg p{MmioReg::Function::PROFILE, MmioReg::Behavior::STATUS, prefix + "_pcount", pcount, COUNT_WIDTH};
+        auto flattened = cerata::Flatten(fp->type());
+        for (size_t fti = 0; fti < flattened.size(); fti++) {
+          if (flattened[fti].type_->Is(cerata::Type::RECORD)) {
+            auto prefix = flattened[fti].name(cerata::NamePart(fp->name()));
+            MmioReg e{Function::PROFILE, Behavior::STATUS, prefix + "_ecount" + to_string(fti), ecount, COUNT_WIDTH};
+            MmioReg v{Function::PROFILE, Behavior::STATUS, prefix + "_rcount" + to_string(fti), vcount, COUNT_WIDTH};
+            MmioReg r{Function::PROFILE, Behavior::STATUS, prefix + "_vcount" + to_string(fti), rcount, COUNT_WIDTH};
+            MmioReg t{Function::PROFILE, Behavior::STATUS, prefix + "_tcount" + to_string(fti), tcount, COUNT_WIDTH};
+            MmioReg p{Function::PROFILE, Behavior::STATUS, prefix + "_pcount" + to_string(fti), pcount, COUNT_WIDTH};
             profile_regs.insert(profile_regs.end(), {e, v, r, t, p});
           }
         }
@@ -131,7 +135,7 @@ std::unique_ptr<cerata::Instance> ProfilerInstance(const std::string &name,
 
   // Because we can have multiple probes mapping to multiple stream types, each probe type should be unique.
   auto probe = result->prt("probe");
-  probe->SetType(stream_probe((*result->GetNode("PROBE_COUNT_WIDTH"))->shared_from_this()));
+  probe->SetType(stream_probe((*result->FindNode("PROBE_COUNT_WIDTH"))->shared_from_this()));
 
   for (auto &n : result->GetNodes()) {
     auto s = dynamic_cast<cerata::Synchronous *>(n);
@@ -197,24 +201,21 @@ NodeProfilerPorts EnableStreamProfiling(cerata::Component *comp,
         // Increase the flat type field index, until we hit the next stream, or we see a field with metadata meant for
         // this function.
 
-        // TODO(johanpel): do this properly through a new stream type that includes the count properly through epc.
-        //  or just get rid of the stream type and create something like parameterizable bundles.
-
         // Go the next flat type index.
         // If there is any flat types left, figure out if there is a count field.
         fti++;
         while (fti < flat_types.size()) {
           auto ft = flat_types[fti];
           if (ft.type_->Is(Type::RECORD)) {
-            if (ft.type_->meta.count(metakeys::COUNT) > 0) {
-              auto width = std::strtol(flat_types[fti].type_->meta.at(metakeys::COUNT).c_str(), nullptr, 10);
+            if (ft.type_->meta.count(meta::COUNT) > 0) {
+              auto width = std::strtol(flat_types[fti].type_->meta.at(meta::COUNT).c_str(), nullptr, 10);
               p_in_count_width <<= intl(static_cast<int>(width));
               // We've found the count field.
               matrix(fti, 2) = 2;  // Connect the count.
               break;
             }
-            fti++;
           }
+          fti++;
         }
 
         // Set the mapping matrix of the new mapper, and add it to the probe.

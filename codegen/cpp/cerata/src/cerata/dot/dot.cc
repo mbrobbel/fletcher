@@ -55,6 +55,9 @@ std::string Grapher::GenEdges(const Graph &graph, int level) {
       // Check if edge is complete
       auto dst = e->dst();
       auto src = e->src();
+      if ((dst == nullptr) || (src == nullptr)) {
+        continue;
+      }
       // Don't draw literals
       if (dst->IsLiteral() || src->IsLiteral()) {
         continue;
@@ -116,6 +119,7 @@ std::string Grapher::GenEdges(const Graph &graph, int level) {
           sb << "lhead=\"cluster_" + NodeName(*src) + "\"";
         }
       } else {
+        ret << "]\n";
         continue;
       }
       ret << sb.ToString();

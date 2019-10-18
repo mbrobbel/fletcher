@@ -22,19 +22,16 @@
 
 namespace fletchgen {
 
-/// Metadata keys
-namespace metakeys {
+/// Fletchgen metadata keys for Cerata objects.
+namespace meta {
 /// Key for automated type mapping.
 constexpr char ARRAY_DATA[] = "fletchgen_array_data";
-
 /// Key to mark the count field in Arrow streams.
 constexpr char COUNT[] = "fletchgen_count";
-
 /// Key for elements-per-cycle on streams.
-constexpr char EPC[] = "fletcher_epc";
-
+constexpr char EPC[] = "fletchgen_epc";
 /// Key for length-elements-per-cycle on length streams. Must be seperate from EPC for "listprim" config string.
-constexpr char LEPC[] = "fletcher_lepc";
+constexpr char LEPC[] = "fletchgen_lepc";
 }
 
 using cerata::Type;
@@ -44,11 +41,39 @@ using cerata::TypeMapper;
 using cerata::Parameter;
 
 // Generate declaration for basic types corresponding to and in the manner of Arrow's types
-#define BIT_DECL_FACTORY(NAME)        std::shared_ptr<Type> NAME();
+#define BIT_DECL_FACTORY(NAME) std::shared_ptr<Type> NAME();
+
+/// Creates basic, single-bit types similar to Arrow cpp/type.cc for convenience
+#define BIT_FACTORY(NAME)                        \
+  std::shared_ptr<Type> NAME() {                 \
+    static std::shared_ptr<Type> result = bit(); \
+    return result;                               \
+  }
 
 /// Generate declaration for basic, multi-bit types similar to Arrow cpp/type.cc for convenience
 #define VEC_DECL_FACTORY(NAME, WIDTH) std::shared_ptr<Type> NAME();
 
+/// Creates basic, multi-bit types similar to Arrow cpp/type.cc for convenience, including their nullable versions.
+#define VEC_FACTORY(NAME, WIDTH)                                \
+  std::shared_ptr<Type> NAME() {                                \
+    static std::shared_ptr<Type> result = vector(#NAME, WIDTH); \
+    return result;                                              \
+  }
+
+/// Macro for declarations for Fletcher parameters.
+#define PARAM_DECL_FACTORY(NAME, VALUE) std::shared_ptr<Parameter> NAME(int64_t value = VALUE,           \
+                                                                        const std::string& prefix = "");
+
+/// Macro for implementation of Fletcher parameters.
+#define PARAM_FACTORY(NAME)                                                 \
+std::shared_ptr<Parameter> NAME(int64_t value, const std::string& prefix) { \
+  auto name = std::string(#NAME);                                           \
+  if (!prefix.empty()) {name = prefix + "_" + name;}                        \
+  auto result = parameter(name, cerata::integer(), intl(value));            \
+  return result;                                                            \
+}
+
+// Arrow equivalent Cerata types:
 BIT_DECL_FACTORY(validity)
 VEC_DECL_FACTORY(int8, 8)
 VEC_DECL_FACTORY(uint8, 8)
@@ -68,17 +93,9 @@ VEC_DECL_FACTORY(utf8c, 8)
 VEC_DECL_FACTORY(byte, 8)
 VEC_DECL_FACTORY(offset, 32)
 
-/// Generate declaration for generic Fletcher parameters.
-#define PARAM_DECL_FACTORY(NAME) std::shared_ptr<Parameter> NAME();
-
-PARAM_DECL_FACTORY(bus_addr_width)
-PARAM_DECL_FACTORY(bus_data_width)
-PARAM_DECL_FACTORY(bus_strobe_width)
-PARAM_DECL_FACTORY(bus_len_width)
-PARAM_DECL_FACTORY(bus_burst_step_len)
-PARAM_DECL_FACTORY(bus_burst_max_len)
-PARAM_DECL_FACTORY(index_width)
-PARAM_DECL_FACTORY(tag_width)
+// Other params:
+PARAM_DECL_FACTORY(index_width, 32)
+PARAM_DECL_FACTORY(tag_width, 1)
 
 /// @brief Fletcher accelerator clock domain
 std::shared_ptr<ClockDomain> kernel_cd();

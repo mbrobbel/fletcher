@@ -65,7 +65,7 @@ void FlattenRecord(std::vector<FlatType> *list,
                    const std::optional<FlatType> &parent,
                    bool invert) {
   for (const auto &f : record->fields()) {
-    Flatten(list, f->type().get(), parent, f->name(), invert != f->invert(), f->sep());
+    Flatten(list, f->type().get(), parent, f->name(), invert != f->inverted(), f->sep());
   }
 }
 

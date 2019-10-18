@@ -208,7 +208,7 @@ std::vector<Node *> Vector::GetGenerics() const {
 }
 
 Type &Vector::SetWidth(std::shared_ptr<Node> width) {
-  width_ = std::move(width);
+  width_ = width;
   return *this;
 }
 
@@ -390,6 +390,11 @@ std::shared_ptr<Field> Field::Copy(std::unordered_map<Node *, Node *> rebinding)
 Field &Field::SetType(std::shared_ptr<Type> type) {
   type_ = type;
   return *this;
+}
+
+std::shared_ptr<Field> Field::Invert() {
+  invert_ = true;
+  return shared_from_this();
 }
 
 std::shared_ptr<Type> Record::Copy(std::unordered_map<Node *, Node *> rebinding) const {

@@ -80,20 +80,16 @@ std::shared_ptr<Type> unlock(const std::shared_ptr<Node> &tag_width) {
 }
 
 std::shared_ptr<Type> array_reader_out(int num_streams, int full_width) {
-  auto d = field(data(full_width));
-  auto dv = field(dvalid(num_streams, true));
-  auto l = field(last(num_streams, true));
-  auto data_record = record("ARRecord", {d, dv, l});
-  auto data_stream = stream("ARData", data_record);
+  auto data_stream = stream(record({field(data(full_width)),
+                                    field(dvalid(num_streams, true)),
+                                    field(last(num_streams, true))}));
   return data_stream;
 }
 
 std::shared_ptr<Type> array_writer_in(int num_streams, int full_width) {
-  auto d = field(data(full_width));
-  auto dv = field(dvalid(num_streams, true));
-  auto l = field(last(num_streams, true));
-  auto data_record = record("AWRecord", {d, dv, l});
-  auto data_stream = stream("AWData", data_record);
+  auto data_stream = stream(record({field(data(full_width)),
+                                    field(dvalid(num_streams, true)),
+                                    field(last(num_streams, true))}));
   return data_stream;
 }
 
@@ -135,19 +131,17 @@ Component *array(Mode mode) {
   std::shared_ptr<BusPort> bus;
   std::shared_ptr<Port> data;
 
-  BusParam params{};
+  auto func = mode == Mode::READ ? BusFunction::READ : BusFunction::WRITE;
+
+  BusParam params(result, func);
 
   auto type = mode == Mode::READ ? array_reader_out() : array_writer_in();
   auto dir = mode == Mode::READ ? Port::Dir::OUT : Port::Dir::IN;
-  auto func = mode == Mode::READ ? BusFunction::READ : BusFunction::WRITE;
 
   // Add Arrow data port.
   data = port(DataName(mode), type, dir, kernel_cd());
   // Add bus port.
-  bus = bus_port(Port::Dir::OUT, params, func);
-
-  // Insert bus parameters.
-  result->Add(params.all(func));
+  bus = bus_port("bus", Port::Dir::OUT, params);
 
   // Insert other parameters
   result->Add({parameter("INDEX_WIDTH", integer(), intl(32)),
@@ -242,8 +236,8 @@ std::string GenerateConfigString(const arrow::Field &field, int level) {
     level++;
   }
 
-  int epc = fletcher::GetIntMeta(field, metakeys::EPC, 1);
-  int lepc = fletcher::GetIntMeta(field, metakeys::LEPC, 1);
+  int epc = fletcher::GetIntMeta(field, meta::EPC, 1);
+  int lepc = fletcher::GetIntMeta(field, meta::LEPC, 1);
 
   if (ct == ConfigType::PRIM) {
     auto w = GetWidth(field.type().get());
@@ -317,9 +311,10 @@ std::shared_ptr<TypeMapper> GetStreamTypeMapper(Type *stream_type, Type *other) 
   return conversion;
 }
 
+// TODO(johanpel): move this into GetStreamType
 std::pair<int, int> GetArrayDataSpec(const arrow::Field &arrow_field) {
-  int epc = fletcher::GetIntMeta(arrow_field, metakeys::EPC, 1);
-  int lepc = fletcher::GetIntMeta(arrow_field, metakeys::LEPC, 1);
+  int epc = fletcher::GetIntMeta(arrow_field, meta::EPC, 1);
+  int lepc = fletcher::GetIntMeta(arrow_field, meta::LEPC, 1);
 
   auto e_count_width = static_cast<int>(ceil(log2(epc + 1)));
   auto l_count_width = static_cast<int>(ceil(log2(lepc + 1)));
@@ -390,8 +385,8 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
   // WARNING: Modifications to this function must be reflected in the manual hardware implementation of Fletcher
   //  components! See: hardware/arrays/ArrayConfig_pkg.vhd
 
-  int epc = fletcher::GetIntMeta(arrow_field, metakeys::EPC, 1);
-  int lepc = fletcher::GetIntMeta(arrow_field, metakeys::LEPC, 1);
+  int epc = fletcher::GetIntMeta(arrow_field, meta::EPC, 1);
+  int lepc = fletcher::GetIntMeta(arrow_field, meta::LEPC, 1);
 
   auto e_count_width = static_cast<int>(ceil(log2(epc + 1)));
   auto l_count_width = static_cast<int>(ceil(log2(lepc + 1)));

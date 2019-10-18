@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+#include <cstdlib>
 
 #ifdef FLETCHER_USE_ARROW_LOGGING
 /*
@@ -58,11 +59,14 @@ inline void StopLogging() {
     std::cerr << "[" + fletcher::level2str(FLETCHER_LOG_##level) + "]: "  \
               << msg                                                      \
               << std::endl;                                               \
+    std::abort();                                                         \
   } else {                                                                \
     std::cout << "[" << fletcher::level2str(FLETCHER_LOG_##level) + "]: " \
               << msg                                                      \
               << std::endl;                                               \
-  }
+  }                                                                       \
+(void)0
+// ^ prevent empty statement linting errors
 
 // Default logging
 constexpr int FLETCHER_LOG_DEBUG = -1;
@@ -78,18 +82,18 @@ using LogLevel = int;
 inline std::string level2str(int level) {
   switch (level) {
     default: return "DEBUG";
-    case 0: return  "INFO ";
-    case 1: return  "WARN ";
-    case 2: return  "ERROR";
-    case 3: return  "FATAL";
+    case 0: return "INFO ";
+    case 1: return "WARN ";
+    case 2: return "ERROR";
+    case 3: return "FATAL";
   }
 }
 
 inline void StartLogging(const std::string &app_name, LogLevel level, const std::string &file_name) {
   // No init required, but prevent compiler warnings by pretending to use the arguments.
-  (void)app_name;
-  (void)level;
-  (void)file_name;
+  (void) app_name;
+  (void) level;
+  (void) file_name;
 }
 
 inline void StopLogging() {

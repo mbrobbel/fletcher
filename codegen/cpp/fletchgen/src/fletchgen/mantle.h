@@ -38,7 +38,8 @@ class Mantle : public Component {
   /// @brief Construct a Mantle based on a SchemaSet
   explicit Mantle(std::string name,
                   const std::vector<std::shared_ptr<RecordBatch>> &recordbatches,
-                  const std::shared_ptr<Nucleus> &nucleus);
+                  const std::shared_ptr<Nucleus> &nucleus,
+                  BusSpec bus_spec);
   /// @brief Return the kernel component of this Mantle.
   std::shared_ptr<Nucleus> nucleus() const { return nucleus_; }
   /// @brief Return all RecordBatch(Reader/Writer) instances of this Mantle.
@@ -47,6 +48,7 @@ class Mantle : public Component {
   std::vector<std::shared_ptr<RecordBatch>> recordbatch_components() const { return recordbatch_components_; }
 
  protected:
+  BusSpec bus_spec_;
   /// The Nucleus to be instantiated by this Mantle.
   std::shared_ptr<Nucleus> nucleus_;
   /// Shortcut to the instantiated Nucleus.
@@ -59,9 +61,17 @@ class Mantle : public Component {
   std::unordered_map<BusPort *, Instance *> arbiters_;
 };
 
-/// @brief Construct a Mantle and return a shared pointer to it.
+/**
+ * @brief Construct the mantle component and return a shared pointer to it.
+ * @param name          The name of the mantle.
+ * @param recordbatches The RecordBatch components to instantiate.
+ * @param nucleus       The Nucleus to instantiate.
+ * @param bus_spec      The specification of the top-level bus.
+ * @return              A shared pointer to the mantle component.
+ */
 std::shared_ptr<Mantle> mantle(const std::string &name,
                                const std::vector<std::shared_ptr<RecordBatch>> &recordbatches,
-                               const std::shared_ptr<Nucleus> &nucleus);
+                               const std::shared_ptr<Nucleus> &nucleus,
+                               BusSpec bus_spec);
 
 }  // namespace fletchgen

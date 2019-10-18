@@ -22,7 +22,7 @@
 #include <unordered_map>
 
 #include "cerata/node.h"
-#include "cerata/node_array.h"
+#include "cerata/array.h"
 #include "cerata/pool.h"
 
 namespace cerata {
@@ -36,15 +36,7 @@ class Instance;
  * @param obj The object from which to derive the required objects.
  * @param out The output.
  */
-void GetSubObjects(const Object &obj, std::vector<Object *> *out);
-
-/**
- * @brief Get generic types.
- * @param obj The object from which to derive the required objects.
- * @param out The output.
- * @param include_literals Whether to include literal nodes.
- */
-void GetGenericTypes(const Object &obj, std::vector<Type *> *out);
+void GetTypeGenerics(const Object &obj, std::vector<Object *> *out);
 
 /**
  * @brief A graph representing a hardware structure.
@@ -76,21 +68,39 @@ class Graph : public Named {
   /// @brief Get all objects of a specific type.
   template<typename T>
   std::vector<T *> GetAll() const {
-    std::vector<T *> ret;
+    std::vector<T *> result;
     for (const auto &o : objects_) {
       auto co = std::dynamic_pointer_cast<T>(o);
-      if (co != nullptr)
-        ret.push_back(co.get());
+      if (co != nullptr) {
+        result.push_back(co.get());
+      }
     }
-    return ret;
+    return result;
   }
 
-  /// @brief Get a NodeArray object of a specific type with a specific name
-  std::optional<NodeArray *> GetArray(Node::NodeID node_id, const std::string &array_name) const;
+  /// @brief Get one object of a specific type.
+  template<typename T>
+  T *Get(const std::string &name) const {
+    for (const auto &o : objects_) {
+      if (o->name() == name) {
+        auto result = dynamic_cast<T *>(o.get());
+        if (result == nullptr) {
+          CERATA_LOG(FATAL, "Object with name " + name + " is not of type " + ::cerata::ToString<T>());
+        }
+        return result;
+      }
+    }
+    CERATA_LOG(FATAL, "Object with name " + name + " does not exist on graph " + this->name()
+        + "\n Should be one of the following: " + ToStringAllOjects());
+  }
+
+  /// @brief Find a node with a specific name.
+  std::optional<Node *> FindNode(const std::string &node_name) const;
   /// @brief Get a Node of a specific type with a specific name
-  std::optional<Node *> GetNode(const std::string &node_name) const;
-  /// @brief Get a Node of a specific type with a specific name
-  Node *GetNode(Node::NodeID node_id, const std::string &node_name) const;
+  Node *GetNode(const std::string &node_name) const;
+  /// @brief Obtain a node by name.
+  inline Node *operator()(const std::string &node_name) const { return GetNode(node_name); }
+
   /// @brief Obtain all nodes which ids are in a list of Node::IDs
   std::vector<Node *> GetNodesOfTypes(std::initializer_list<Node::NodeID> ids) const;
   /// @brief Count nodes of a specific node type
@@ -106,14 +116,17 @@ class Graph : public Named {
   /// @brief Return all graph nodes that do not explicitly belong to the graph.
   std::vector<Node *> GetImplicitNodes() const;
 
-  /// @brief Shorthand to Get(, ..)
-  PortArray *prta(const std::string &port_name) const;
-  /// @brief Shorthand to Get(Node::PORT, ..)
-  Port *prt(const std::string &port_name) const;
-  /// @brief Shorthand to Get(Node::SIGNAL, ..)
-  Signal *sig(const std::string &signal_name) const;
-  /// @brief Shorthand to Get(Node::PARAMETER, ..)
-  Parameter *par(const std::string &signal_name) const;
+  /// @brief Shorthand to Get<PortArray>(...)
+  PortArray *prt_arr(const std::string &name) const;
+  /// @brief Shorthand to Get<SignalArray>(...)
+  SignalArray *sig_arr(const std::string &name) const;
+  /// @brief Shorthand to Get<Port>(...)
+  Port *prt(const std::string &name) const;
+  /// @brief Shorthand to Get<Signal>(...)
+  Signal *sig(const std::string &name) const;
+  /// @brief Shorthand to Get<Parameter>(...)
+  Parameter *par(const std::string &name) const;
+
   /// @brief Get a parameter by supplying another parameter. Lookup is done according to the name of the supplied param.
   Parameter *par(const Parameter &param) const;
   /// @brief Get a parameter by supplying another parameter. Lookup is done according to the name of the supplied param.
@@ -131,6 +144,9 @@ class Graph : public Named {
 
   /// @brief Return a human-readable representation.
   std::string ToString() const { return name(); }
+
+  /// @brief Return a comma seperated list of object names.
+  std::string ToStringAllOjects() const;
 
  protected:
   /// Graph type id for convenience

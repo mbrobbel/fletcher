@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cerata/node_array.h"
+#include "cerata/array.h"
 
 #include <optional>
 #include <utility>
@@ -44,20 +44,10 @@ static std::shared_ptr<Node> IncrementNode(Node *node) {
     }
     // The second-last node is of importance, because this is the final parameter node.
     auto second_last = trace[trace.size() - 2];
-    // Create a copy of the second last node.
-    auto copy = std::dynamic_pointer_cast<Parameter>(second_last->Copy());
-    // Source the copy with whatever literal was at the end of the trace, plus one.
     auto incremented = trace.back()->shared_from_this() + 1;
-    Connect(copy, incremented);
-    // Replace the second-last node in the trace with our copy.
-    // This is often the parameter node itself, when it is directly sourced by a literal.
-    second_last->Replace(copy.get());
-    // If the parameter node was the second last node, we should return the copy.
-    if (param == second_last) {
-      return copy->shared_from_this();
-    } else {
-      return trace[0]->shared_from_this();
-    }
+    // Source the second last node with whatever literal was at the end of the trace, plus one.
+    Connect(second_last, incremented);
+    return node->shared_from_this();
   } else {
     CERATA_LOG(FATAL, "Can only increment literal, expression or parameter size node " + node->ToString());
   }
