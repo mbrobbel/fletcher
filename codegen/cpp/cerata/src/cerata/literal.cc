@@ -19,7 +19,7 @@ namespace cerata {
 
 std::string Literal::ToString() const {
   if (storage_type_ == StorageType::BOOL) {
-    return std::to_string(Bool_val_);
+    return Bool_val_ ? "true" : "false";
   } else if (storage_type_ == StorageType::STRING) {
     return String_val_;
   } else {

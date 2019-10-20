@@ -392,7 +392,7 @@ Field &Field::SetType(std::shared_ptr<Type> type) {
   return *this;
 }
 
-std::shared_ptr<Field> Field::Invert() {
+std::shared_ptr<Field> Field::Reverse() {
   invert_ = true;
   return shared_from_this();
 }

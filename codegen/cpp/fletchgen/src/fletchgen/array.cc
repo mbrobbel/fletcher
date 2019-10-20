@@ -23,6 +23,7 @@
 #include <string>
 
 #include "fletchgen/bus.h"
+#include "fletchgen/basic_types.h"
 
 namespace fletchgen {
 
@@ -38,44 +39,42 @@ using cerata::integer;
 
 using fletcher::Mode;
 
-std::shared_ptr<Node> ctrl_width(const arrow::Field &field) {
+PARAM_FACTORY(index_width)
+PARAM_FACTORY(tag_width)
+
+std::shared_ptr<Node> GetCtrlWidth(const arrow::Field &field, const std::shared_ptr<Node> &bus_address_width) {
   fletcher::FieldMetadata field_meta;
   fletcher::FieldAnalyzer fa(&field_meta);
   fa.Analyze(field);
   std::shared_ptr<Node> width = intl(field_meta.buffers.size());
-  return width * bus_addr_width();
+  return width * bus_address_width;
 }
 
-std::shared_ptr<Node> tag_width(const arrow::Field &field) {
+std::shared_ptr<Node> GetTagWidth(const arrow::Field &field) {
   auto meta_val = fletcher::GetIntMeta(field, fletcher::meta::TAG_WIDTH, 1);
   return intl(meta_val);
 }
 
-std::shared_ptr<Type> cmd(const std::shared_ptr<Node> &tag_width = intl(1),
-                          const std::optional<std::shared_ptr<Node>> &ctrl_width) {
-  // Create fields
-  auto firstidx = field(vector("firstIdx", 32));
-  auto lastidx = field(vector("lastidx", 32));
-  auto tag = field(vector("tag", tag_width));
-
+std::shared_ptr<Type> cmd_type(const std::shared_ptr<Node> &index_width,
+                               const std::shared_ptr<Node> &tag_width,
+                               const std::optional<std::shared_ptr<Node>> &ctrl_width) {
   // Create record
-  auto cmd_record = record("command_rec", {firstidx, lastidx, tag});
-
+  auto data = record({field("firstIdx", vector(index_width)),
+                      field("lastIdx", vector(index_width)),
+                      field("tag", vector(tag_width))});
   // If we want the ctrl field to be visible on this type, create that as well. This field is used to pass addresses.
   // Depending on how advanced the developer is, we want to expose this or leave it out through the Nucleus layer.
   if (ctrl_width) {
     auto ctrl = field(vector("ctrl", *ctrl_width));
-    cmd_record->AddField(ctrl, 2);
+    data->AddField(ctrl, 2);
   }
-
   // Create the stream type.
-  auto result = stream("command", cmd_record);
+  auto result = stream(data);
   return result;
 }
 
-std::shared_ptr<Type> unlock(const std::shared_ptr<Node> &tag_width) {
-  auto tag = vector("tag", tag_width);
-  std::shared_ptr<Type> unlock_stream = stream("unlock", "tag", tag);
+std::shared_ptr<Type> unlock_type(const std::shared_ptr<Node> &tag_width) {
+  std::shared_ptr<Type> unlock_stream = stream("tag", vector(tag_width));
   return unlock_stream;
 }
 
@@ -128,34 +127,38 @@ Component *array(Mode mode) {
   // Create anew component.
   auto result = cerata::component(ArrayName(mode));
 
-  std::shared_ptr<BusPort> bus;
-  std::shared_ptr<Port> data;
-
+  // Parameters.
   auto func = mode == Mode::READ ? BusFunction::READ : BusFunction::WRITE;
-
   BusParam params(result, func);
+  auto iw = index_width();
+  auto tw = tag_width();
+  tw->SetName("CMD_TAG_WIDTH");
 
-  auto type = mode == Mode::READ ? array_reader_out() : array_writer_in();
-  auto dir = mode == Mode::READ ? Port::Dir::OUT : Port::Dir::IN;
-
-  // Add Arrow data port.
-  data = port(DataName(mode), type, dir, kernel_cd());
-  // Add bus port.
-  bus = bus_port("bus", Port::Dir::OUT, params);
-
-  // Insert other parameters
-  result->Add({parameter("INDEX_WIDTH", integer(), intl(32)),
+  result->Add({iw,
                parameter("CFG", string(), strl("")),
                parameter("CMD_TAG_ENABLE", boolean(), booll(true)),
-               parameter("CMD_TAG_WIDTH", integer(), intl(1))});
+               tw});
+
+  // Clocks and resets.
+  auto bcd = port("bcd", cr(), Port::Dir::IN, bus_cd());
+  auto kcd = port("kcd", cr(), Port::Dir::IN, kernel_cd());
+
+  // Command port.
+  auto cmd = port("cmd", cmd_type(iw, tw, strl("arcfg_ctrlWidth(CFG, BUS_ADDR_WIDTH)")), Port::Dir::IN, kernel_cd());
+
+  // Unlock port.
+  auto unlock = port("unl", unlock_type(tw), Port::Dir::OUT, kernel_cd());
+
+  // Bus port.
+  auto bus = bus_port("bus", Port::Dir::OUT, params);
+
+  // Arrow data port.
+  auto type = mode == Mode::READ ? array_reader_out() : array_writer_in();
+  auto dir = mode == Mode::READ ? Port::Dir::OUT : Port::Dir::IN;
+  auto data = port(DataName(mode), type, dir, kernel_cd());
 
   // Insert ports
-  result->Add({port("bcd", cr(), Port::Dir::IN, bus_cd()),
-               port("kcd", cr(), Port::Dir::IN, kernel_cd()),
-               bus,
-               port("cmd", cmd(intl(1), intl(1)), Port::Dir::IN, kernel_cd()),
-               port("unl", unlock(), Port::Dir::OUT, kernel_cd()),
-               data});
+  result->Add({bcd, kcd, cmd, unlock, bus, data});
 
   result->SetMeta(cerata::vhdl::meta::PRIMITIVE, "true");
   result->SetMeta(cerata::vhdl::meta::LIBRARY, "work");

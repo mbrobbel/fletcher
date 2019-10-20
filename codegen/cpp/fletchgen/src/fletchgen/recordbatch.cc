@@ -51,6 +51,12 @@ RecordBatch::RecordBatch(const std::string &name,
 }
 
 void RecordBatch::AddArrays(const std::shared_ptr<FletcherSchema> &fletcher_schema) {
+  // Add Array type generics.
+  auto iw = index_width();
+  auto tw = tag_width();
+  auto aw = bus_addr_width();
+  Add({iw, tw, aw});
+
   // Iterate over all fields and add ArrayReader/Writer data and control ports.
   for (const auto &field : fletcher_schema->arrow_schema()->fields()) {
     // Check if we must ignore the field
@@ -76,80 +82,65 @@ void RecordBatch::AddArrays(const std::shared_ptr<FletcherSchema> &fletcher_sche
       auto kernel_arrow_type = kernel_arrow_port->type();
       Add(kernel_arrow_port);
 
+      auto cw = GetCtrlWidth(*field, aw);
+
       // Add a command port for the ArrayReader/Writer
-      auto cmd = command_port(fletcher_schema, field, true, kernel_cd());
-      Add(cmd);
+      auto cmd = command_port(fletcher_schema, field, iw, tw, cw, aw, kernel_cd());
+      Add({cw, cmd});
 
       // Add an unlock port for the ArrayReader/Writer
-      auto unl = unlock_port(fletcher_schema, field, kernel_cd());
+      auto unl = unlock_port(fletcher_schema, field, tw, kernel_cd());
       Add(unl);
 
-      // Instantiate an ArrayReader or Writer
+
+      // Instantiate an ArrayReader or Writer.
       auto a = AddInstanceOf(array(mode_), field->name() + "_inst");
       array_instances_.push_back(a);
       auto a_bus_ports = a->GetAll<BusPort>();
 
-      // Generate and set a configuration string for the ArrayReader
+      // Generate and set a configuration string for the ArrayReader.
       auto cfg_node = a->GetNode("CFG");
       cfg_node <<= cerata::strl(GenerateConfigString(*field));
 
-      // Drive the clocks and resets
+      // Drive the clocks and resets.
       Connect(a->prt("kcd"), prt("kcd"));
       Connect(a->prt("bcd"), prt("bcd"));
 
-      // Drive the RecordBatch Arrow data port with the ArrayReader/Writer data port, or vice versa
-      if (mode_ == Mode::READ) {
-        auto a_data_port = a->prt("out");
-        // Rebind the type because now we know the field (also see array())
-        auto a_data_spec = GetArrayDataSpec(*field);
-        auto a_data_type = array_reader_out(a_data_spec.first, a_data_spec.second);
-        a_data_port->SetType(a_data_type);
-        // Create a mapper between the Arrow port and the Array data port
-        auto mapper = GetStreamTypeMapper(kernel_arrow_type, a_data_type.get());
-        kernel_arrow_type->AddMapper(mapper);
-        // Connect the ports
-        kernel_arrow_port <<= a_data_port;
-      } else {
-        auto a_data_port = a->prt("in");
-        // Rebind the type because now we know the field (also see array())
-        auto a_data_spec = GetArrayDataSpec(*field);
-        auto a_data_type = array_writer_in(a_data_spec.first, a_data_spec.second);
-        a_data_port->SetType(a_data_type);
-        // Create a mapper between the Arrow port and the Array data port
-        auto mapper = GetStreamTypeMapper(kernel_arrow_type, a_data_type.get());
-        kernel_arrow_type->AddMapper(mapper);
-        // Connect the ports
-        a_data_port <<= kernel_arrow_port;
-      }
+      // Connect some global parameters.
+      a->par("CMD_TAG_WIDTH") <<= tw;
+      a->par(index_width()) <<= iw;
 
-      // Drive the ArrayReader command port from the top-level command port
+      // Drive the ArrayReader/Writer command port from the top-level command port
       a->prt("cmd") <<= cmd;
       // Drive the unlock port with the ArrayReader/Writer
       unl <<= a->prt("unl");
 
-      for (const auto &a_bus_port : a_bus_ports) {
-        auto rb_param_prefix = fletcher_schema->name() + "_" + field->name();
-        auto rb_port_prefix = rb_param_prefix + "_bus";
-        auto a_bus_params = a_bus_port->params_;
-        // Create new bus parameters to bind to and prefix it with the bus name.
-        auto rb_bus_params = BusParam(this, a_bus_params.func_, a_bus_params.spec_, rb_param_prefix);
-        // Copy over the ArrayReader/Writer's bus port
-        auto rb_bus_port = bus_port(rb_port_prefix, a_bus_port->dir(), rb_bus_params);
-        // Add them to the RecordBatch
-        Add(rb_bus_port);
-        // Connect them to the ArrayReader/Writer
-        Connect(rb_bus_port, a->prt("bus"));
-        // Connect the bus parameters.
-        ConnectBusParam(a, rb_bus_params);
-
-        // TODO(johanpel): this is madness!
-        // TODO(johanpel): no, this is C PLUS PLUUUUUUUS!
-        auto a_cmd_type = a->prt("cmd")->type();
-        auto a_cmd_str = dynamic_cast<cerata::Record *>(a_cmd_type);
-        auto a_cmd_rec = dynamic_cast<cerata::Record *>(a_cmd_str->operator()(2)->type().get());
-        auto a_cmd_vec = dynamic_cast<cerata::Vector *>(a_cmd_rec->operator()(3)->type().get());
-        a_cmd_vec->SetWidth(rb_bus_params.aw);
+      // Drive the RecordBatch Arrow data port with the ArrayReader/Writer data port, or vice versa.
+      if (mode_ == Mode::READ) {
+        auto a_data_port = a->prt("out");
+        // Rebind the type because now we know the field (also see array()).
+        auto a_data_spec = GetArrayDataSpec(*field);
+        auto a_data_type = array_reader_out(a_data_spec.first, a_data_spec.second);
+        a_data_port->SetType(a_data_type);
+        // Create a mapper between the Arrow port and the Array data port.
+        auto mapper = GetStreamTypeMapper(kernel_arrow_type, a_data_type.get());
+        kernel_arrow_type->AddMapper(mapper);
+        // Connect the ports.
+        kernel_arrow_port <<= a_data_port;
+      } else {
+        auto a_data_port = a->prt("in");
+        // Rebind the type because now we know the field (also see array()).
+        auto a_data_spec = GetArrayDataSpec(*field);
+        auto a_data_type = array_writer_in(a_data_spec.first, a_data_spec.second);
+        a_data_port->SetType(a_data_type);
+        // Create a mapper between the Arrow port and the Array data port.
+        auto mapper = GetStreamTypeMapper(kernel_arrow_type, a_data_type.get());
+        kernel_arrow_type->AddMapper(mapper);
+        // Connect the ports.
+        a_data_port <<= kernel_arrow_port;
       }
+
+      ConnectBusPorts(a, *fletcher_schema, *field);
     }
   }
 }
@@ -166,6 +157,25 @@ RecordBatch::GetFieldPorts(const std::optional<FieldPort::Function> &function) c
     }
   }
   return result;
+}
+
+void RecordBatch::ConnectBusPorts(Instance *array, const FletcherSchema &fletcher_schema, const arrow::Field &field) {
+  auto a_bus_ports = array->GetAll<BusPort>();
+  for (const auto &a_bus_port : a_bus_ports) {
+    auto rb_param_prefix = fletcher_schema.name() + "_" + field.name();
+    auto rb_port_prefix = rb_param_prefix + "_bus";
+    auto a_bus_params = a_bus_port->params_;
+    // Create new bus parameters to bind to and prefix it with the bus name.
+    auto rb_bus_params = BusParam(this, a_bus_params.func_, a_bus_params.spec_, rb_param_prefix);
+    // Copy over the ArrayReader/Writer's bus port
+    auto rb_bus_port = bus_port(rb_port_prefix, a_bus_port->dir(), rb_bus_params);
+    // Add them to the RecordBatch
+    Add(rb_bus_port);
+    // Connect them to the ArrayReader/Writer
+    Connect(rb_bus_port, array->prt("bus"));
+    // Connect the bus parameters.
+    ConnectBusParam(array, rb_bus_params);
+  }
 }
 
 std::shared_ptr<RecordBatch> record_batch(const std::string &name,
@@ -202,13 +212,16 @@ std::shared_ptr<FieldPort> arrow_port(const std::shared_ptr<FletcherSchema> &fle
 
 std::shared_ptr<FieldPort> command_port(const std::shared_ptr<FletcherSchema> &fletcher_schema,
                                         const std::shared_ptr<arrow::Field> &field,
-                                        bool ctrl,
+                                        const std::shared_ptr<Node> &index_width,
+                                        const std::shared_ptr<Node> &tag_width,
+                                        std::optional<std::shared_ptr<Node>> ctrl_width,
+                                        std::optional<std::shared_ptr<Node>> addr_width,
                                         const std::shared_ptr<ClockDomain> &domain) {
   std::shared_ptr<cerata::Type> type;
-  if (ctrl) {
-    type = cmd(tag_width(*field), ctrl_width(*field));
+  if (ctrl_width && addr_width) {
+    type = cmd_type(index_width, tag_width, GetCtrlWidth(*field, *addr_width));
   } else {
-    type = cmd(tag_width(*field));
+    type = cmd_type(index_width, GetTagWidth(*field));
   }
   return std::make_shared<FieldPort>(fletcher_schema->name() + "_" + field->name() + "_cmd",
                                      FieldPort::COMMAND, field, fletcher_schema, type, Port::Dir::IN, domain, false);
@@ -216,12 +229,13 @@ std::shared_ptr<FieldPort> command_port(const std::shared_ptr<FletcherSchema> &f
 
 std::shared_ptr<FieldPort> unlock_port(const std::shared_ptr<FletcherSchema> &fletcher_schema,
                                        const std::shared_ptr<arrow::Field> &field,
+                                       const std::shared_ptr<Node> &tag_width,
                                        const std::shared_ptr<ClockDomain> &domain) {
   return std::make_shared<FieldPort>(fletcher_schema->name() + "_" + field->name() + "_unl",
                                      FieldPort::UNLOCK,
                                      field,
                                      fletcher_schema,
-                                     unlock(tag_width(*field)),
+                                     unlock_type(tag_width),
                                      Port::Dir::OUT,
                                      domain,
                                      false);

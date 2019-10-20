@@ -13,25 +13,26 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-
 #include <cerata/api.h>
+#include <memory>
+#include <string>
 
-#include "fletchgen/bus.h"
+#include "fletcher/common.h"
+#include "fletchgen/array.h"
 #include "fletchgen/test_utils.h"
 
 namespace fletchgen {
 
-using cerata::intl;
-using cerata::Instance;
-using cerata::Port;
+// TODO(johanpel): load component decls from file and check for equivalence.
 
-TEST(Bus, BusArbiter) {
-  cerata::default_component_pool()->Clear();
-  auto top = cerata::component("top");
-  BusParam param(top);
-  top->AddInstanceOf(bus_arbiter(BusFunction::READ));
+TEST(Kernel, ArrayReader) {
+  auto top = array(fletcher::Mode::READ);
+  auto generated = GenerateDecl(top);
+}
 
-  GenerateAll(top);
+TEST(Kernel, ArrayWriter) {
+  auto top = array(fletcher::Mode::WRITE);
+  GenerateDecl(top);
 }
 
 }  // namespace fletchgen

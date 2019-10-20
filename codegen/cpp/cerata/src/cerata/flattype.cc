@@ -47,7 +47,7 @@ std::string FlatType::name(const NamePart &root, const std::string &sep) const {
 }
 
 FlatType::FlatType(Type *t, std::vector<NamePart> prefix, const std::string &name, int level, bool invert)
-    : type_(t), invert_(invert) {
+    : type_(t), reverse_(invert) {
   name_parts_ = std::move(prefix);
   name_parts_.emplace_back(name, true);
 }
@@ -65,7 +65,7 @@ void FlattenRecord(std::vector<FlatType> *list,
                    const std::optional<FlatType> &parent,
                    bool invert) {
   for (const auto &f : record->fields()) {
-    Flatten(list, f->type().get(), parent, f->name(), invert != f->inverted(), f->sep());
+    Flatten(list, f->type().get(), parent, f->name(), invert != f->reversed(), f->sep());
   }
 }
 
@@ -76,7 +76,7 @@ void Flatten(std::vector<FlatType> *list,
              bool invert,
              bool sep) {
   FlatType result;
-  result.invert_ = invert;
+  result.reverse_ = invert;
   if (parent) {
     result.nesting_level_ = (*parent).nesting_level_ + 1;
     result.name_parts_ = (*parent).name_parts_;

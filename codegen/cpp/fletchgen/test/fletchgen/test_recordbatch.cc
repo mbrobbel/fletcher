@@ -30,7 +30,7 @@ static void TestRecordBatchReader(const std::shared_ptr<arrow::Schema> &schema) 
   fletcher::SchemaAnalyzer sa(&rbd);
   sa.Analyze(*schema);
   auto rbr = record_batch("Test_" + fs->name(), fs, rbd);
-  GenerateDebugOutput(rbr);
+  GenerateAll(rbr);
 }
 
 TEST(RecordBatch, StringRead) {

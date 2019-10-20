@@ -148,7 +148,7 @@ static Block GenerateMappingPair(const MappingPair &p,
       }
     }
     Line l;
-    if (p.flat_type_a(ia).invert_) {
+    if (p.flat_type_a(ia).reverse_) {
       l << b << " <= " << a;
     } else {
       l << a << " <= " << b;

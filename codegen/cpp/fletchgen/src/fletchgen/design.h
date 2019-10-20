@@ -63,7 +63,7 @@ struct Design {
   std::vector<fletcher::RecordBatchDescription> batch_desc;
 
   /// The RecordBatch(Readers/Writers) in the design.
-  std::vector<std::shared_ptr<RecordBatch>> recordbatches;
+  std::vector<std::shared_ptr<RecordBatch>> recordbatch_comps;
   /// The Kernel component of this design.
   std::shared_ptr<Kernel> kernel_comp;
 

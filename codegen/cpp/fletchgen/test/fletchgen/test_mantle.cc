@@ -40,12 +40,12 @@ static void TestReadMantle(const std::shared_ptr<arrow::Schema> &schema) {
   auto m = mmio({rbd}, regs);
   auto k = kernel("Test_Kernel", {r}, m);
   auto n = nucleus("Test_Nucleus", {r}, k, m);
-  auto man = mantle("Test_Mantle", {r}, n);
-  auto design = cerata::vhdl::Design(man);
-  auto code = design.Generate().ToString();
-  std::cerr.flush();
-  std::cout << code << std::endl;
-  VHDL_DUMP_TEST(code);
+  auto man = mantle("Test_Mantle", {r}, n, BusSpec());
+  GenerateAll(man);
+}
+
+TEST(Mantle, TwoPrim) {
+  TestReadMantle(fletcher::GetTwoPrimReadSchema());
 }
 
 TEST(Mantle, StringRead) {

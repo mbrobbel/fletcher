@@ -59,7 +59,7 @@ struct FlatType {
   /// @brief Name parts of this flattened type.
   std::vector<NamePart> name_parts_;
   /// @brief Whether to invert this flattened type if it would be on a terminator node.
-  bool invert_ = false;
+  bool reverse_ = false;
   /// @brief Return the name of this flattened type, constructed from the name parts.
   [[nodiscard]] std::string name(const NamePart &root = NamePart(), const std::string &sep = "_") const;
 };

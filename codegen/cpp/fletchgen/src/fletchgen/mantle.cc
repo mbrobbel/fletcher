@@ -43,9 +43,10 @@ Mantle::Mantle(std::string name,
     : Component(std::move(name)), bus_spec_(bus_spec) {
 
   // Add some default parameters.
-  Add(index_width());
-  Add(tag_width());
-
+  auto iw = index_width();
+  auto tw = tag_width();
+  Add({iw, tw});
+  
   // Top level bus parameters.
   auto bus_params = BusParam(this, BusFunction::WRITE, bus_spec);
 
@@ -82,6 +83,9 @@ Mantle::Mantle(std::string name,
     // Connect bus clock/reset and kernel clock/reset.
     rbi->prt("bcd") <<= bcr;
     rbi->prt("kcd") <<= kcr;
+
+    rbi->par(index_width()) <<= iw;
+    rbi->par(tag_width()) <<= tw;
 
     // Look up its bus ports and remember them.
     auto rbi_bus_ports = rbi->GetAll<BusPort>();

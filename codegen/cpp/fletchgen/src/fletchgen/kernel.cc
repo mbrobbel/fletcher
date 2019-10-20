@@ -21,6 +21,7 @@
 
 #include "fletchgen/basic_types.h"
 #include "fletchgen/mmio.h"
+#include "fletchgen/array.h"
 
 namespace fletchgen {
 
@@ -45,19 +46,23 @@ Kernel::Kernel(std::string name,
   // Add clock/reset
   Add(port("kcd", cr(), Port::Dir::IN, kernel_cd()));
 
+  auto iw = index_width();
+  auto tw = tag_width();
+
   // Add ports going to/from RecordBatches.
   for (const auto &r : recordbatches) {
     // Copy over the Arrow data and unlock stream ports.
     CopyFieldPorts(this, *r, FieldPort::Function::ARROW);
     CopyFieldPorts(this, *r, FieldPort::Function::UNLOCK);
 
-    // The command stream at the kernel interface enjoys some abstraction, namely; the buffer addresses in the ctrl
-    // field are abstracted away from the kernel user. We create new command ports based on the command ports of the
-    // RecordBatch, but leave out the ctrl field.
+    // The command stream at the kernel interface enjoys some simplification towards the user; the buffer addresses
+    // in the ctrl field are hidden.
+    // We create new command ports based on the command ports of the RecordBatch, but leave out the ctrl field.
     auto rb_cmds = r->GetFieldPorts(FieldPort::Function::COMMAND);
     for (auto &rb_cmd : rb_cmds) {
-      // Next, make an abstracted version of the command stream for the kernel user.
-      auto kernel_cmd = command_port(rb_cmd->fletcher_schema_, rb_cmd->field_, false, kernel_cd());
+      // Next, make a simplified version of the command stream for the kernel user.
+      auto kernel_cmd =
+          command_port(rb_cmd->fletcher_schema_, rb_cmd->field_, iw, tw, std::nullopt, std::nullopt, kernel_cd());
       kernel_cmd->InvertDirection();
       Add(kernel_cmd);
     }

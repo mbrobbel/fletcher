@@ -18,26 +18,32 @@
 
 namespace cerata {
 
-static std::string ToString(std::shared_ptr<const Node> n) {
+static std::string ToString(Node *n) {
   std::stringstream ss;
   ss << n;
   return ss.str();
 }
 
-std::shared_ptr<Expression> Expression::Make(Op op, std::shared_ptr<const Node> lhs, std::shared_ptr<const Node> rhs) {
+static std::string ToString(std::shared_ptr<Node> n) {
+  std::stringstream ss;
+  ss << n;
+  return ss.str();
+}
+
+std::shared_ptr<Expression> Expression::Make(Op op, std::shared_ptr<Node> lhs, std::shared_ptr<Node> rhs) {
   auto e = new Expression(op, std::move(lhs), std::move(rhs));
   return std::shared_ptr<Expression>(e);
 }
 
-Expression::Expression(Expression::Op op, std::shared_ptr<const Node> lhs, std::shared_ptr<const Node> rhs)
-    : MultiOutputNode(::cerata::ToString(lhs) + ::cerata::ToString(op) + ::cerata::ToString(rhs),
+Expression::Expression(Expression::Op op, std::shared_ptr<Node> lhs, std::shared_ptr<Node> rhs)
+    : MultiOutputNode(::cerata::ToString(lhs) + ::cerata::ToString(this) + ::cerata::ToString(rhs),
                       NodeID::EXPRESSION,
                       string()),
       operation_(op),
       lhs_(std::move(lhs)),
       rhs_(std::move(rhs)) {}
 
-std::shared_ptr<const Node> Expression::MergeIntLiterals(const Expression *exp) {
+std::shared_ptr<Node> Expression::MergeIntLiterals(Expression *exp) {
   if (exp->lhs_->IsLiteral() && exp->rhs_->IsLiteral()) {
     auto l = std::dynamic_pointer_cast<const Literal>(exp->lhs_);
     auto r = std::dynamic_pointer_cast<const Literal>(exp->rhs_);
@@ -56,7 +62,7 @@ std::shared_ptr<const Node> Expression::MergeIntLiterals(const Expression *exp) 
   return exp->shared_from_this();
 }
 
-std::shared_ptr<const Node> Expression::EliminateZeroOne(const Expression *exp) {
+std::shared_ptr<Node> Expression::EliminateZeroOne(Expression *exp) {
   switch (exp->operation_) {
     case Op::ADD: {
       if (exp->lhs_ == intl(0)) return exp->rhs_;
@@ -84,12 +90,12 @@ std::shared_ptr<const Node> Expression::EliminateZeroOne(const Expression *exp) 
   return exp->shared_from_this();
 }
 
-std::shared_ptr<const Node> Expression::Minimize(const Node *node) {
-  std::shared_ptr<const Node> result = node->shared_from_this();
+std::shared_ptr<Node> Expression::Minimize(Node *node) {
+  std::shared_ptr<Node> result = node->shared_from_this();
 
   // If this node is an expression, we need to minimize its lhs and rhs first.
   if (node->IsExpression()) {
-    auto expr = std::dynamic_pointer_cast<const Expression>(result);
+    auto expr = std::dynamic_pointer_cast<Expression>(result);
     // Attempt to minimize children.
     auto min_lhs = Minimize(expr->lhs());
     auto min_rhs = Minimize(expr->rhs());
@@ -104,7 +110,7 @@ std::shared_ptr<const Node> Expression::Minimize(const Node *node) {
 
     // Integer literal merging
     if (result->IsExpression()) {
-      expr = std::dynamic_pointer_cast<const Expression>(result);
+      expr = std::dynamic_pointer_cast<Expression>(result);
       result = MergeIntLiterals(expr.get());
     }
     // TODO(johanpel): put some more elaborate minimization function/rules etc.. here
@@ -122,10 +128,18 @@ std::string ToString(Expression::Op operation) {
   return "INVALID OP";
 }
 
+void AppendAllNodes(Node *node, std::vector<Node *> *out) {
+  out->push_back(node);
+  if (node->IsExpression()) {
+    AppendAllNodes(node->AsExpression()->lhs(), out);
+    AppendAllNodes(node->AsExpression()->lhs(), out);
+  }
+}
+
 std::string Expression::ToString() const {
-  auto min = Minimize(this);
+  auto min = Minimize(const_cast<Expression*>(this));
   if (min->IsExpression()) {
-    auto mine = std::dynamic_pointer_cast<const Expression>(min);
+    auto mine = std::dynamic_pointer_cast<Expression>(min);
     auto ls = mine->lhs_->ToString();
     auto op = cerata::ToString(operation_);
     auto rs = mine->rhs_->ToString();
@@ -144,17 +158,6 @@ std::shared_ptr<Object> Expression::Copy() const {
 std::shared_ptr<Edge> Expression::AddSource(Node *source) {
   CERATA_LOG(FATAL, "Cannot drive an expression node.");
   return nullptr;
-}
-
-std::vector<const Node *> Expression::ownees() const {
-  std::vector<const Node *> result;
-  result.push_back(lhs_.get());
-  result.push_back(rhs_.get());
-  auto lh_ownees = lhs_->ownees();
-  auto rh_ownees = rhs_->ownees();
-  result.insert(result.end(), lh_ownees.begin(), lh_ownees.end());
-  result.insert(result.end(), rh_ownees.begin(), rh_ownees.end());
-  return result;
 }
 
 }  // namespace cerata

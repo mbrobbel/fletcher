@@ -44,12 +44,7 @@ void VHDLOutputGenerator::Generate() {
     auto vhdl_path = root_dir_ + "/" + subdir() + "/" + o.comp->name() + ".gen.vhd";
 
     // Disable backup by default.
-    bool backup = false;
-    if (o.meta.count(meta::BACKUP_EXISTING) > 0) {
-      if (o.meta.at(meta::BACKUP_EXISTING) == "true") {
-        backup = true;
-      }
-    }
+    bool backup = (o.meta.count(meta::BACKUP_EXISTING) > 0) && (o.meta.at(meta::BACKUP_EXISTING) == "true");
 
     CERATA_LOG(INFO, "VHDL: Saving design to: " + vhdl_path);
     if (!FileExists(vhdl_path) || !backup) {

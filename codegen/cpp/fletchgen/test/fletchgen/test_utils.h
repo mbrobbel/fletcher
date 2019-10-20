@@ -17,10 +17,30 @@
 #include <cerata/api.h>
 #include <fstream>
 #include <string>
+#include <utility>
 
 namespace fletchgen {
 
-inline std::string GenerateDebugOutput(const std::shared_ptr<cerata::Component> &comp, std::string name = "") {
+inline std::string GenerateDecl(cerata::Component *comp, std::string name = "") {
+  if (name.empty()) {
+    name = comp->name();
+  }
+  auto src = cerata::vhdl::Decl::Generate(*comp, false).ToString();
+  auto o = std::ofstream(name + ".comp.gen.vhd");
+  o << src;
+  o.close();
+
+  std::cout << "VHDL SOURCE:\n";
+  std::cout << src << std::endl;
+
+  cerata::dot::Grapher dot;
+  dot.style.config = cerata::dot::Config::all();
+  dot.GenFile(*comp, name);
+
+  return src;
+}
+
+inline std::string GenerateAll(cerata::Component *comp, std::string name = "") {
   if (name.empty()) {
     name = comp->name();
   }
@@ -39,6 +59,10 @@ inline std::string GenerateDebugOutput(const std::shared_ptr<cerata::Component> 
   dot.GenFile(*comp, name);
 
   return src;
+}
+
+inline std::string GenerateAll(const std::shared_ptr<cerata::Component>& comp, std::string name = "") {
+  return GenerateAll(comp.get(), std::move(name));
 }
 
 }  // namespace fletchgen

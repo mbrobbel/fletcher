@@ -21,7 +21,7 @@
 
 namespace cerata {
 
-inline std::string GenerateDebugOutput(const std::shared_ptr<Component> &comp, std::string name = "") {
+inline std::string GenerateDebugOutput(Component *comp, std::string name = "") {
   if (name.empty()) {
     name = comp->name();
   }
@@ -40,6 +40,10 @@ inline std::string GenerateDebugOutput(const std::shared_ptr<Component> &comp, s
   dot.GenFile(*comp, name);
 
   return src;
+}
+
+inline std::string GenerateDebugOutput(const std::shared_ptr<cerata::Component>& comp, std::string name = "") {
+  return GenerateDebugOutput(comp.get(), std::move(name));
 }
 
 }  // namespace cerata

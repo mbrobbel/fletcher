@@ -30,13 +30,13 @@ MultiBlock Design::Generate() {
   MultiBlock ret;
 
   // TODO(johanpel): when proper copy is in place, make a deep copy of the whole structure before sanitizing,
-  // in case multiple back ends are processing the graph. This currently modifies the original structure.
+  //  in case multiple back ends are processing the graph. This currently modifies the original structure.
 
   // Resolve VHDL specific problems
   CERATA_LOG(DEBUG, "VHDL: Transforming Cerata graph to VHDL-compatible.");
 
-  Resolve::SignalizePorts(component_.get());
-  //Resolve::ExpandStreams(component_.get());
+  // Make signals out of all ports, because VHDL is terrible.
+  Resolve::SignalizePorts(component_);
 
   // Place header
   Block h;

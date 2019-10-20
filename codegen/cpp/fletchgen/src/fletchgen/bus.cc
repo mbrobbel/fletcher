@@ -50,7 +50,7 @@ std::shared_ptr<Type> bus_read(const std::shared_ptr<Node> &addr_width,
   auto rdat = stream(record({field("data", vector(data_width)),
                              field("last", last())}));
   auto result = record({field("rreq", rreq),
-                        field("rdat", rdat)->Invert()});
+                        field("rdat", rdat)->Reverse()});
   return result;
 }
 std::shared_ptr<Type> bus_write(const std::shared_ptr<Node> &addr_width,
@@ -176,7 +176,7 @@ std::shared_ptr<BusPort> bus_port(Port::Dir dir, const BusParam &params) {
 void ConnectBusParam(cerata::Graph *dst, const BusParam &src) {
   Connect(dst->par(bus_addr_width()), src.aw);
   Connect(dst->par(bus_data_width()), src.dw);
-  if (src.func_ == BusFunction::WRITE) {
+  if (dst->Has(bus_strobe_width()->name())) {
     Connect(dst->par(bus_strobe_width()), src.sw);
   }
   Connect(dst->par(bus_len_width()), src.lw);

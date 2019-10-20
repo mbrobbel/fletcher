@@ -28,20 +28,23 @@ using cerata::Component;
 using cerata::Instance;
 using cerata::intl;
 
+// ArrayReader/Writer parameters:
+PARAM_DECL_FACTORY(index_width, 32)
+PARAM_DECL_FACTORY(tag_width, 1)
+
 /// @brief Return the width of the control data of this field.
-std::shared_ptr<Node> ctrl_width(const arrow::Field &field);
+std::shared_ptr<Node> GetCtrlWidth(const arrow::Field &field, const std::shared_ptr<Node> &bus_address_width);
+/// @brief Return the tag width of this field as a literal node. Settable through Arrow metadata. Default: 1.
+std::shared_ptr<Node> GetTagWidth(const arrow::Field &field);
 
-/// @brief Return the tag width of this field. Settable through Arrow metadata. Default = 1.
-std::shared_ptr<Node> tag_width(const arrow::Field &field);
-
-// Default streams of ArrayReaders/ArrayWriters
+// ArrayReader/Writer types:
 
 /// @brief Return a Fletcher command stream type.
-std::shared_ptr<Type> cmd(const std::shared_ptr<Node> &tag_width,
-                          const std::optional<std::shared_ptr<Node>> &ctrl_width = std::nullopt);
-
+std::shared_ptr<Type> cmd_type(const std::shared_ptr<Node> &index_width,
+                               const std::shared_ptr<Node> &tag_width,
+                               const std::optional<std::shared_ptr<Node>> &ctrl_width = std::nullopt);
 /// @brief Fletcher unlock stream
-std::shared_ptr<Type> unlock(const std::shared_ptr<Node> &tag_width = intl(1));
+std::shared_ptr<Type> unlock_type(const std::shared_ptr<Node> &tag_width);
 /// @brief Fletcher read data
 std::shared_ptr<Type> array_reader_out(int num_streams = 0, int full_width = 0);
 /// @brief Fletcher write data

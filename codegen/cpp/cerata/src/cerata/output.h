@@ -27,7 +27,7 @@ namespace cerata {
 /// @brief Structure to specify output properties per graph
 struct OutputSpec {
   /// The component to output.
-  std::shared_ptr<Component> comp;
+  Component *comp;
   /// Metadata for back-ends.
   std::unordered_map<std::string, std::string> meta = {};
 };

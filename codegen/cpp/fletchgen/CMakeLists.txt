@@ -64,6 +64,7 @@ add_compile_unit(
 
     src/fletchgen/hls/vivado.cc
   TSTS
+    test/fletchgen/test_array.cc
     test/fletchgen/test_bus.cc
     test/fletchgen/test_kernel.cc
     test/fletchgen/test_mantle.cc

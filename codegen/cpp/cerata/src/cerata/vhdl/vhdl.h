@@ -35,6 +35,8 @@ namespace cerata::vhdl {
 
 // Metadata that this back-end understands
 namespace meta {
+/// Forces backing up of existing *.gen.vhd files when set to "true".
+constexpr char BACKUP_EXISTING[] = "vhdl_backup";
 /// Setting PRIMITIVE = "true" signifies that a component is a primitive (e.g. has no Cerata internal graph).
 constexpr char PRIMITIVE[] = "vhdl_primitive";
 /// The VHDL library in which the primitive resides. E.g. LIBRARY = "work"
@@ -45,10 +47,6 @@ constexpr char PACKAGE[] = "vhdl_package";
 constexpr char NAME[] = "vhdl_name";
 /// Forces a signal to be declared as an std_logic_vector, even if its width is only 1.
 constexpr char FORCE_VECTOR[] = "vhdl_force_vector";
-
-/// Forces backing up of existing files.
-constexpr char BACKUP_EXISTING[] = "overwrite";
-
 /// Reserved metadata key for stream expansion.
 constexpr char WAS_EXPANDED[] = "vhdl_expanded_stream_done";
 /// Reserved metadata key for stream expansion.

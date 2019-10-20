@@ -113,13 +113,19 @@ std::shared_ptr<FieldPort> arrow_port(const std::shared_ptr<FletcherSchema> &fle
  * @brief Construct a field-derived command port.
  * @param fletcher_schema  The Fletcher-derived schema.
  * @param field            The Arrow field to derive the port from.
- * @param ctrl             Whether to generate this command port with or without ctrl field.
+ * @param index_width      Type generic node for index field width.
+ * @param tag_width        Type generic node for tag field width.
+ * @param ctrl_width       Optionally, width of control field. If not supplied, no ctrl field is generated.
+ * @param addr_width       Optionally, width of control field. If not supplied, no ctrl field is generated.
  * @param domain           The clock domain.
  * @return                 A shared pointer to a new FieldPort.
  */
 std::shared_ptr<FieldPort> command_port(const std::shared_ptr<FletcherSchema> &fletcher_schema,
                                         const std::shared_ptr<arrow::Field> &field,
-                                        bool ctrl = true,
+                                        const std::shared_ptr<Node> &index_width,
+                                        const std::shared_ptr<Node> &tag_width,
+                                        std::optional<std::shared_ptr<Node>> ctrl_width = std::nullopt,
+                                        std::optional<std::shared_ptr<Node>> addr_width = std::nullopt,
                                         const std::shared_ptr<ClockDomain> &domain = default_domain());
 
 /**
@@ -131,6 +137,7 @@ std::shared_ptr<FieldPort> command_port(const std::shared_ptr<FletcherSchema> &f
  */
 std::shared_ptr<FieldPort> unlock_port(const std::shared_ptr<FletcherSchema> &fletcher_schema,
                                        const std::shared_ptr<arrow::Field> &field,
+                                       const std::shared_ptr<Node> &tag_width,
                                        const std::shared_ptr<ClockDomain> &domain = default_domain());
 
 /**
@@ -176,6 +183,8 @@ struct RecordBatch : public Component {
   Mode mode_ = Mode::READ;
   /// The RecordBatch description.
   fletcher::RecordBatchDescription batch_desc_;
+ private:
+  void ConnectBusPorts(Instance *array, const FletcherSchema &fletcher_schema, const arrow::Field &field);
 };
 
 /// @brief Make a new RecordBatch(Reader/Writer) component, based on a Fletcher schema.

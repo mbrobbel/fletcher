@@ -38,13 +38,13 @@ ArrayCmdCtrlMerger::ArrayCmdCtrlMerger() : Component("ArrayCmdCtrlMerger") {
 
   auto reg64 = cerata::vector(64);
   auto baw = bus_addr_width();
-  auto idw = index_width();
+  auto iw = index_width();
   auto tw = tag_width();
   auto cw = parameter("num_addr", integer(), intl(0));
-  auto nucleus_side_cmd = port("nucleus_cmd", cmd(tw, cw), Port::Dir::OUT, kernel_cd());
-  auto kernel_side_cmd = port("kernel_cmd", cmd(tw), Port::Dir::IN, kernel_cd());
+  auto nucleus_side_cmd = port("nucleus_cmd", cmd_type(iw, tw, cw), Port::Dir::OUT, kernel_cd());
+  auto kernel_side_cmd = port("kernel_cmd", cmd_type(iw, tw), Port::Dir::IN, kernel_cd());
   auto ctrl = port_array("ctrl", reg64, cw, Port::Dir::IN, kernel_cd());
-  Add({cw, baw, idw, tw, nucleus_side_cmd, kernel_side_cmd, ctrl});
+  Add({cw, baw, iw, tw, nucleus_side_cmd, kernel_side_cmd, ctrl});
 }
 
 std::unique_ptr<Instance> ArrayCmdCtrlMergerInstance(const std::string &name) {
@@ -85,8 +85,8 @@ Nucleus::Nucleus(const std::string &name,
 
   // Add address width parameter.
   Add(bus_addr_width());
-  Add(tag_width());
   Add(index_width());
+  Add(tag_width());
   // Add clock/reset
   auto kcd = port("kcd", cr(), Port::Dir::IN, kernel_cd());
   Add(kcd);

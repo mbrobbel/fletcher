@@ -52,10 +52,6 @@ VEC_FACTORY(utf8c, 8)
 VEC_FACTORY(byte, 8)
 VEC_FACTORY(offset, 32)
 
-// Other params
-PARAM_FACTORY(index_width)
-PARAM_FACTORY(tag_width)
-
 // Create basic clock domains
 std::shared_ptr<ClockDomain> kernel_cd() {
   static std::shared_ptr<ClockDomain> result = std::make_shared<ClockDomain>("kcd");

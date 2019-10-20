@@ -68,6 +68,7 @@ using cerata::Parameter;
 #define PARAM_FACTORY(NAME)                                                 \
 std::shared_ptr<Parameter> NAME(int64_t value, const std::string& prefix) { \
   auto name = std::string(#NAME);                                           \
+  for (auto &ch : name) ch = std::toupper(ch);                              \
   if (!prefix.empty()) {name = prefix + "_" + name;}                        \
   auto result = parameter(name, cerata::integer(), intl(value));            \
   return result;                                                            \
@@ -92,10 +93,6 @@ VEC_DECL_FACTORY(date64, 64)
 VEC_DECL_FACTORY(utf8c, 8)
 VEC_DECL_FACTORY(byte, 8)
 VEC_DECL_FACTORY(offset, 32)
-
-// Other params:
-PARAM_DECL_FACTORY(index_width, 32)
-PARAM_DECL_FACTORY(tag_width, 1)
 
 /// @brief Fletcher accelerator clock domain
 std::shared_ptr<ClockDomain> kernel_cd();

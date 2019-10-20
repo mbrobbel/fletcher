@@ -76,4 +76,5 @@ std::string ToUpper(std::string str) {
   for (auto &ch : str) ch = std::toupper(ch);
   return str;
 }
+
 }  // namespace cerata::vhdl

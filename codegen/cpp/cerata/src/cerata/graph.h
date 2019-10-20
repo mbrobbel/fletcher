@@ -36,7 +36,7 @@ class Instance;
  * @param obj The object from which to derive the required objects.
  * @param out The output.
  */
-void GetTypeGenerics(const Object &obj, std::vector<Object *> *out);
+void GetObjectReferences(const Object &obj, std::vector<Object *> *out);
 
 /**
  * @brief A graph representing a hardware structure.

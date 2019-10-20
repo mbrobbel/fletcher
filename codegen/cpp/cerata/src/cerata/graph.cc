@@ -27,20 +27,22 @@
 
 namespace cerata {
 
-void GetTypeGenerics(const Object &obj, std::vector<Object *> *out) {
+void GetObjectReferences(const Object &obj, std::vector<Object *> *out) {
   if (obj.IsNode()) {
-    // If the object is a normal node, its type may be a generic type.
+    // If the object is a node, its type may be a generic type.
     auto &node = dynamic_cast<const Node &>(obj);
     // Obtain any potential type generic nodes.
     auto params = node.type()->GetGenerics();
     for (const auto &p : params) {
       out->push_back(p);
     }
+    // If the node is an expression, we need to grab every object from the tree.
+
   } else if (obj.IsArray()) {
     // If the object is an array, we can obtain the generic nodes from the base type.
     auto &array = dynamic_cast<const NodeArray &>(obj);
     // Add the type generic nodes of the base node first.
-    GetTypeGenerics(*array.base(), out);
+    GetObjectReferences(*array.base(), out);
     // An array has a size node. Add that as well.
     out->push_back(array.size());
   }
@@ -58,9 +60,9 @@ Graph &Graph::Add(const std::shared_ptr<Object> &object) {
       }
     }
   }
-  // Get any sub-objects used by this object. They must already be on this graph.
+  // Get any objects referenced by this object. They must already be on this graph.
   std::vector<Object *> generics;
-  GetTypeGenerics(*object, &generics);
+  GetObjectReferences(*object, &generics);
   for (const auto &gen : generics) {
     // If the sub-object has a parent and it is this graph, everything is OK.
     if (gen->parent()) {
@@ -69,7 +71,6 @@ Graph &Graph::Add(const std::shared_ptr<Object> &object) {
       }
     }
     // Literals are owned by the literal pool, so everything is OK as well in that case.
-    // Also expressions are OK.
     if (gen->IsNode()) {
       auto gen_node = dynamic_cast<Node *>(gen);
       if (gen_node->IsLiteral()) {

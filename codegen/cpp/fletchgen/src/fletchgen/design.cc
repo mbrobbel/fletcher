@@ -166,7 +166,7 @@ Design::Design(const std::shared_ptr<Options> &opts) {
     auto schema = schema_set->schemas()[i];
     auto rb_desc = batch_desc[i];
     auto rb = record_batch(opts->kernel_name + "_" + schema->name(), schema, rb_desc);
-    recordbatches.push_back(rb);
+    recordbatch_comps.push_back(rb);
   }
 
   // Generate the MMIO component model for this. This is based on four things;
@@ -177,7 +177,7 @@ Design::Design(const std::shared_ptr<Options> &opts) {
   default_regs = GetDefaultRegs();
   recordbatch_regs = GetRecordBatchRegs(batch_desc);
   kernel_regs = ParseCustomRegs(opts->regs);
-  profiling_regs = GetProfilingRegs(recordbatches);
+  profiling_regs = GetProfilingRegs(recordbatch_comps);
 
   // Merge these registers together into one register file for component generation.
   std::vector<MmioReg> regs;
@@ -202,43 +202,40 @@ Design::Design(const std::shared_ptr<Options> &opts) {
   // Generate the MMIO component.
   mmio_comp = mmio(batch_desc, regs);
   // Generate the kernel.
-  kernel_comp = kernel(opts->kernel_name, recordbatches, mmio_comp);
+  kernel_comp = kernel(opts->kernel_name, recordbatch_comps, mmio_comp);
   // Generate the nucleus.
-  nucleus_comp = nucleus(opts->kernel_name + "_Nucleus", recordbatches, kernel_comp, mmio_comp);
+  nucleus_comp = nucleus(opts->kernel_name + "_Nucleus", recordbatch_comps, kernel_comp, mmio_comp);
   // Generate the mantle.
-  mantle_comp = mantle(opts->kernel_name + "_Mantle", recordbatches, nucleus_comp, bus_spec);
+  mantle_comp = mantle(opts->kernel_name + "_Mantle", recordbatch_comps, nucleus_comp, bus_spec);
 }
 
 std::vector<cerata::OutputSpec> Design::GetOutputSpec() {
   std::vector<OutputSpec> result;
-  OutputSpec omantle, okernel, onucleus;
+  OutputSpec mantle, kernel, nucleus;
 
-  std::string backup = options->backup ? "true" : "false";
   // Mantle
-  omantle.comp = mantle_comp;
-  // Always overwrite mantle, as users should not modify.
-  omantle.meta[cerata::vhdl::meta::BACKUP_EXISTING] = backup;
-  result.push_back(omantle);
+  mantle.comp = mantle_comp.get();
+  result.push_back(mantle);
 
   // Nucleus
-  onucleus.comp = nucleus_comp;
-  // Check the force flag if kernel should be overwritten
-  onucleus.meta[cerata::vhdl::meta::BACKUP_EXISTING] = backup;
-  result.push_back(onucleus);
+  nucleus.comp = nucleus_comp.get();
+  result.push_back(nucleus);
 
   // Kernel
-  okernel.comp = kernel_comp;
-  // Check the force flag if kernel should be overwritten
-  okernel.meta[cerata::vhdl::meta::BACKUP_EXISTING] = backup;
-  result.push_back(okernel);
+  kernel.comp = kernel_comp.get();
+  result.push_back(kernel);
 
   // RecordBatchReaders/Writers
-  for (const auto &recbatch : recordbatches) {
-    OutputSpec orecbatch;
-    orecbatch.comp = recbatch;
-    // Always overwrite readers/writers, as users should not modify.
-    orecbatch.meta[cerata::vhdl::meta::BACKUP_EXISTING] = backup;
-    result.push_back(orecbatch);
+  for (const auto &rb : recordbatch_comps) {
+    OutputSpec recordbatch;
+    recordbatch.comp = rb.get();
+    result.push_back(recordbatch);
+  }
+
+  // Set backup mode for VHDL backend
+  std::string backup = options->backup ? "true" : "false";
+  for (auto &o : result) {
+    o.meta[cerata::vhdl::meta::BACKUP_EXISTING] = backup;
   }
 
   return result;

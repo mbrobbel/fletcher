@@ -73,10 +73,12 @@ Block Decl::Generate(const Parameter &par, int depth) {
   Block ret(depth);
   Line l;
   l << ToUpper(par.name()) << " : " << GenerateTypeDecl(*par.type());
-  if (par.value()) {
-    Node *val = par.value();
-    l << " := " << val->ToString();
+  Node *val = par.value();
+  auto val_str = val->ToString();
+  if (par.type()->Is(Type::STRING)) {
+    val_str = "\"" + val_str + "\"";
   }
+  l << " := " << val_str;
   ret << l;
   return ret;
 }
@@ -89,7 +91,7 @@ Block Decl::Generate(const Port &port, int depth) {
     Line l;
     auto port_name_prefix = port.name();
     l << ft.name(NamePart(port_name_prefix, true)) << " : ";
-    if (ft.invert_) {
+    if (ft.reverse_) {
       l << ToString(Term::Invert(port.dir())) + " ";
     } else {
       l << ToString(port.dir()) + " ";
@@ -129,7 +131,7 @@ Block Decl::Generate(const PortArray &port_array, int depth) {
     Line l;
     auto port_name_prefix = port_array.name();
     l << ft.name(NamePart(port_name_prefix, true)) << " : ";
-    if (ft.invert_) {
+    if (ft.reverse_) {
       l << ToString(Term::Invert(port_array.dir())) + " ";
     } else {
       l << ToString(port_array.dir()) + " ";
