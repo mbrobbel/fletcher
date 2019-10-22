@@ -24,29 +24,9 @@
 #include "cerata/object.h"
 #include "cerata/pool.h"
 #include "cerata/edge.h"
+#include "cerata/parameter.h"
 
 namespace cerata {
-
-void GetObjectReferences(const Object &obj, std::vector<Object *> *out) {
-  if (obj.IsNode()) {
-    // If the object is a node, its type may be a generic type.
-    auto &node = dynamic_cast<const Node &>(obj);
-    // Obtain any potential type generic nodes.
-    auto params = node.type()->GetGenerics();
-    for (const auto &p : params) {
-      out->push_back(p);
-    }
-    // If the node is an expression, we need to grab every object from the tree.
-
-  } else if (obj.IsArray()) {
-    // If the object is an array, we can obtain the generic nodes from the base type.
-    auto &array = dynamic_cast<const NodeArray &>(obj);
-    // Add the type generic nodes of the base node first.
-    GetObjectReferences(*array.base(), out);
-    // An array has a size node. Add that as well.
-    out->push_back(array.size());
-  }
-}
 
 Graph &Graph::Add(const std::shared_ptr<Object> &object) {
   // Check for duplicates in name / ownership
@@ -107,68 +87,6 @@ Graph &Graph::Remove(Object *obj) {
     }
   }
   return *this;
-}
-
-Instance *Component::AddInstanceOf(Component *comp, const std::string &name) {
-  auto inst = instance(comp, name);
-  auto raw_ptr = inst.get();
-  AddChild(std::move(inst));
-  return raw_ptr;
-}
-
-Component &Component::AddChild(std::unique_ptr<Instance> child) {
-  // Add this graph to the child's parent graphs
-  child->SetParent(this);
-  // Add the child graph
-  children_.push_back(std::move(child));
-  return *this;
-}
-
-std::shared_ptr<Component> component(std::string name,
-                                     const std::vector<std::shared_ptr<Object>> &objects,
-                                     ComponentPool *component_pool) {
-  // Create the new component.
-  auto *ptr = new Component(std::move(name));
-  auto ret = std::shared_ptr<Component>(ptr);
-  // Add the component to the pool.
-  component_pool->Add(ret);
-  // Add the objects shown in the vector.
-  for (const auto &object : objects) {
-    // Add the object to the graph.
-    ret->Add(object);
-  }
-  return ret;
-}
-
-std::shared_ptr<Component> component(std::string name, ComponentPool *component_pool) {
-  return component(std::move(name), {}, component_pool);
-}
-
-std::vector<const Component *> Component::GetAllInstanceComponents() const {
-  std::vector<const Component *> ret;
-  for (const auto &child : children_) {
-    const Component *comp = nullptr;
-    if (child->IsComponent()) {
-      // Graph itself is the component to potentially insert
-      auto child_as_comp = dynamic_cast<Component *>(child.get());
-      comp = child_as_comp;
-    } else if (child->IsInstance()) {
-      auto child_as_inst = dynamic_cast<Instance *>(child.get());
-      // Graph is an instance, its component definition should be inserted.
-      comp = child_as_inst->component();
-    }
-    if (comp != nullptr) {
-      if (!Contains(ret, comp)) {
-        // If so, push it onto the vector
-        ret.push_back(comp);
-      }
-    }
-  }
-  return ret;
-}
-
-Instance *Component::AddInstanceOf(std::shared_ptr<Component> comp, const std::string &name) {
-  return AddInstanceOf(comp.get(), name);
 }
 
 std::optional<Node *> Graph::FindNode(const std::string &node_name) const {
@@ -312,42 +230,133 @@ std::string Graph::ToStringAllOjects() const {
   return ss.str();
 }
 
-std::unique_ptr<Instance> instance(Component *component, const std::string &name) {
-  auto n = name;
-  if (name.empty()) {
-    n = component->name() + "_inst";
+Component &Component::AddChild(std::unique_ptr<Instance> child) {
+  // Add this graph to the child's parent graphs
+  child->SetParent(this);
+  // Add the child graph
+  children_.push_back(std::move(child));
+  return *this;
+}
+
+std::shared_ptr<Component> component(std::string name,
+                                     const std::vector<std::shared_ptr<Object>> &objects,
+                                     ComponentPool *component_pool) {
+  // Create the new component.
+  auto *ptr = new Component(std::move(name));
+  auto ret = std::shared_ptr<Component>(ptr);
+  // Add the component to the pool.
+  component_pool->Add(ret);
+  // Add the objects shown in the vector.
+  for (const auto &object : objects) {
+    // Add the object to the graph.
+    ret->Add(object);
   }
-  auto inst = new Instance(component, n);
+  return ret;
+}
+
+std::shared_ptr<Component> component(std::string name, ComponentPool *component_pool) {
+  return component(std::move(name), {}, component_pool);
+}
+
+std::vector<const Component *> Component::GetAllInstanceComponents() const {
+  std::vector<const Component *> ret;
+  for (const auto &child : children_) {
+    const Component *comp = nullptr;
+    if (child->IsComponent()) {
+      // Graph itself is the component to potentially insert
+      auto child_as_comp = dynamic_cast<Component *>(child.get());
+      comp = child_as_comp;
+    } else if (child->IsInstance()) {
+      auto child_as_inst = dynamic_cast<Instance *>(child.get());
+      // Graph is an instance, its component definition should be inserted.
+      comp = child_as_inst->component();
+    }
+    if (comp != nullptr) {
+      if (!Contains(ret, comp)) {
+        // If so, push it onto the vector
+        ret.push_back(comp);
+      }
+    }
+  }
+  return ret;
+}
+
+Instance *Component::Instantiate(const std::shared_ptr<Component> &comp, const std::string &name) {
+  return Instantiate(comp.get(), name);
+}
+
+Instance *Component::Instantiate(Component *comp, const std::string &name) {
+  // Mark the component as once instantiated.
+  comp->was_instantiated = true;
+
+  auto new_name = name;
+  if (new_name.empty()) {
+    new_name = comp->name() + "_inst";
+  }
+  int i = 0;
+  while (HasChild(new_name)) {
+    new_name = comp->name() + "_inst" + std::to_string(i);
+  }
+  auto inst = Instance::Make(comp, new_name);
+  auto raw_ptr = inst.get();
+  AddChild(std::move(inst));
+  return raw_ptr;
+}
+
+bool Component::HasChild(const std::string &name) {
+  for (const auto &g : this->children()) {
+    if (g->name() == name) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void ThrowErrorIfInstantiated(const Graph &g, bool was_instantiated, const Object &o) {
+  if (was_instantiated) {
+    bool generate_warning = false;
+    if (o.IsNode()) {
+      auto &node = dynamic_cast<const Node &>(o);
+      if (node.IsPort() || node.IsParameter()) {
+        generate_warning = true;
+      }
+    } else if (o.IsArray()) {
+      auto &array = dynamic_cast<const NodeArray &>(o);
+      if (array.base()->IsPort() || array.base()->IsParameter()) {
+        generate_warning = true;
+      }
+    }
+    if (generate_warning) {
+      CERATA_LOG(ERROR, "Mutating port or parameter nodes " + o.name() + " of component graph " + g.name()
+          + " after instantiation is not allowed.");
+    }
+  }
+}
+
+Graph &Component::Add(const std::shared_ptr<Object> &object) {
+  ThrowErrorIfInstantiated(*this, was_instantiated, *object);
+  return Graph::Add(object);
+}
+
+Graph &Component::Remove(Object *object) {
+  ThrowErrorIfInstantiated(*this, was_instantiated, *object);
+  return Graph::Remove(object);
+}
+
+std::unique_ptr<Instance> Instance::Make(Component *component, const std::string &name) {
+  auto inst = new Instance(component, name);
   return std::unique_ptr<Instance>(inst);
 }
 
-Instance::Instance(Component *comp, std::string
-name) : Graph(std::move(name), INSTANCE), component_(comp) {
-  // Create a map that maps a component node to an instance node for type generic rebinding.
-  std::unordered_map<Node *, Node *> rebind_map;
-
+Instance::Instance(Component *comp, std::string name) : Graph(std::move(name), INSTANCE), component_(comp) {
   // Copy over all parameters.
   for (const auto &param : component_->GetAll<Parameter>()) {
-    auto inst_param = std::dynamic_pointer_cast<Parameter>(param->Copy());
-    Add(inst_param);
-    rebind_map[param] = inst_param.get();
+    param->CopyOnto(this, param->name(), &comp_to_inst);
   }
 
   // Copy over all ports.
   for (const auto &port : component_->GetAll<Port>()) {
-    auto inst_port = std::dynamic_pointer_cast<Port>(port->Copy());
-    // If the port type is a generic type, we need to bind the generic nodes to copies of those nodes on this instance.
-    // If the component was properly constructed, those nodes should have been copied over in the previous part of this
-    // function. We can now provide the mapping from component node to instance node and rebind a copy of the type
-    // to the new generic nodes.
-    if (port->type()->IsGeneric()) {
-      // Copy the generic type and bind it to the copied parameters.
-      auto new_type = port->type()->Copy(rebind_map);
-      // Set the instance port to the newly bound generic type.
-      inst_port->SetType(new_type);
-    }
-    Add(inst_port);
-    rebind_map[port] = inst_port.get();
+    port->CopyOnto(this, port->name(), &comp_to_inst);
   }
 
   // Make copies of port arrays
@@ -358,20 +367,20 @@ name) : Graph(std::move(name), INSTANCE), component_(comp) {
     // Same story here. Check if the base type is a generic type. If so, rebind it to the instance nodes and change the
     // type of the instance port array to the newly bound type.
     if (inst_pa->type()->IsGeneric()) {
-      auto type = inst_pa->type()->Copy(rebind_map);
+      auto type = inst_pa->type()->Copy(comp_to_inst);
       inst_pa->SetType(type);
     }
 
     // We also need to rebind the port array size to a copy of the size node.
     std::shared_ptr<Node> inst_size;
     // Look up if we've already copied the size node.
-    if (rebind_map.count(pa->size()) > 0) {
-      inst_size = dynamic_cast<Node *>(rebind_map.at(pa->size()))->shared_from_this();
+    if (comp_to_inst.count(pa->size()) > 0) {
+      inst_size = dynamic_cast<Node *>(comp_to_inst.at(pa->size()))->shared_from_this();
     } else {
       // There is no copy of the size node yet. Make a copy, add it to the Instance, and remember we made this copy.
       inst_size = std::dynamic_pointer_cast<Node>(pa->size()->Copy());
       Add(inst_size);
-      rebind_map[pa->size()] = inst_size.get();
+      comp_to_inst[pa->size()] = inst_size.get();
     }
     // We now know which size node we're going to use.
     inst_pa->SetSize(inst_size);
@@ -397,7 +406,7 @@ Graph &Instance::SetParent(Graph *parent) {
   return *this;
 }
 
-void RebindGeneric(Component *comp, Node *generic, std::unordered_map<Node *, Node *> *rebinding) {
+void RebindGeneric(Component *comp, Node *generic, NodeMap *rebinding) {
   // Check if the generic is not already on the rebind map. If it is, we don't have to do anything.
   // Any copies of a type with the intend to rebind its generics will be solved already.
   if (((*rebinding).count(generic) == 0)) {
@@ -406,28 +415,29 @@ void RebindGeneric(Component *comp, Node *generic, std::unordered_map<Node *, No
     // Go over all sources of this parameter and check if any of them is on the parent.
     bool rebound = false;
     if (generic->IsParameter()) {
-      std::vector<Node *> param_sources;
-      generic->AsParameter()->Trace(&param_sources);
-      for (const auto &ps : param_sources) {
-        if (ps->parent() == comp || ps->IsLiteral()) {
-          (*rebinding)[generic] = ps;
-          rebound = true;
-          break;
+      std::vector<Object *> param_refs;
+      generic->AsParameter()->AppendReferences(&param_refs);
+      for (const auto &pr : param_refs) {
+        if (pr->IsNode()) {
+          auto nr = dynamic_cast<Node *>(pr);
+          if (nr->parent() == comp || nr->IsLiteral()) {
+            (*rebinding)[generic] = nr;
+            rebound = true;
+            break;
+          }
         }
       }
     }
     // If going through the parameter trace didn't deliver us with a rebinding, make a new copy of the type generic
     // node and add it tot he rebind map.
     if (!rebound) {
-      auto new_g = std::dynamic_pointer_cast<Node>(generic->Copy());
-      // Prefix the generic node with the name of its original parent.
+      // Prefix the generic node with the name of its original parent, if it has any.
       auto new_name = generic->name();
       if (generic->parent()) {
         new_name = generic->parent().value()->name() + "_" + new_name;
       }
-      new_g->SetName(new_name);
-      comp->Add(new_g);
-      (*rebinding)[generic] = new_g.get();
+      auto new_g = dynamic_cast<Node *>(generic->CopyOnto(comp, new_name, rebinding));
+      (*rebinding)[generic] = new_g;
     }
   }
 }

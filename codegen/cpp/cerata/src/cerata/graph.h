@@ -32,13 +32,6 @@ class Component;
 class Instance;
 
 /**
- * @brief Get any sub-objects that are used by an object, e.g. type generic nodes or array size nodes.
- * @param obj The object from which to derive the required objects.
- * @param out The output.
- */
-void GetObjectReferences(const Object &obj, std::vector<Object *> *out);
-
-/**
  * @brief A graph representing a hardware structure.
  */
 class Graph : public Named {
@@ -145,7 +138,7 @@ class Graph : public Named {
   /// @brief Return a human-readable representation.
   std::string ToString() const { return name(); }
 
-  /// @brief Return a comma seperated list of object names.
+  /// @brief Return a comma separated list of object names.
   std::string ToStringAllOjects() const;
 
  protected:
@@ -167,28 +160,27 @@ class Component : public Graph {
   /// @brief Construct an empty Component.
   explicit Component(std::string name) : Graph(std::move(name), COMPONENT) {}
 
-  /**
-   * @brief Add and take ownership of an Instance graph.
-   * @param child   The child graph to add.
-   * @return        This component if successful.
-   */
-  Component &AddChild(std::unique_ptr<Instance> child);
+  /// @brief Add an object to the component.
+  Graph &Add(const std::shared_ptr<Object> &object) override;
+  /// @brief Remove an object from the component
+  Graph &Remove(Object *object) override;
 
   /**
-   * @brief Add a child Instance from a component.
+   * @brief Add an Instance of another Component to this component.
+   * @param comp      The component to instantiate and add.
+   * @param name      The name of the new instance. If left blank, it will use the Component name + "_inst".
+   * @param rebinding A map from original component nodes to instantiated nodes.
+   * @return        A pointer to the instantiated component.
+   */
+  Instance *Instantiate(Component *comp, const std::string &name = "");
+
+  /**
+   * @brief Add an Instance of another Component to this component.
    * @param comp    The component to instantiate and add.
    * @param name    The name of the new instance. If left blank, it will use the Component name + "_inst".
    * @return        A pointer to the instantiated component.
    */
-  Instance *AddInstanceOf(Component *comp, const std::string &name = "");
-
-  /**
-   * @brief Add a child Instance from a component.
-   * @param comp    The component to instantiate and add.
-   * @param name    The name of the new instance. If left blank, it will use the Component name + "_inst".
-   * @return        A pointer to the instantiated component.
-   */
-  Instance *AddInstanceOf(std::shared_ptr<Component> comp, const std::string &name = "");
+  Instance *Instantiate(const std::shared_ptr<Component> &comp, const std::string &name = "");
 
   /// @brief Returns all Instance graphs from this Component.
   std::vector<Instance *> children() const { return ToRawPointers(children_); }
@@ -196,9 +188,22 @@ class Component : public Graph {
   /// @brief Returns all unique Components that are referred to by child Instances of this graph.
   virtual std::vector<const Component *> GetAllInstanceComponents() const;
 
+  /// @brief Return true of child graph exists on instance.
+  bool HasChild(const std::string &name);
+
  protected:
-  /// Graph children / subgraphs.
+  /**
+ * @brief Add and take ownership of an Instance graph.
+ * @param child   The child graph to add.
+ * @return        This component if successful.
+ */
+  Component &AddChild(std::unique_ptr<Instance> child);
+
+  /// Instances.
   std::vector<std::unique_ptr<Instance>> children_;
+
+  /// Whether this component was instantiated.
+  bool was_instantiated = false;
 };
 
 /// @brief Construct a Component with initial nodes
@@ -216,8 +221,6 @@ std::shared_ptr<Component> component(std::string name,
  */
 class Instance : public Graph {
  public:
-  /// @brief Construct an Instance of a Component, copying over all its ports and parameters
-  explicit Instance(Component *comp, std::string name);
   /// @brief Add a node to the component, throwing an exception if the node is a signal.
   Graph &Add(const std::shared_ptr<Object> &obj) override;
   /// @brief Return the component this is an instance of.
@@ -226,17 +229,25 @@ class Instance : public Graph {
   Graph *parent() const { return parent_; }
   /// @brief Set the parent.
   Graph &SetParent(Graph *parent);
+  /// @brief Return the component node to instance node mapping.
+  NodeMap comp_to_inst_map() const { return comp_to_inst; }
+
  protected:
+  // Only a Component should be able to make instances.
+  friend Component;
+  /// @brief Construct an Instance of a Component, copying over all its ports and parameters
+  explicit Instance(Component *comp, std::string name);
+  /// Create an instance.
+  static std::unique_ptr<Instance> Make(Component *component, const std::string &name);
   /// The component that this instance instantiates.
   Component *component_{};
   /// The parent of this instance.
   Graph *parent_{};
+  /// Mapping from component nodes to instance nodes.
+  NodeMap comp_to_inst;
 };
 
-/// @brief Construct a shared pointer to a Component
-std::unique_ptr<Instance> instance(Component *component, const std::string &name = "");
-
 /// @brief Rebind a type generic node to a component.
-void RebindGeneric(Component *comp, Node *generic, std::unordered_map<Node *, Node *> *rebinding);
+void RebindGeneric(Component *comp, Node *generic, NodeMap *rebinding);
 
 }  // namespace cerata

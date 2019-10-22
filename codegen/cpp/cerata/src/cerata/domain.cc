@@ -19,6 +19,7 @@
 #include "cerata/domain.h"
 #include "cerata/node.h"
 #include "cerata/port.h"
+#include "cerata/signal.h"
 
 namespace cerata {
 

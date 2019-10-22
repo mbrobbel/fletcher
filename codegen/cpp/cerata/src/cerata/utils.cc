@@ -21,6 +21,16 @@
 
 namespace cerata {
 
+std::string ToUpper(std::string str) {
+  for (auto &ch : str) ch = std::toupper(ch);
+  return str;
+}
+
+std::string ToLower(std::string str) {
+  for (auto &ch : str) ch = std::tolower(ch);
+  return str;
+}
+
 std::string ToString(const std::unordered_map<std::string, std::string> &meta) {
   std::string result;
   if (!meta.empty()) {

@@ -85,8 +85,6 @@ class Literal : public MultiOutputNode {
 
   /// @brief Create a copy of this Literal.
   std::shared_ptr<Object> Copy() const override;
-  /// @brief Add an input to this node.
-  std::shared_ptr<Edge> AddSource(Node *source) override;
 
   /// @brief A literal node has no inputs. This function returns an empty list.
   inline std::vector<Edge *> sources() const override { return {}; }

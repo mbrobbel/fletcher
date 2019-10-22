@@ -20,6 +20,7 @@
 
 #include "cerata/node.h"
 #include "cerata/expression.h"
+#include "cerata/parameter.h"
 #include "cerata/type.h"
 #include "cerata/graph.h"
 #include "cerata/vhdl/identifier.h"
@@ -39,17 +40,17 @@ static std::string GenerateTypeDecl(const Type &type,
       if (!multiplier) {
         return "std_logic";
       } else {
-        return "std_logic_vector(" + (mult - 1ul)->ToString() + " downto 0)";
+        return "std_logic_vector(" + (mult - 1)->ToString() + " downto 0)";
       }
     }
     case Type::VECTOR: {
       auto &vec = dynamic_cast<const Vector &>(type);
       auto width = vec.width().value()->shared_from_this();
       if (!multiplier) {
-        auto expr = width->shared_from_this() - 1ul;
+        auto expr = width->shared_from_this() - 1;
         return "std_logic_vector(" + expr->ToString() + " downto 0)";
       } else {
-        auto expr = mult * width - 1ul;
+        auto expr = mult * width - 1;
         return "std_logic_vector(" + expr->ToString() + " downto 0)";
       }
     }

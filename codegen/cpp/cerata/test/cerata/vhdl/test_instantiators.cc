@@ -130,7 +130,7 @@ TEST(VHDL_INST, NonLocallyStaticArrayMap) {
   auto top_po0 = port("po0", top_vec, Port::Dir::OUT);
   auto top_po1 = port("po1", top_vec, Port::Dir::OUT);
   auto top = component("top", {top_width, top_pi0, top_pi1, top_po0, top_po1});
-  auto child_inst = top->AddInstanceOf(child.get());
+  auto child_inst = top->Instantiate(child.get());
 
   Connect(child_inst->par("WIDTH"), top_width);
   Connect(top_po0, child_inst->prt_arr("po")->Append());

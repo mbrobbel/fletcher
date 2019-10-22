@@ -29,9 +29,9 @@ TEST(Bus, BusArbiter) {
   cerata::default_component_pool()->Clear();
   auto top = cerata::component("top");
   BusParam param(top);
-  top->AddInstanceOf(bus_arbiter(BusFunction::READ));
+  top->Instantiate(bus_arbiter(BusFunction::READ));
 
-  GenerateAll(top);
+  GenerateTestAll(top);
 }
 
 }  // namespace fletchgen

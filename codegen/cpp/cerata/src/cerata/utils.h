@@ -25,10 +25,14 @@
 
 namespace cerata {
 
+/// @brief Convert string to uppercase.
+std::string ToUpper(std::string str);
+std::string ToLower(std::string str);
+
 /// @brief Return a human-readable representation of an unordered map of string key-value pairs.
 std::string ToString(const std::unordered_map<std::string, std::string> &meta);
 
-/// Convenience structure for anything that is named.
+/// Convenience structure for anything that is named. Names are case-sensitive.
 struct Named {
  public:
   /// @brief Named constructor.
@@ -65,9 +69,28 @@ bool Contains(const std::vector<T *> &list, T *item) {
 
 /// @brief Append list b to list a.
 template<typename T>
-void Append(std::vector<std::shared_ptr<T>> *list_a, const std::vector<std::shared_ptr<T>> &list_b) {
+void Append(std::vector<T> *list_a, const std::vector<T> &list_b) {
   list_a->insert(list_a->end(), list_b.begin(), list_b.end());
 }
+
+template<typename T>
+std::vector<T> Merge(std::initializer_list<std::vector<T>> lists) {
+  std::vector<T> result;
+  for (const auto &l : lists) {
+    result.insert(result.end(), l.begin(), l.end());
+  }
+  return result;
+}
+
+template<typename T, typename U>
+std::vector<T> Merge(std::initializer_list<std::unordered_map<T, U>> lists) {
+  std::vector<T> result;
+  for (const auto &l : lists) {
+    result.insert(result.end(), l.begin(), l.end());
+  }
+  return result;
+}
+
 /**
  * @brief Remove an item from a vector, returning false if it was not in the vector, true otherwise.
  * @tparam T    The type of the item
@@ -114,6 +137,31 @@ std::vector<T *> ToRawPointers(const std::vector<std::unique_ptr<T>> &list) {
     result.push_back(value.get());
   }
   return result;
+}
+
+/**
+ * @brief Cast a vector of pointers to some other type.
+ * @tparam T    The type of the objects being pointed to.
+ * @param list  The list of unique pointers.
+ * @return      A list of raw pointers.
+ */
+template<typename T, typename U>
+std::vector<T *> As(const std::vector<U *> &vec) {
+  std::vector<T *> result;
+  for (auto &value : vec) {
+    result.push_back(dynamic_cast<T *>(value));
+  }
+  return result;
+}
+
+/**
+ * @brief Return a human-readable string from a type.
+ * @tparam T  The type.
+ * @return    The human-readable string.
+ */
+template<typename T>
+std::string ToString() {
+  return "UNKOWN TYPE";
 }
 
 /// @brief Create a directory.

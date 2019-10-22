@@ -21,6 +21,7 @@
 
 #include "fletchgen/design.h"
 #include "fletchgen/mantle.h"
+#include "fletchgen/profiler.h"
 #include "fletchgen/test_utils.h"
 #include "fletcher/arrow-utils.h"
 #include "fletcher/arrow-schema.h"
@@ -35,13 +36,20 @@ static void TestReadMantle(const std::shared_ptr<arrow::Schema> &schema) {
   fletcher::SchemaAnalyzer sa(&rbd);
   sa.Analyze(*schema);
   std::vector<fletcher::RecordBatchDescription> rbds = {rbd};
-  auto regs = GetRecordBatchRegs(rbds);
+  auto rb_regs = GetRecordBatchRegs(rbds);
   auto r = record_batch("Test_" + rbd.name, fs, rbd);
+
+  auto pr_regs = GetProfilingRegs({r});
+
+  std::vector<MmioReg> regs;
+  regs.insert(regs.end(), rb_regs.begin(), rb_regs.end());
+  regs.insert(regs.end(), pr_regs.begin(), pr_regs.end());
+
   auto m = mmio({rbd}, regs);
   auto k = kernel("Test_Kernel", {r}, m);
   auto n = nucleus("Test_Nucleus", {r}, k, m);
   auto man = mantle("Test_Mantle", {r}, n, BusSpec());
-  GenerateAll(man);
+  GenerateTestAll(man);
 }
 
 TEST(Mantle, TwoPrim) {

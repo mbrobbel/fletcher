@@ -23,13 +23,14 @@
 
 #include "cerata/object.h"
 #include "cerata/type.h"
+#include "cerata/domain.h"
 
 namespace cerata {
 
 // Forward declarations.
 class Edge;
 class Graph;
-struct Port;
+class Port;
 class Literal;
 class Signal;
 class Parameter;
@@ -55,7 +56,7 @@ class Node : public Object, public std::enable_shared_from_this<Node> {
   /// @brief Return the node Type
   inline Type *type() const { return type_.get(); }
   /// @brief Set the node Type
-  inline void SetType(const std::shared_ptr<Type> &type) { type_ = type; }
+  Node *SetType(const std::shared_ptr<Type> &type);
 
   /// @brief Return the node type ID
   inline NodeID node_id() const { return node_id_; }
@@ -75,10 +76,6 @@ class Node : public Object, public std::enable_shared_from_this<Node> {
   NODE_CAST_DECL_FACTORY(Parameter, PARAMETER)
   NODE_CAST_DECL_FACTORY(Expression, EXPRESSION)
 
-  /// @brief Add an input to this node.
-  virtual std::shared_ptr<Edge> AddSource(Node *input) = 0;
-  /// @brief Add an output to this node.
-  virtual std::shared_ptr<Edge> AddSink(Node *output) = 0;
   /// @brief Add an edge to this node.
   virtual bool AddEdge(const std::shared_ptr<Edge> &edge) = 0;
   /// @brief Remove an edge of this node.
@@ -89,20 +86,39 @@ class Node : public Object, public std::enable_shared_from_this<Node> {
   virtual std::vector<Edge *> sources() const { return {}; }
   /// @brief Get the output edges of this Node.
   virtual std::vector<Edge *> sinks() const { return {}; }
-  /// @brief Recursively list any nodes that this node owns.
-  virtual std::vector<const Node *> ownees() const { return {}; }
-  /**
- * @brief Replace some node with another node, reconnecting all original edges.
- * @param original      The original node to replace.
- * @param replacement   The replacement node.
- * @return              A pointer to the replaced node for function chaining.
- */
-  Node *Replace(Node *replacement);
 
   /// @brief Set parent array.
   void SetArray(NodeArray *array) { array_ = array; }
   /// @brief Return parent array, if any.
   std::optional<NodeArray *> array() const { return array_; }
+
+  /**
+* @brief Replace some node with another node, reconnecting all original edges.
+* @param original      The original node to replace.
+* @param replacement   The replacement node.
+* @return              A pointer to the replaced node for function chaining.
+*/
+  Node *Replace(Node *replacement);
+
+  /**
+   * @brief Copy node onto a graph, implicitly rebinding referenced nodes.
+   *
+   * Referenced nodes means any nodes this node references in its implementation (including its type), but not that it
+   * connects to through edges in the graph.
+   *
+   * Implicitly rebinding means that, first, any referenced nodes will be searched for on the graph by name.
+   * If they don't exist, copies will be made onto the graph as well.
+   *
+   * This function appends this node to the rebinding.
+   *
+   * @param dst     The destination graph to copy the node onto.
+   * @param rebinding The rebinding to use, and to append, if required.
+   * @return          The copy.
+   */
+  virtual Node *CopyOnto(Graph *dst, const std::string &name, NodeMap *rebinding) const;
+
+  /// @brief Return all objects referenced by this node. For default nodes, these are type generics only.
+  void AppendReferences(std::vector<Object *> *out) const override;
 
   /// @brief Return a human-readable string of this node.
   virtual std::string ToString() const;
@@ -116,13 +132,14 @@ class Node : public Object, public std::enable_shared_from_this<Node> {
   std::optional<NodeArray *> array_ = {};
 };
 
-template<typename T>
-std::string ToString() {
-  return "UNKOWN TYPE";
-}
+/// @brief Convert a Node ID to a human-readable string.
+std::string ToString(Node::NodeID id);
+
+/// A mapping from one node to another node, used in e.g. type generic rebinding.
+typedef std::unordered_map<const Node *, Node *> NodeMap;
 
 /**
- * @brief A MultiOutputNode is a Node that can drive multiple outputs.
+ * @brief A no-input, multiple-outputs node.
  */
 struct MultiOutputNode : public Node {
   /// @brief The outgoing Edges that sink this Node.
@@ -138,8 +155,6 @@ struct MultiOutputNode : public Node {
   /// @brief The outgoing Edges that this Node sinks.
   std::vector<Edge *> sinks() const override { return ToRawPointers(outputs_); }
 
-  /// @brief Add an output edge to this node.
-  std::shared_ptr<Edge> AddSink(Node *sink) override;
   /// @brief Remove an edge from this node.
   bool RemoveEdge(Edge *edge) override;
   /// @brief Add an output edge to this node.
@@ -152,25 +167,21 @@ struct MultiOutputNode : public Node {
 };
 
 /**
- * @brief A NormalNode is a single-input, multiple-outputs node
+ * @brief A single-input, multiple-outputs node.
  */
 struct NormalNode : public MultiOutputNode {
   /// @brief The incoming Edge that sources this Node.
   std::shared_ptr<Edge> input_;
 
   /// @brief NormalNode constructor.
-  NormalNode(std::string name, Node::NodeID id, std::shared_ptr<Type> type) : MultiOutputNode(std::move(name),
-                                                                                              id,
-                                                                                              std::move(type)) {}
+  NormalNode(std::string name, Node::NodeID id, std::shared_ptr<Type> type)
+      : MultiOutputNode(std::move(name), id, std::move(type)) {}
 
   /// @brief Return the incoming edges (in this case just the single input edge).
   std::vector<Edge *> sources() const override;
 
   /// @brief Return the single incoming edge.
   std::optional<Edge *> input() const;
-
-  /// @brief Set the input edge of this node.
-  std::shared_ptr<Edge> AddSource(Node *source) override;
 
   /// @brief Add an edge to this node.
   bool AddEdge(const std::shared_ptr<Edge> &edge) override;
@@ -180,73 +191,10 @@ struct NormalNode : public MultiOutputNode {
 };
 
 /**
- * @brief Class to mark nodes with information for synchronous designs, e.g. clock domain.
+ * @brief Get any sub-objects that are used by an object, e.g. type generic nodes or array size nodes.
+ * @param obj The object from which to derive the required objects.
+ * @param out The output.
  */
-class Synchronous {
- public:
-  /// @brief Synchronous constructor.
-  explicit Synchronous(std::shared_ptr<ClockDomain> domain) : domain_(std::move(domain)) {}
-  /// @brief Return the clock domain to which something is synchronized.
-  [[nodiscard]] std::shared_ptr<ClockDomain> domain() const { return domain_; }
-  /// @brief Set the clock domain to which something should be synchronized.
-  void SetDomain(std::shared_ptr<ClockDomain> domain) { domain_ = std::move(domain); }
- protected:
-  /// The clock domain.
-  std::shared_ptr<ClockDomain> domain_;
-};
-
-/**
- * @brief A Signal Node.
- *
- * A Signal Node can have a single input and multiple outputs.
- */
-class Signal : public NormalNode, public Synchronous {
- public:
-  /// @brief Signal constructor.
-  Signal(std::string name, std::shared_ptr<Type> type, std::shared_ptr<ClockDomain> domain = default_domain());
-  /// @brief Create a copy of this Signal.
-  std::shared_ptr<Object> Copy() const override;
-
-  std::string ToString() const override;
-};
-
-/// @brief Create a new Signal and return a smart pointer to it.
-std::shared_ptr<Signal> signal(const std::string &name,
-                               const std::shared_ptr<Type> &type,
-                               const std::shared_ptr<ClockDomain> &domain = default_domain());
-/// @brief Create a new Signal and return a smart pointer to it. The Signal name is derived from the Type name.
-std::shared_ptr<Signal> signal(const std::shared_ptr<Type> &type,
-                               const std::shared_ptr<ClockDomain> &domain = default_domain());
-
-/**
- * @brief A Parameter node.
- *
- * Can be used to define implementation-specific characteristics of a Graph, or can be connected to e.g. Vector widths.
- */
-class Parameter : public NormalNode {
- public:
-  /// @brief Construct a new Parameter, optionally defining a default value Literal.
-  Parameter(std::string name, const std::shared_ptr<Type> &type, const std::shared_ptr<Node> &default_value);
-  /// @brief Create a copy of this Parameter.
-  std::shared_ptr<Object> Copy() const override;
-  /// @brief Short hand to get value node.
-  Node *value() const;
-  /// @brief Obtain all nodes that source this parameter and append it to output.
-  void Trace(std::vector<Node *> *out) const;
-
-  bool RemoveEdge(Edge *edge) override;
-
-  // TODO(johanpel): Work-around for parameters nodes that are size nodes of arrays.
-  //  To prevent this, it requires a restructuring of node arrays.
-  std::optional<NodeArray *> node_array_parent;
-
-};
-/// @brief Get a smart pointer to a new Parameter, optionally owning a default value Literal.
-std::shared_ptr<Parameter> parameter(const std::string &name,
-                                     const std::shared_ptr<Type> &type,
-                                     const std::shared_ptr<Node> &default_value = nullptr);
-
-/// @brief Convert a Node ID to a human-readable string.
-std::string ToString(Node::NodeID id);
+void GetObjectReferences(const Object &obj, std::vector<Object *> *out);
 
 }  // namespace cerata

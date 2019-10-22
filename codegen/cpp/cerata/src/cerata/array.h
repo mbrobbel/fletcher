@@ -23,6 +23,7 @@
 #include "cerata/node.h"
 #include "cerata/port.h"
 #include "cerata/type.h"
+#include "cerata/signal.h"
 
 namespace cerata {
 
@@ -48,8 +49,11 @@ class NodeArray : public Object {
   /// @brief Return the type of the nodes in the NodeArray.
   Type *type() const { return base_->type(); }
 
-  /// @brief Deep-copy the NodeArray.
+  /// @brief Deep-copy the NodeArray, but not the array nodes.
   std::shared_ptr<Object> Copy() const override;
+
+  /// @brief Copy the NodeArray onto a graph, but not the array nodes. Creates a new size node set to zero.
+  NodeArray *CopyOnto(Graph *dst, const std::string &name, NodeMap *rebinding);
 
   /// @brief Append a node to this array, optionally incrementing the size node. Returns a pointer to that node.
   Node *Append(bool increment_size = true);
@@ -69,6 +73,15 @@ class NodeArray : public Object {
 
   /// @brief Return the base node of this NodeArray.
   std::shared_ptr<Node> base() const { return base_; }
+
+  // @brief Append all objects referenced by this node array.
+  void AppendReferences(std::vector<Object *> *out) const override {
+    // This includes the size node and its references.
+    out->push_back(size_.get());
+    size_->AppendReferences(out);
+    // And the references of the base node.
+    base_->AppendReferences(out);
+  }
 
  protected:
   /// The type ID of the nodes in this NodeArray.

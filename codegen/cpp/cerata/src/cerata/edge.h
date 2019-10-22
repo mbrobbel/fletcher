@@ -24,6 +24,7 @@
 #include "cerata/utils.h"
 #include "cerata/node.h"
 #include "cerata/array.h"
+#include "cerata/pool.h"
 
 namespace cerata {
 
@@ -91,6 +92,14 @@ std::shared_ptr<Edge> Connect(const std::shared_ptr<Node> &dst, Node *src);
  */
 std::shared_ptr<Edge> Connect(const std::shared_ptr<Node> &dst, const std::shared_ptr<Node> &src);
 
+/**
+ * @brief Connect a string literal to another node.
+ * @param dst The destination node.
+ * @param src A string out of which a string literal node will be created..
+ * @return The edge connecting the nodes.
+ */
+std::shared_ptr<Edge> Connect(Node *dst, std::string str);
+
 // Connect operators:
 /// @brief Create an edge, connecting the src node to the dst node.
 std::shared_ptr<Edge> operator<<=(Node *dst, const std::shared_ptr<Node> &src);
@@ -111,14 +120,14 @@ std::vector<Edge *> GetAllEdges(const Graph &graph);
 */
 SignalArray *AttachSignalArrayToNodeArray(Component *comp,
                                           NodeArray *array,
-                                          std::unordered_map<Node *, Node *> *rebinding);
+                                          std::unordered_map<const Node *, Node *> *rebinding);
 
 /**
  * @brief Insert a signal based on a node and reconnect every edge.
  */
 Signal *AttachSignalToNode(Component *comp,
                            NormalNode *node,
-                           std::unordered_map<Node *, Node *> *rebinding,
+                           std::unordered_map<const Node *, Node *> *rebinding,
                            std::string name = "");
 
 }  // namespace cerata

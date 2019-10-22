@@ -25,6 +25,7 @@
 #include "cerata/pool.h"
 #include "cerata/graph.h"
 #include "cerata/expression.h"
+#include "cerata/parameter.h"
 
 namespace cerata {
 
@@ -35,7 +36,48 @@ std::string Node::ToString() const {
   return name();
 }
 
+Node *Node::CopyOnto(Graph *dst, const std::string &name, NodeMap *rebinding) const {
+  // Make a normal copy (that does not rebind the type generics).
+  auto result = std::dynamic_pointer_cast<Node>(this->Copy());
+  result->SetName(name);
+
+  // Default node only has a type in which other nodes could be referenced through the type's generics.
+  auto generics = this->type()->GetGenerics();
+
+  // If it has any generics, we might need to rebind them.
+  if (!generics.empty()) {
+    // Resolve the rebinding.
+    for (const auto &g : generics) {
+      if (rebinding->count(g) > 0) {
+        // There could already be one. In this case, we're OK to copy and rebind the type.
+        continue;
+      } else if (dst->Has(g->name())) {
+        // There might already be a node on the graph with that name. Implicitly use that node.
+        (*rebinding)[g] = dst->Get<Node>(g->name());
+      } else if (!g->IsLiteral()) {
+        // Otherwise, if the node is not a literal, which doesn't have to be on the graph, make a copy of the generic
+        // onto the graph.
+        g->CopyOnto(dst, g->name(), rebinding);
+      }
+    }
+    // Make a copy of the type, rebinding the generic nodes.
+    auto rebound_type = result->type()->Copy(*rebinding);
+    // Set the type of the new node to this new type.
+    result->SetType(rebound_type);
+  }
+
+  // Append this node to the rebind map.
+  (*rebinding)[this] = result.get();
+
+  // It should now be possible to add the copy onto the graph.
+  dst->Add(result);
+
+  return result.get();
+}
+
 Node *Node::Replace(Node *replacement) {
+  // TODO(johanpel): override this function in the respective implementations.
+
   // Iterate over all sourcing edges of the original node.
   for (const auto &e : this->sources()) {
     auto src = e->src();
@@ -74,6 +116,17 @@ std::vector<Edge *> Node::edges() const {
   return edges;
 }
 
+Node *Node::SetType(const std::shared_ptr<Type> &type) {
+  type_ = type;
+  return this;
+}
+
+void Node::AppendReferences(std::vector<Object *> *out) const {
+  for (const auto &g : type()->GetGenerics()) {
+    out->push_back(g);
+  }
+}
+
 // Generate node casting convenience functions.
 #ifndef NODE_CAST_IMPL_FACTORY
 #define NODE_CAST_IMPL_FACTORY(NODENAME)                                                        \
@@ -108,7 +161,6 @@ TYPE_STRINGIFICATION_FACTORY(Literal)
 TYPE_STRINGIFICATION_FACTORY(Parameter)
 TYPE_STRINGIFICATION_FACTORY(Expression)
 
-
 bool MultiOutputNode::AddEdge(const std::shared_ptr<Edge> &edge) {
   bool success = false;
   // Check if this edge has a source
@@ -139,10 +191,6 @@ bool MultiOutputNode::RemoveEdge(Edge *edge) {
     }
   }
   return false;
-}
-
-std::shared_ptr<Edge> MultiOutputNode::AddSink(Node *sink) {
-  return Connect(sink, this);
 }
 
 std::optional<Edge *> NormalNode::input() const {
@@ -191,10 +239,6 @@ bool NormalNode::RemoveEdge(Edge *edge) {
   return success;
 }
 
-std::shared_ptr<Edge> NormalNode::AddSource(Node *source) {
-  return Connect(this, source);
-}
-
 std::string ToString(Node::NodeID id) {
   switch (id) {
     case Node::NodeID::PORT:return "Port";
@@ -206,89 +250,25 @@ std::string ToString(Node::NodeID id) {
   throw std::runtime_error("Corrupted node type.");
 }
 
-Parameter::Parameter(std::string name, const std::shared_ptr<Type> &type, const std::shared_ptr<Node> &default_value)
-    : NormalNode(std::move(name), Node::NodeID::PARAMETER, type) {
-  Connect(this, default_value);
-}
-
-Node *Parameter::value() const {
-  return input().value()->src();
-}
-
-void Parameter::Trace(std::vector<Node *> *out) const {
-  if (input()) {
-    out->push_back(input().value()->src());
-    if (input().value()->src()->IsParameter()) {
-      input().value()->src()->AsParameter()->Trace(out);
+void GetObjectReferences(const Object &obj, std::vector<Object *> *out) {
+  if (obj.IsNode()) {
+    // If the object is a node, its type may be a generic type.
+    auto &node = dynamic_cast<const Node &>(obj);
+    // Obtain any potential type generic nodes.
+    auto params = node.type()->GetGenerics();
+    for (const auto &p : params) {
+      out->push_back(p);
     }
+    // If the node is an expression, we need to grab every object from the tree.
+
+  } else if (obj.IsArray()) {
+    // If the object is an array, we can obtain the generic nodes from the base type.
+    auto &array = dynamic_cast<const NodeArray &>(obj);
+    // Add the type generic nodes of the base node first.
+    GetObjectReferences(*array.base(), out);
+    // An array has a size node. Add that as well.
+    out->push_back(array.size());
   }
-}
-
-std::shared_ptr<Object> Parameter::Copy() const {
-  auto result = parameter(name(), type()->shared_from_this(), value()->shared_from_this());
-  result->meta = this->meta;
-  return result;
-}
-
-std::shared_ptr<Parameter> parameter(const std::string &name,
-                                     const std::shared_ptr<Type> &type,
-                                     const std::shared_ptr<Node> &default_value) {
-  auto val = default_value;
-  if (val == nullptr) {
-    val = intl(0);
-  }
-  auto p = new Parameter(name, type, val);
-  return std::shared_ptr<Parameter>(p);
-}
-
-bool Parameter::RemoveEdge(Edge *edge) {
-  if ((edge == input_.get()) && (!outputs_.empty())) {
-    CERATA_LOG(FATAL,
-               "Attempting to remove incoming edge from parameter, while parameter is still sourcing other nodes.");
-  }
-  return NormalNode::RemoveEdge(edge);
-}
-
-Signal::Signal(std::string name, std::shared_ptr<Type> type, std::shared_ptr<ClockDomain> domain)
-    : NormalNode(std::move(name), Node::NodeID::SIGNAL, std::move(type)), Synchronous(std::move(domain)) {}
-
-std::shared_ptr<Object> Signal::Copy() const {
-  auto result = signal(this->name(), this->type_, this->domain_);
-  result->meta = this->meta;
-  return result;
-}
-
-std::string Signal::ToString() const {
-  return name() + ":" + type()->name();
-}
-
-std::shared_ptr<Signal> signal(const std::string &name,
-                               const std::shared_ptr<Type> &type,
-                               const std::shared_ptr<ClockDomain> &domain) {
-  auto ret = std::make_shared<Signal>(name, type, domain);
-  return ret;
-}
-
-std::shared_ptr<Signal> signal(const std::shared_ptr<Type> &type,
-                               const std::shared_ptr<ClockDomain> &domain) {
-  auto ret = std::make_shared<Signal>(type->name() + "_signal", type, domain);
-  return ret;
-}
-
-std::string Term::str(Term::Dir dir) {
-  switch (dir) {
-    case IN: return "in";
-    case OUT: return "out";
-  }
-  return "corrupt";
-}
-
-Term::Dir Term::Invert(Term::Dir dir) {
-  switch (dir) {
-    case IN: return OUT;
-    case OUT: return IN;
-  }
-  CERATA_LOG(FATAL, "Corrupted terminator direction.");
 }
 
 }  // namespace cerata

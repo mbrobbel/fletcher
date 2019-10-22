@@ -15,9 +15,10 @@
 #pragma once
 
 #include <cerata/api.h>
-#include <cerata/vhdl/vhdl.h>
 #include <iostream>
 #include <utility>
+#include <memory>
+#include <string>
 
 namespace cerata {
 

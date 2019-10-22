@@ -42,12 +42,31 @@ Port::Port(std::string name, std::shared_ptr<Type> type, Term::Dir dir, std::sha
     : NormalNode(std::move(name), Node::NodeID::PORT, std::move(type)), Synchronous(std::move(domain)), Term(dir) {}
 
 Port &Port::InvertDirection() {
+  for (auto &e : edges()) {
+    RemoveEdge(e);
+  }
   dir_ = Term::Invert(dir_);
   return *this;
 }
 
 std::string Port::ToString() const {
   return name() + ":" + type()->name() + ":" + Term::str(dir_);
+}
+
+std::string Term::str(Term::Dir dir) {
+  switch (dir) {
+    case IN: return "in";
+    case OUT: return "out";
+  }
+  return "corrupt";
+}
+
+Term::Dir Term::Invert(Term::Dir dir) {
+  switch (dir) {
+    case IN: return OUT;
+    case OUT: return IN;
+  }
+  CERATA_LOG(FATAL, "Corrupted terminator direction.");
 }
 
 }  // namespace cerata

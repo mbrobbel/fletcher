@@ -15,6 +15,7 @@
 #include <memory>
 
 #include "cerata/expression.h"
+#include "cerata/graph.h"
 
 namespace cerata {
 
@@ -35,8 +36,20 @@ std::shared_ptr<Expression> Expression::Make(Op op, std::shared_ptr<Node> lhs, s
   return std::shared_ptr<Expression>(e);
 }
 
+// Hash the the node pointers into a short string.
+static std::string GenerateName(Expression *expr, std::shared_ptr<Node> lhs, std::shared_ptr<Node> rhs) {
+  auto l = ::cerata::ToString(lhs);
+  auto e = ::cerata::ToString(expr);
+  auto r = ::cerata::ToString(rhs);
+  std::string result = "Expr_        ";
+  for (size_t i = 0; i < l.size(); i++) {
+    result[5 + i % 8] = static_cast<char>(65 + (l[i] ^ e[i] ^ r[i]) % 26);
+  }
+  return result;
+}
+
 Expression::Expression(Expression::Op op, std::shared_ptr<Node> lhs, std::shared_ptr<Node> rhs)
-    : MultiOutputNode(::cerata::ToString(lhs) + ::cerata::ToString(this) + ::cerata::ToString(rhs),
+    : MultiOutputNode(GenerateName(this, lhs, rhs),
                       NodeID::EXPRESSION,
                       string()),
       operation_(op),
@@ -137,7 +150,7 @@ void AppendAllNodes(Node *node, std::vector<Node *> *out) {
 }
 
 std::string Expression::ToString() const {
-  auto min = Minimize(const_cast<Expression*>(this));
+  auto min = Minimize(const_cast<Expression *>(this));
   if (min->IsExpression()) {
     auto mine = std::dynamic_pointer_cast<Expression>(min);
     auto ls = mine->lhs_->ToString();
@@ -155,9 +168,26 @@ std::shared_ptr<Object> Expression::Copy() const {
                           std::dynamic_pointer_cast<Node>(rhs_->Copy()));
 }
 
-std::shared_ptr<Edge> Expression::AddSource(Node *source) {
-  CERATA_LOG(FATAL, "Cannot drive an expression node.");
-  return nullptr;
+Node *Expression::CopyOnto(Graph *dst, const std::string &name, NodeMap *rebinding) const {
+  auto new_lhs = lhs_;
+  auto new_rhs = rhs_;
+  // Check for both sides if they were already in the rebind map.
+  // If not, make copies onto the graph for those nodes as well.
+  if (rebinding->count(lhs_.get()) > 0) {
+    new_lhs = rebinding->at(lhs_.get())->shared_from_this();
+  } else {
+    new_lhs = lhs_->CopyOnto(dst, lhs_->name(), rebinding)->shared_from_this();
+  }
+  if (rebinding->count(rhs_.get()) > 0) {
+    new_rhs = rebinding->at(rhs_.get())->shared_from_this();
+  } else {
+    new_rhs = rhs_->CopyOnto(dst, rhs_->name(), rebinding)->shared_from_this();
+  }
+  auto result = Expression::Make(operation_, new_lhs, new_rhs);
+  result->SetName(name);
+  (*rebinding)[this] = result.get();
+  dst->Add(result);
+  return result.get();
 }
 
 }  // namespace cerata

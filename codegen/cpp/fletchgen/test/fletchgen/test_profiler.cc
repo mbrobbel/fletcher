@@ -34,14 +34,7 @@ TEST(Profiler, Connect) {
 
   EnableStreamProfiling(top.get(), {stream_port.get()});
 
-  auto vhdl = cerata::vhdl::Design(top);
-  auto top_code = vhdl.Generate().ToString();
-  std::cerr.flush();
-  std::cout << top_code << std::endl;
-  VHDL_DUMP_TEST(top_code);
-
-  cerata::dot::Grapher dot;
-  dot.GenFile(*top, "profiler.dot");
+  GenerateTestAll(top);
 }
 
 }  // namespace fletchgen

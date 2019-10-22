@@ -19,7 +19,6 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <vector>
 #include <unordered_map>
 
 #include "fletchgen/basic_types.h"
@@ -36,8 +35,9 @@ std::vector<MmioReg> GetProfilingRegs(const std::vector<std::shared_ptr<RecordBa
 std::shared_ptr<cerata::Type> stream_probe();
 
 /// @brief Returns an instance of a StreamProfiler.
-std::unique_ptr<cerata::Instance> ProfilerInstance(const std::string &name,
-                                                   const std::shared_ptr<cerata::ClockDomain> &domain = kernel_cd());
+std::unique_ptr<cerata::Instance> profiler(const std::string &name,
+                                           cerata::NodeMap *rebinding,
+                                           const std::shared_ptr<cerata::ClockDomain> &domain = kernel_cd());
 
 /**
  * @brief Transforms a Cerata component graph to include stream profilers for selected nodes.

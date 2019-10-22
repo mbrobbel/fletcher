@@ -161,30 +161,31 @@ struct RecordBatch : public Component {
   std::vector<std::shared_ptr<FieldPort>> GetFieldPorts(const std::optional<FieldPort::Function> &function = {}) const;
   /// @brief Return the description of the RecordBatch this component is based on.
   fletcher::RecordBatchDescription batch_desc() const { return batch_desc_; }
+  FletcherSchema *schema() { return fletcher_schema_.get(); }
   /// @brief Return the mode (read or write) of this RecordBatch.
   Mode mode() const { return mode_; }
 
  protected:
   /**
-   * @brief Adds all ArrayReaders/Writers, unconcatenates ports and connects it to the top-level of this component.
+   * @brief Adds all ArrayReaders/Writers, un-concatenates ports and connects it to the top-level of this component.
    * @param fletcher_schema   A Fletcherized version of the Arrow Schema that this RecordBatch component will access.
    *
-   * Fletcher's hardware implementation concatenates each subsignal of potentially multiple streams of an
-   * ArrayReader/Writer onto a single subsignal. This function must unconcatenate these streams.
+   * Fletcher's hardware implementation concatenates each sub-signal of potentially multiple streams of an
+   * ArrayReader/Writer onto a single sub-signal. This function must un-concatenate these streams.
    */
   void AddArrays(const std::shared_ptr<FletcherSchema> &fletcher_schema);
 
   /// A mapping from ArrayReader/Writer instances to their bus ports.
   std::vector<Instance *> array_instances_;
-
   /// Fletcher schema implemented by this RecordBatch(Reader/Writer)
   std::shared_ptr<FletcherSchema> fletcher_schema_;
-  /// Mode
+  /// Whether to read or write from/to the in-memoRecordBatch
   Mode mode_ = Mode::READ;
   /// The RecordBatch description.
   fletcher::RecordBatchDescription batch_desc_;
+
  private:
-  void ConnectBusPorts(Instance *array, const FletcherSchema &fletcher_schema, const arrow::Field &field);
+  void ConnectBusPorts(Instance *array, const std::string &prefix, cerata::NodeMap *rebinding);
 };
 
 /// @brief Make a new RecordBatch(Reader/Writer) component, based on a Fletcher schema.

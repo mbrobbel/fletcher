@@ -64,8 +64,8 @@ TEST(VHDL_DESIGN, CompInst) {
   auto ca = component("comp_a", {a});
   auto cb = component("comp_b", {b});
   auto top = component("top");
-  auto ia = top->AddInstanceOf(ca.get());
-  auto ib = top->AddInstanceOf(cb.get());
+  auto ia = top->Instantiate(ca.get());
+  auto ib = top->Instantiate(cb.get());
   Connect(ia->prt("a"), ib->prt("b"));
 
   auto generated = GenerateDebugOutput(top);
@@ -134,8 +134,8 @@ TEST(VHDL_DESIGN, Streams) {
   auto x = component("x", {a});
   auto y = component("y", {b});
   auto top = component("top");
-  auto ix = top->AddInstanceOf(x);
-  auto iy = top->AddInstanceOf(y);
+  auto ix = top->Instantiate(x);
+  auto iy = top->Instantiate(y);
   Connect(ix->prt("a"), iy->prt("b"));
 
   auto generated = GenerateDebugOutput(top);

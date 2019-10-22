@@ -178,24 +178,7 @@ Design::Design(const std::shared_ptr<Options> &opts) {
   recordbatch_regs = GetRecordBatchRegs(batch_desc);
   kernel_regs = ParseCustomRegs(opts->regs);
   profiling_regs = GetProfilingRegs(recordbatch_comps);
-
-  // Merge these registers together into one register file for component generation.
-  std::vector<MmioReg> regs;
-  regs.insert(regs.end(), default_regs.begin(), default_regs.end());
-  regs.insert(regs.end(), recordbatch_regs.begin(), recordbatch_regs.end());
-  regs.insert(regs.end(), kernel_regs.begin(), kernel_regs.end());
-  regs.insert(regs.end(), profiling_regs.begin(), profiling_regs.end());
-
-  // Generate a Yaml file for vhdmmio based on the recordbatch description
-  auto ofs = std::ofstream("fletchgen.mmio.yaml");
-  ofs << GenerateVhdmmioYaml(&regs);
-  ofs.close();
-
-  // Run vhdmmio
-  auto vhdmmio_result = system("vhdmmio -V vhdl -H -P vhdl > vhdmmio.log");
-  if (vhdmmio_result != 0) {
-    FLETCHER_LOG(FATAL, "vhdmmio exited with status " << vhdmmio_result);
-  }
+  auto regs = cerata::Merge({default_regs, recordbatch_regs, kernel_regs, profiling_regs});
 
   auto bus_spec = BusSpec::FromString(opts->bus_specs[0], BusSpec());
 
@@ -207,6 +190,21 @@ Design::Design(const std::shared_ptr<Options> &opts) {
   nucleus_comp = nucleus(opts->kernel_name + "_Nucleus", recordbatch_comps, kernel_comp, mmio_comp);
   // Generate the mantle.
   mantle_comp = mantle(opts->kernel_name + "_Mantle", recordbatch_comps, nucleus_comp, bus_spec);
+  // Run vhdmmio to generate the mmio infrastructure.
+  RunVhdmmio(regs);
+}
+
+void Design::RunVhdmmio(std::vector<MmioReg> regs) {
+  // Generate a Yaml file for vhdmmio based on the recordbatch description
+  auto ofs = std::ofstream("fletchgen.mmio.yaml");
+  ofs << GenerateVhdmmioYaml(&regs);
+  ofs.close();
+
+  // Run vhdmmio
+  auto vhdmmio_result = system("vhdmmio -V vhdl -H -P vhdl > vhdmmio.log");
+  if (vhdmmio_result != 0) {
+    FLETCHER_LOG(FATAL, "vhdmmio exited with status " << vhdmmio_result);
+  }
 }
 
 std::vector<cerata::OutputSpec> Design::GetOutputSpec() {

@@ -94,16 +94,12 @@ TEST(VHDL_DECL, ArrayPort) {
   auto top = component("top");
   auto X = component("X", {size, A});
   auto Y = component("Y", {B, C});
-  auto x_inst = top->AddInstanceOf(X);
-  auto y_inst = top->AddInstanceOf(Y);
+  auto x_inst = top->Instantiate(X);
+  auto y_inst = top->Instantiate(Y);
 
   auto xa = x_inst->prt_arr("A");
   auto xa0 = xa->Append();
-  ASSERT_EQ(xa->size()->AsParameter()->value()->ToString(), "1");
   auto xa1 = xa->Append();
-  ASSERT_EQ(xa->size()->AsParameter()->value()->ToString(), "2");
-
-  ASSERT_NE(xa, A.get());
 
   auto yb = y_inst->prt("B");
   auto yc = y_inst->prt("C");
@@ -112,6 +108,10 @@ TEST(VHDL_DECL, ArrayPort) {
   Connect(yc, xa1);
 
   GenerateDebugOutput(top);
+
+  ASSERT_EQ(xa->size()->ToString(), "1");
+  ASSERT_EQ(xa->size()->ToString(), "2");
+  ASSERT_NE(xa, A.get());
 }
 
 }  // namespace cerata

@@ -39,7 +39,7 @@ TEST(Types, TypeMapper) {
   auto mapper = GetStreamTypeMapper(at, array_type);
   at->AddMapper(mapper);
 
-  auto array_inst = top->AddInstanceOf(array.get());
+  auto array_inst = top->Instantiate(array.get());
   ap <<= array_inst->prt("out");
 
   std::cout << cerata::vhdl::Design(top).Generate().ToString();

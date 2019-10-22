@@ -88,7 +88,13 @@ std::shared_ptr<cerata::Type> stream_probe(const std::shared_ptr<Node> &count_wi
   return result;
 }
 
-static std::shared_ptr<Component> Profiler() {
+static Component *profiler() {
+  // Check if the Array component was already created.
+  auto opt_comp = cerata::default_component_pool()->Get("ProfilerStreams");
+  if (opt_comp) {
+    return *opt_comp;
+  }
+
   // Parameters
   auto in_count_width = parameter("PROBE_COUNT_WIDTH", integer(), cerata::intl(1));
   auto out_count_width = parameter("OUT_COUNT_WIDTH", integer(), cerata::intl(32));
@@ -116,39 +122,12 @@ static std::shared_ptr<Component> Profiler() {
   ret->SetMeta(cerata::vhdl::meta::LIBRARY, "work");
   ret->SetMeta(cerata::vhdl::meta::PACKAGE, "Profile_pkg");
 
-  return ret;
-}
-
-std::unique_ptr<cerata::Instance> ProfilerInstance(const std::string &name,
-                                                   const std::shared_ptr<ClockDomain> &domain) {
-  std::unique_ptr<cerata::Instance> result;
-  // Check if the Profiler component was already created.
-  Component *profiler_component;
-  auto optional_component = cerata::default_component_pool()->Get("ProfilerStreams");
-  if (optional_component) {
-    profiler_component = *optional_component;
-  } else {
-    profiler_component = Profiler().get();
-  }
-  // Create and return an instance of the Array component.
-  result = cerata::instance(profiler_component, name);
-
-  // Because we can have multiple probes mapping to multiple stream types, each probe type should be unique.
-  auto probe = result->prt("probe");
-  probe->SetType(stream_probe((*result->FindNode("PROBE_COUNT_WIDTH"))->shared_from_this()));
-
-  for (auto &n : result->GetNodes()) {
-    auto s = dynamic_cast<cerata::Synchronous *>(n);
-    if (s != nullptr) {
-      s->SetDomain(domain);
-    }
-  }
-
-  return result;
+  return ret.get();
 }
 
 NodeProfilerPorts EnableStreamProfiling(cerata::Component *comp,
                                         const std::vector<Node *> &profile_nodes) {
+  cerata::NodeMap rebinding;
   NodeProfilerPorts result;
   // Get all nodes and check if their type contains a stream, then check if they should be profiled.
   for (auto node : profile_nodes) {
@@ -178,10 +157,7 @@ NodeProfilerPorts EnableStreamProfiling(cerata::Component *comp,
 
         // Instantiate a profiler.
         std::string name = flat_types[fti].name(cerata::NamePart(node->name(), true));
-
-        auto profiler_inst_unique = ProfilerInstance(name + "_inst", *domain);
-        auto profiler_inst = profiler_inst_unique.get();
-        comp->AddChild(std::move(profiler_inst_unique));
+        auto profiler_inst = comp->Instantiate(profiler(), name + "_inst");
 
         // Obtain profiler ports.
         auto p_probe = profiler_inst->prt("probe");

@@ -28,8 +28,10 @@ add_compile_unit(
     src/cerata/array.cc
     src/cerata/object.cc
     src/cerata/output.cc
+    src/cerata/parameter.cc
     src/cerata/pool.cc
     src/cerata/port.cc
+    src/cerata/signal.cc
     src/cerata/transform.cc
     src/cerata/type.cc
     src/cerata/stream.cc
@@ -39,6 +41,7 @@ add_compile_unit(
     test/cerata/test_pool.cc
     test/cerata/test_types.cc
     test/cerata/test_nodes.cc
+    test/cerata/test_instances.cc
 )
 
 add_compile_unit(

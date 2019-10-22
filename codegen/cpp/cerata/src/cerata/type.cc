@@ -208,7 +208,7 @@ std::vector<Node *> Vector::GetGenerics() const {
 }
 
 Type &Vector::SetWidth(std::shared_ptr<Node> width) {
-  width_ = width;
+  width_ = std::move(width);
   return *this;
 }
 
@@ -342,7 +342,7 @@ bool Record::IsGeneric() const {
   return false;
 }
 
-std::shared_ptr<Type> Bit::Copy(std::unordered_map<Node *, Node *> rebinding) const {
+std::shared_ptr<Type> Bit::Copy(const NodeMap &rebinding) const {
   std::shared_ptr<Type> result;
   result = bit(name());
 
@@ -357,7 +357,7 @@ std::shared_ptr<Type> Bit::Copy(std::unordered_map<Node *, Node *> rebinding) co
   return result;
 }
 
-std::shared_ptr<Type> Vector::Copy(std::unordered_map<Node *, Node *> rebinding) const {
+std::shared_ptr<Type> Vector::Copy(const NodeMap &rebinding) const {
   std::shared_ptr<Type> result;
   std::optional<std::shared_ptr<Node>> new_width = width_;
   if (rebinding.count(width_.get()) > 0) {
@@ -376,11 +376,11 @@ std::shared_ptr<Type> Vector::Copy(std::unordered_map<Node *, Node *> rebinding)
   return result;
 }
 
-std::shared_ptr<Field> Field::Copy(std::unordered_map<Node *, Node *> rebinding) const {
+std::shared_ptr<Field> Field::Copy(const NodeMap &rebinding) const {
   std::shared_ptr<Field> result;
   auto type = type_;
   if (type_->IsGeneric()) {
-    type = type_->Copy(std::move(rebinding));
+    type = type_->Copy(rebinding);
   }
   result = field(name(), type, invert_, sep_);
   result->meta = meta;
@@ -388,7 +388,7 @@ std::shared_ptr<Field> Field::Copy(std::unordered_map<Node *, Node *> rebinding)
 }
 
 Field &Field::SetType(std::shared_ptr<Type> type) {
-  type_ = type;
+  type_ = std::move(type);
   return *this;
 }
 
@@ -397,7 +397,7 @@ std::shared_ptr<Field> Field::Reverse() {
   return shared_from_this();
 }
 
-std::shared_ptr<Type> Record::Copy(std::unordered_map<Node *, Node *> rebinding) const {
+std::shared_ptr<Type> Record::Copy(const NodeMap &rebinding) const {
   std::shared_ptr<Type> result;
   std::vector<std::shared_ptr<Field>> fields;
   for (const auto &f : fields_) {

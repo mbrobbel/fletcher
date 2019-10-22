@@ -33,8 +33,6 @@ MultiBlock Design::Generate() {
   //  in case multiple back ends are processing the graph. This currently modifies the original structure.
 
   // Resolve VHDL specific problems
-  CERATA_LOG(DEBUG, "VHDL: Transforming Cerata graph to VHDL-compatible.");
-
   // Make signals out of all ports, because VHDL is terrible.
   Resolve::SignalizePorts(component_);
 
@@ -87,7 +85,7 @@ MultiBlock Design::Generate() {
 
   ret << incl;
 
-  // Place any libraries from subcomponents
+  // Place any libraries from sub-components
 
   auto decl = Decl::Generate(*component_, true);
   auto arch = Arch::Generate(*component_);

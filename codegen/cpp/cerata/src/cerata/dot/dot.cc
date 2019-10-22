@@ -31,7 +31,7 @@ void DOTOutputGenerator::Generate() {
   cerata::dot::Grapher dot;
   for (const auto &o : outputs_) {
     if (o.comp != nullptr) {
-      CERATA_LOG(INFO, "DOT: Generating output for Graph: " + o.comp->name());
+      CERATA_LOG(DEBUG, "DOT: Generating output for Graph: " + o.comp->name());
       dot.GenFile(*o.comp, root_dir_ + "/" + subdir() + "/" + o.comp->name() + ".dot");
     }
   }

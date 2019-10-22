@@ -39,11 +39,11 @@ class Expression : public MultiOutputNode {
   /// @brief Short-hand to create a smart pointer to an expression.
   static std::shared_ptr<Expression> Make(Op op, std::shared_ptr<Node> lhs, std::shared_ptr<Node> rhs);
 
-  /// @brief Add an input to this node.
-  std::shared_ptr<Edge> AddSource(Node *source) override;
-
   /// @brief Copy this expression.
   std::shared_ptr<Object> Copy() const override;
+
+  /// @brief Copy this expression onto a graph and rebind anything in the expression tree.
+  Node *CopyOnto(Graph *dst, const std::string &name, NodeMap *rebinding) const override;
 
   /// @brief Minimize the expression and convert it to a human-readable string.
   std::string ToString() const override;

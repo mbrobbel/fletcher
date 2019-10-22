@@ -17,6 +17,8 @@
 #include <string>
 #include <sstream>
 
+#include "cerata/api.h"
+
 namespace cerata::dot {
 
 Style Style::normal() {

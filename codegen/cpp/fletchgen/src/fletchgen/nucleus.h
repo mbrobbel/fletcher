@@ -33,13 +33,8 @@ namespace fletchgen {
 using cerata::Port;
 using cerata::Component;
 
-/// @brief Merges the address of a command stream with the rest of the command stream.
-struct ArrayCmdCtrlMerger : Component {
-  ArrayCmdCtrlMerger();
-};
-
-/// @brief Create an instance of an ArrayCmdCtrlMerger.
-std::unique_ptr<Instance> ArrayCmdCtrlMergerInstance(const std::string &name);
+/// @brief Return the ArrayCmdCtrlMerger component.
+Component *accm();
 
 /// @brief It's like a kernel, but there is a kernel inside.
 struct Nucleus : Component {
@@ -52,9 +47,11 @@ struct Nucleus : Component {
   /// @brief Return all field-derived ports with a specific function.
   std::vector<FieldPort *> GetFieldPorts(FieldPort::Function fun) const;
 
+  /// @brief Profile any Arrow data streams that require profiling.
+  void ProfileDataStreams(Instance *mmio_inst);
+
   /// The kernel component.
   std::shared_ptr<Kernel> kernel;
-
   /// The kernel instance.
   Instance *kernel_inst;
 };

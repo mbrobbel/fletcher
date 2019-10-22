@@ -21,12 +21,12 @@
 
 namespace fletchgen {
 
-inline std::string GenerateDecl(cerata::Component *comp, std::string name = "") {
+inline std::string GenerateTestDecl(cerata::Component *comp, std::string name = "") {
   if (name.empty()) {
     name = comp->name();
   }
   auto src = cerata::vhdl::Decl::Generate(*comp, false).ToString();
-  auto o = std::ofstream(name + ".comp.gen.vhd");
+  auto o = std::ofstream(name + ".test.gen.vhd");
   o << src;
   o.close();
 
@@ -40,14 +40,14 @@ inline std::string GenerateDecl(cerata::Component *comp, std::string name = "") 
   return src;
 }
 
-inline std::string GenerateAll(cerata::Component *comp, std::string name = "") {
+inline std::string GenerateTestAll(cerata::Component *comp, std::string name = "") {
   if (name.empty()) {
     name = comp->name();
   }
 
   auto design = cerata::vhdl::Design(comp);
   auto src = design.Generate().ToString();
-  auto o = std::ofstream(name + ".gen.vhd");
+  auto o = std::ofstream(name + ".test.gen.vhd");
   o << src;
   o.close();
 
@@ -61,8 +61,8 @@ inline std::string GenerateAll(cerata::Component *comp, std::string name = "") {
   return src;
 }
 
-inline std::string GenerateAll(const std::shared_ptr<cerata::Component>& comp, std::string name = "") {
-  return GenerateAll(comp.get(), std::move(name));
+inline std::string GenerateTestAll(const std::shared_ptr<cerata::Component>& comp, std::string name = "") {
+  return GenerateTestAll(comp.get(), std::move(name));
 }
 
 }  // namespace fletchgen

@@ -15,6 +15,7 @@
 #pragma once
 
 // Cerata intermediate
+#include "cerata/array.h"
 #include "cerata/domain.h"
 #include "cerata/edge.h"
 #include "cerata/expression.h"
@@ -22,14 +23,14 @@
 #include "cerata/graph.h"
 #include "cerata/literal.h"
 #include "cerata/node.h"
-#include "cerata/array.h"
 #include "cerata/object.h"
 #include "cerata/output.h"
+#include "cerata/parameter.h"
 #include "cerata/pool.h"
-#include "cerata/transform.h"
 #include "cerata/port.h"
-#include "cerata/type.h"
 #include "cerata/stream.h"
+#include "cerata/transform.h"
+#include "cerata/type.h"
 
 // Cerata utilities
 #include "cerata/logging.h"

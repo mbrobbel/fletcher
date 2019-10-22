@@ -28,7 +28,7 @@ namespace cerata {
 Edge::Edge(std::string name, Node *dst, Node *src)
     : Named(std::move(name)), dst_(dst), src_(src) {
   if ((dst == nullptr) || (src == nullptr)) {
-    throw std::runtime_error("Cannot create edge with nullptrs.");
+    CERATA_LOG(FATAL, "Cannot construct edge with nullptr nodes.");
   }
 }
 
@@ -227,10 +227,7 @@ static std::shared_ptr<ClockDomain> DomainOf(NodeArray *node_array) {
   return result;
 }
 
-Signal *AttachSignalToNode(Component *comp,
-                           NormalNode *node,
-                           std::unordered_map<Node *, Node *> *rebinding,
-                           std::string name) {
+Signal *AttachSignalToNode(Component *comp, NormalNode *node, NodeMap *rebinding, std::string name) {
   std::shared_ptr<Type> type = node->type()->shared_from_this();
   // Figure out if the type is a generic type.
   if (type->IsGeneric()) {
@@ -301,9 +298,7 @@ Signal *AttachSignalToNode(Component *comp,
   return new_signal.get();
 }
 
-SignalArray *AttachSignalArrayToNodeArray(Component *comp,
-                                          NodeArray *array,
-                                          std::unordered_map<Node *, Node *> *rebinding) {
+SignalArray *AttachSignalArrayToNodeArray(Component *comp, NodeArray *array, NodeMap *rebinding) {
   // Get the base node.
   auto base = array->base();
 
@@ -388,6 +383,10 @@ SignalArray *AttachSignalArrayToNodeArray(Component *comp,
     }
   }
   return new_array.get();
+}
+
+std::shared_ptr<Edge> Connect(Node *dst, std::string str) {
+  return Connect(dst, strl(str));
 }
 
 }  // namespace cerata

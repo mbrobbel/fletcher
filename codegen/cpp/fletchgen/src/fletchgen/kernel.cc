@@ -25,16 +25,14 @@
 
 namespace fletchgen {
 
-static void CopyFieldPorts(Component *kernel,
-                           const RecordBatch &record_batch,
-                           FieldPort::Function fun) {
+static void CopyFieldPorts(Component *kernel, const RecordBatch &record_batch, FieldPort::Function fun) {
   // Add Arrow field derived ports with some function.
   auto field_ports = record_batch.GetFieldPorts(fun);
+  cerata::NodeMap rebinding;
   for (const auto &fp : field_ports) {
     // Create a copy and invert for the Kernel
-    auto copied_port = std::dynamic_pointer_cast<FieldPort>(fp->Copy());
+    auto copied_port = dynamic_cast<FieldPort *>(fp->CopyOnto(kernel, fp->name(), &rebinding));
     copied_port->InvertDirection();
-    kernel->Add(copied_port->Copy());
   }
 }
 
@@ -48,6 +46,7 @@ Kernel::Kernel(std::string name,
 
   auto iw = index_width();
   auto tw = tag_width();
+  Add({iw, tw});
 
   // Add ports going to/from RecordBatches.
   for (const auto &r : recordbatches) {

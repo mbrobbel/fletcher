@@ -44,7 +44,6 @@ PARAM_FACTORY(bus_burst_max_len)
 std::shared_ptr<Type> bus_read(const std::shared_ptr<Node> &addr_width,
                                const std::shared_ptr<Node> &data_width,
                                const std::shared_ptr<Node> &len_width) {
-
   auto rreq = stream(record({field("addr", vector(addr_width)),
                              field("len", vector(len_width))}));
   auto rdat = stream(record({field("data", vector(data_width)),
@@ -55,12 +54,11 @@ std::shared_ptr<Type> bus_read(const std::shared_ptr<Node> &addr_width,
 }
 std::shared_ptr<Type> bus_write(const std::shared_ptr<Node> &addr_width,
                                 const std::shared_ptr<Node> &data_width,
-                                const std::shared_ptr<Node> &strobe_width,
                                 const std::shared_ptr<Node> &len_width) {
   auto wreq = stream(record({field("addr", vector(addr_width)),
                              field("len", vector(len_width))}));
   auto wdat = stream(record({field("data", vector(data_width)),
-                             field("strobe", vector(strobe_width)),
+                             field("strobe", vector(data_width / 8)),
                              field("last", last())}));
   auto result = record({field("wreq", wreq),
                         field("wdat", wdat)});
@@ -148,7 +146,6 @@ std::shared_ptr<Component> BusReadSerializer() {
 bool operator==(const BusParam &lhs, const BusParam &rhs) {
   return (lhs.spec_.aw == rhs.spec_.aw) &&
       (lhs.spec_.dw == rhs.spec_.dw) &&
-      (lhs.spec_.sw == rhs.spec_.sw) &&
       (lhs.spec_.lw == rhs.spec_.lw) &&
       (lhs.spec_.bs == rhs.spec_.bs) &&
       (lhs.spec_.bm == rhs.spec_.bm);
@@ -159,7 +156,7 @@ std::shared_ptr<Type> bus(const BusParam &params) {
   if (params.func_ == BusFunction::READ) {
     return bus_read(params.aw, params.dw, params.lw);
   } else {
-    return bus_write(params.aw, params.dw, params.sw, params.lw);
+    return bus_write(params.aw, params.dw, params.lw);
   }
 }
 
@@ -173,15 +170,24 @@ std::shared_ptr<BusPort> bus_port(Port::Dir dir, const BusParam &params) {
   return std::make_shared<BusPort>(params.spec_.ToBusTypeName(), dir, params);
 }
 
-void ConnectBusParam(cerata::Graph *dst, const BusParam &src) {
-  Connect(dst->par(bus_addr_width()), src.aw);
-  Connect(dst->par(bus_data_width()), src.dw);
-  if (dst->Has(bus_strobe_width()->name())) {
-    Connect(dst->par(bus_strobe_width()), src.sw);
-  }
-  Connect(dst->par(bus_len_width()), src.lw);
-  Connect(dst->par(bus_burst_step_len()), src.bs);
-  Connect(dst->par(bus_burst_max_len()), src.bm);
+void ConnectBusParam(cerata::Graph *dst, const BusParam &src, const std::string &prefix, cerata::NodeMap *rebinding) {
+  std::string p = prefix;
+  if (!prefix.empty()) { p += "_"; }
+  auto dst_aw = dst->par(p + bus_addr_width()->name());
+  auto dst_dw = dst->par(p + bus_data_width()->name());
+  auto dst_lw = dst->par(p + bus_len_width()->name());
+  auto dst_bs = dst->par(p + bus_burst_step_len()->name());
+  auto dst_bm = dst->par(p + bus_burst_max_len()->name());
+  Connect(dst_aw, src.aw);
+  Connect(dst_dw, src.dw);
+  Connect(dst_lw, src.lw);
+  Connect(dst_bs, src.bs);
+  Connect(dst_bm, src.bm);
+  (*rebinding)[src.aw.get()] = dst_aw;
+  (*rebinding)[src.dw.get()] = dst_dw;
+  (*rebinding)[src.lw.get()] = dst_lw;
+  (*rebinding)[src.bs.get()] = dst_bs;
+  (*rebinding)[src.bm.get()] = dst_bm;
 }
 
 std::shared_ptr<cerata::Object> BusPort::Copy() const {
@@ -196,7 +202,6 @@ std::string BusSpec::ToBusTypeName() const {
   std::stringstream str;
   str << "AW" << std::to_string(aw);
   str << "DW" << std::to_string(dw);
-  str << "SW" << std::to_string(sw);
   str << "LW" << std::to_string(lw);
   str << "BS" << std::to_string(bs);
   str << "BM" << std::to_string(bm);
@@ -214,19 +219,19 @@ static std::vector<int64_t> ParseCSV(std::string str) {
   return result;
 }
 
-BusSpec BusSpec::FromString(std::string str, BusSpec default_to) {
+BusSpec BusSpec::FromString(const std::string &str, BusSpec default_to) {
   BusSpec result = default_to;
   if (!str.empty()) {
     auto vals = ParseCSV(str);
-    if (vals.size() != 6) {
-      FLETCHER_LOG(FATAL, "Bus specification string is invalid: " + str);
+    if (vals.size() != 5) {
+      FLETCHER_LOG(FATAL, "Bus specification string is invalid: " + str
+          + ". Expected: <address width>,<data width>,<len width>,<min burst>,<max burst>");
     }
     result.aw = vals[0];
     result.dw = vals[1];
-    result.sw = vals[2];
-    result.lw = vals[3];
-    result.bs = vals[4];
-    result.bm = vals[5];
+    result.lw = vals[2];
+    result.bs = vals[3];
+    result.bm = vals[4];
   }
   return result;
 }
@@ -235,7 +240,6 @@ std::string BusSpec::ToString() const {
   std::stringstream str;
   str << "address width: " << std::to_string(aw);
   str << ", data width: " << std::to_string(dw);
-  str << ", strobe width: " << std::to_string(sw);
   str << ", burst length width: " << std::to_string(lw);
   str << ", minimum burst size: " << std::to_string(bs);
   str << ", maximum burst size: " << std::to_string(bm);
@@ -243,22 +247,17 @@ std::string BusSpec::ToString() const {
 }
 
 std::vector<std::shared_ptr<Object>> BusParam::all(BusFunction func) const {
-  if (func == BusFunction::READ) {
-    return std::vector<std::shared_ptr<Object>>({aw, dw, lw, bs, bm});
-  } else {
-    return std::vector<std::shared_ptr<Object>>({aw, dw, sw, lw, bs, bm});
-  }
+  return std::vector<std::shared_ptr<Object>>({aw, dw, lw, bs, bm});
 }
 
 BusParam::BusParam(cerata::Graph *parent, BusFunction func, BusSpec spec, const std::string &prefix)
     : func_(func), spec_(spec) {
   aw = bus_addr_width(spec.aw, prefix);
   dw = bus_data_width(spec.dw, prefix);
-  sw = bus_strobe_width(spec.sw, prefix);
   lw = bus_len_width(spec.lw, prefix);
   bs = bus_burst_step_len(spec.bs, prefix);
   bm = bus_burst_max_len(spec.bm, prefix);
-  parent->Add({aw, dw, sw, lw, bs, bm});
+  parent->Add({aw, dw, lw, bs, bm});
 }
 
 }  // namespace fletchgen

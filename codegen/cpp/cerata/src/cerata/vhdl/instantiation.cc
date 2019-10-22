@@ -23,6 +23,7 @@
 #include "cerata/type.h"
 #include "cerata/graph.h"
 #include "cerata/pool.h"
+#include "cerata/parameter.h"
 
 #include "cerata/vhdl/instantiation.h"
 #include "cerata/vhdl/identifier.h"

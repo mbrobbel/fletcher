@@ -32,8 +32,7 @@ class Node;
 class Literal;
 class Graph;
 std::shared_ptr<Literal> intl(int64_t);
-
-using OptionalNode =  std::optional<std::shared_ptr<Node>>;
+typedef std::unordered_map<const Node *, Node *> NodeMap;
 
 /**
  * @brief A Type
@@ -132,15 +131,20 @@ class Type : public Named, public std::enable_shared_from_this<Type> {
   std::unordered_map<std::string, std::string> meta;
 
   /**
-  * @brief Make a copy of the type, and rebind any generic nodes that are keys in the rebinding to their values.
+  * @brief Make a copy of the type, and rebind any type generic nodes that are keys in the rebinding to their values.
   *
    * This is useful in case type generic nodes are on some instance graph and have to be copied over to a component
-   * graph, or vice versa.
-   * In that case, the new graph has to copy over these nodes and rebind the type generic nodes.
+   * graph, or vice versa. In that case, the new graph has to copy over these nodes and rebind the type generic nodes.
   *
   * @return A copy of the type.
   */
-  virtual std::shared_ptr<Type> Copy(std::unordered_map<Node *, Node *> rebinding) const = 0;
+  virtual std::shared_ptr<Type> Copy(const NodeMap &rebinding) const = 0;
+
+  /**
+   * @brief Make a copy of the type without rebinding.
+   * @return A copy.
+   */
+  virtual std::shared_ptr<Type> Copy() const { return Copy({}); }
 
  protected:
   /// Type ID
@@ -162,7 +166,7 @@ struct Bit : public Type {
   /// @brief Bit width returns integer literal 1.
   std::optional<Node *> width() const override;
 
-  std::shared_ptr<Type> Copy(std::unordered_map<Node *, Node *> rebinding) const override;
+  std::shared_ptr<Type> Copy(const NodeMap &rebinding) const override;
 };
 
 /// @brief Return a static Nul type.
@@ -173,7 +177,7 @@ struct Nul : public Type {
   bool IsPhysical() const override { return false; }
   bool IsGeneric() const override { return false; }
   bool IsNested() const override { return false; }
-  std::shared_ptr<Type> Copy(std::unordered_map<Node *, Node *> generic_map) const override { return nul(); }
+  std::shared_ptr<Type> Copy(const NodeMap &rebinding) const override { return nul(); }
 };
 
 /// @brief Return a static boolean type.
@@ -184,7 +188,7 @@ struct Boolean : public Type {
   bool IsPhysical() const override { return false; }
   bool IsGeneric() const override { return false; }
   bool IsNested() const override { return false; }
-  std::shared_ptr<Type> Copy(std::unordered_map<Node *, Node *> generic_map) const override { return boolean(); }
+  std::shared_ptr<Type> Copy(const NodeMap &rebinding) const override { return boolean(); }
 };
 
 /// @brief Return a static integer type.
@@ -195,7 +199,7 @@ struct Integer : public Type {
   bool IsPhysical() const override { return false; }
   bool IsGeneric() const override { return false; }
   bool IsNested() const override { return false; }
-  std::shared_ptr<Type> Copy(std::unordered_map<Node *, Node *> generic_map) const override { return integer(); }
+  std::shared_ptr<Type> Copy(const NodeMap &rebinding) const override { return integer(); }
 };
 
 /// @brief Return a static string type.
@@ -206,7 +210,7 @@ struct String : public Type {
   bool IsPhysical() const override { return false; }
   bool IsGeneric() const override { return false; }
   bool IsNested() const override { return false; }
-  std::shared_ptr<Type> Copy(std::unordered_map<Node *, Node *> generic_map) const override { return string(); }
+  std::shared_ptr<Type> Copy(const NodeMap &rebinding) const override { return string(); }
 };
 
 /// @brief Vector type.
@@ -227,7 +231,7 @@ class Vector : public Type {
   /// @brief Returns the width parameter of this vector, if any. Otherwise an empty list;
   std::vector<Node *> GetGenerics() const override;
 
-  std::shared_ptr<Type> Copy(std::unordered_map<Node *, Node *> rebinding) const override;;
+  std::shared_ptr<Type> Copy(const NodeMap &rebinding) const override;
 
  private:
   /// The vector width type generic.
@@ -281,7 +285,7 @@ class Field : public Named, public std::enable_shared_from_this<Field> {
   /// @brief Metadata for back-end implementations
   std::unordered_map<std::string, std::string> meta;
   /// @brief Create a copy of the field.
-  std::shared_ptr<Field> Copy(std::unordered_map<Node *, Node *> rebinding = {}) const;
+  std::shared_ptr<Field> Copy(const NodeMap &rebinding) const;
 
  private:
   /// The type of the field.
@@ -330,7 +334,7 @@ class Record : public Type {
   /// @brief Obtain any nested types.
   std::vector<Type *> GetNested() const override;
 
-  std::shared_ptr<Type> Copy(std::unordered_map<Node *, Node *> rebinding) const override;
+  std::shared_ptr<Type> Copy(const NodeMap &rebinding) const override;
 
  protected:
   std::vector<std::shared_ptr<Field>> fields_;

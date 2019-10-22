@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
+#include <vector>
+#include <string>
+#include <memory>
+
 #include "cerata/type.h"
 
 namespace cerata {
@@ -40,8 +46,9 @@ class Stream : public Record {
 std::shared_ptr<Stream> stream(const std::string &name,
                                const std::string &element_name,
                                const std::shared_ptr<Type> &element_type,
-                               const std::vector<std::shared_ptr<Field>> &control = {field(Stream::valid()),
-                                                                                     field(Stream::ready())->Reverse()});
+                               const std::vector<std::shared_ptr<Field>> &control =
+                                   {field(Stream::valid()),
+                                    field(Stream::ready())->Reverse()});
 std::shared_ptr<Stream> stream(const std::string &name, const std::shared_ptr<Type> &element_type);
 std::shared_ptr<Stream> stream(const std::shared_ptr<Type> &element_type);
 

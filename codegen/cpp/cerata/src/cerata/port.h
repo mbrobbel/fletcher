@@ -54,12 +54,13 @@ class Term {
 /**
  * @brief A port is a terminator node on a graph
  */
-struct Port : public NormalNode, public Synchronous, public Term {
+class Port : public NormalNode, public Synchronous, public Term {
+ public:
   /// @brief Construct a new port.
   Port(std::string name, std::shared_ptr<Type> type, Term::Dir dir, std::shared_ptr<ClockDomain> domain);
   /// @brief Deep-copy the port.
   std::shared_ptr<Object> Copy() const override;
-  /// @brief Invert the direction of this port.
+  /// @brief Invert the direction of this port. Removes any edges.
   Port &InvertDirection();
 
   std::string ToString() const override;

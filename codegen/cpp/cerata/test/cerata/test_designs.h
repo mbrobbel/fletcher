@@ -37,8 +37,8 @@ std::shared_ptr<Component> GetTypeExpansionComponent() {
   auto foo = component("foo", {width, data_in});
   auto bar = component("bar", {width, data_out});
   auto top = component("top");
-  auto foo_inst = top->AddInstanceOf(foo.get(), "foo");
-  auto bar_inst = top->AddInstanceOf(bar.get(), "bar");
+  auto foo_inst = top->Instantiate(foo.get(), "foo");
+  auto bar_inst = top->Instantiate(bar.get(), "bar");
   Connect(foo_inst->prt("data"), bar_inst->prt("data"));
   return top;
 }
@@ -55,17 +55,17 @@ std::shared_ptr<Component> GetArrayToArrayInternalComponent(bool invert = false)
   auto a_size = parameter("size", integer(), intl(0));
   auto a_array = port_array("array", data, a_size, invert ? Term::IN : Term::OUT);
   auto a_comp = component(a, {a_size, a_array});
-  auto a_inst = instance(a_comp.get());
+  auto a_inst = top_comp->Instantiate(a_comp);
 
   auto x_size = parameter("size", integer(), intl(0));
   auto x_array = port_array("array", data, x_size, invert ? Term::OUT : Term::IN);
   auto x_comp = component(x, {x_size, x_array});
-  auto x_inst = instance(x_comp.get());
+  auto x_inst = top_comp->Instantiate(x_comp);
 
   auto y_size = parameter("size", integer(), intl(0));
   auto y_array = port_array("array", data, y_size, invert ? Term::OUT : Term::IN);
   auto y_comp = component(y, {y_size, y_array});
-  auto y_inst = instance(y_comp.get());
+  auto y_inst = top_comp->Instantiate(y_comp);
 
   a_inst->prt_arr("array")->Append();
   a_inst->prt_arr("array")->Append();
@@ -89,9 +89,6 @@ std::shared_ptr<Component> GetArrayToArrayInternalComponent(bool invert = false)
     Connect(a_inst->prt_arr("array")->node(2), y_inst->prt_arr("array")->node(1));
   }
 
-  top_comp->AddChild(std::move(a_inst));
-  top_comp->AddChild(std::move(x_inst));
-  top_comp->AddChild(std::move(y_inst));
   return top_comp;
 }
 
@@ -105,7 +102,7 @@ std::shared_ptr<Component> GetArrayToArrayComponent(bool invert = false) {
   auto child_size = parameter("child_size", integer(), intl(0));
   auto child_array = port_array("child_array", data, child_size, invert ? Term::OUT : Term::IN);
   auto child_comp = component("child_comp", {child_size, child_array});
-  auto child_inst = instance(child_comp.get());
+  auto child_inst = top_comp->Instantiate(child_comp);
 
   if (invert) {
     child_inst->prt_arr("child_array")->Append();
@@ -120,7 +117,6 @@ std::shared_ptr<Component> GetArrayToArrayComponent(bool invert = false) {
     Connect(child_inst->prt_arr("child_array")->node(0), top_array->node(0));
     Connect(child_inst->prt_arr("child_array")->node(1), top_array->node(0));
   }
-  top_comp->AddChild(std::move(child_inst));
   return top_comp;
 }
 
@@ -159,15 +155,11 @@ std::shared_ptr<Component> GetTypeConvComponent() {
   auto top = component("top");
   auto x_comp = component("X", {pA});
   auto y_comp = component("Y", {pB});
-  auto x = instance(x_comp.get());
-  auto y = instance(y_comp.get());
-  auto xr = x.get();
-  auto yr = y.get();
-  top->AddChild(std::move(x))
-      .AddChild(std::move(y));
+  auto x = top->Instantiate(x_comp);
+  auto y = top->Instantiate(y_comp);
 
   // Connect ports
-  Connect(yr->prt("B"), xr->prt("A"));
+  Connect(y->prt("B"), x->prt("A"));
 
   return top;
 }
@@ -200,13 +192,11 @@ std::shared_ptr<Component> GetArrayTypeConvComponent() {
   // Components and instantiations
   auto top = component("top", {pB, pC});
   auto x_comp = component("X", {parSize, pA});
-  auto x = instance(x_comp.get());
-  auto xr = x.get();
-  top->AddChild(std::move(x));
+  auto x = top->Instantiate(x_comp);
 
   // Drive B and C from A
-  pB <<= xr->prt_arr("A")->Append();
-  pC <<= xr->prt_arr("A")->Append();
+  pB <<= x->prt_arr("A")->Append();
+  pC <<= x->prt_arr("A")->Append();
 
   return top;
 }
@@ -259,13 +249,11 @@ std::shared_ptr<Component> GetStreamConcatComponent() {
   y_comp->meta()[vhdl::meta::PRIMITIVE] = "true";
   y_comp->meta()[vhdl::meta::LIBRARY] = "test";
   y_comp->meta()[vhdl::meta::PACKAGE] = "test";
-  auto y = instance(y_comp.get());
-  auto yr = y.get();
-  x_comp->AddChild(std::move(y));
+  auto y = x_comp->Instantiate(y_comp);
 
   // Connect ports
-  Connect(x_comp->prt("A0"), yr->prt("B"));
-  Connect(x_comp->prt("A1"), yr->prt("C"));
+  Connect(x_comp->prt("A0"), y->prt("B"));
+  Connect(x_comp->prt("A1"), y->prt("C"));
 
   return x_comp;
 }
@@ -314,12 +302,12 @@ std::shared_ptr<Component> GetExampleDesign() {
 
   // Create a top level and add instances of each component
   auto my_top = component("my_top_level");
-  auto my_inst = my_top->AddInstanceOf(my_comp.get());
+  auto my_inst = my_top->Instantiate(my_comp.get());
 
   // Create a bunch of instances and connect to other component
   std::vector<Instance *> my_other_instances;
   for (int i = 0; i < 10; i++) {
-    my_other_instances.push_back(my_top->AddInstanceOf(my_other_comp.get(), "my_inst_" + std::to_string(i)));
+    my_other_instances.push_back(my_top->Instantiate(my_other_comp.get(), "my_inst_" + std::to_string(i)));
     Connect(my_other_instances[i]->prt("my_port"), my_inst->prt_arr("my_array")->Append());
   }
 

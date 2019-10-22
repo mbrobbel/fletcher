@@ -27,12 +27,12 @@ namespace fletchgen {
 
 TEST(Kernel, ArrayReader) {
   auto top = array(fletcher::Mode::READ);
-  auto generated = GenerateDecl(top);
+  auto generated = GenerateTestDecl(top);
 }
 
 TEST(Kernel, ArrayWriter) {
   auto top = array(fletcher::Mode::WRITE);
-  GenerateDecl(top);
+  GenerateTestDecl(top);
 }
 
 }  // namespace fletchgen

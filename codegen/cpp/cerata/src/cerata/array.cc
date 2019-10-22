@@ -22,12 +22,14 @@
 
 #include "cerata/edge.h"
 #include "cerata/node.h"
-#include "cerata/pool.h"
 #include "cerata/expression.h"
+#include "cerata/parameter.h"
+#include "cerata/pool.h"
 #include "cerata/graph.h"
 
 namespace cerata {
 
+/*
 static std::shared_ptr<Node> IncrementNode(Node *node) {
   if (node->IsLiteral() || node->IsExpression()) {
     return node->shared_from_this() + 1;
@@ -36,15 +38,17 @@ static std::shared_ptr<Node> IncrementNode(Node *node) {
     // We then replace the last parameter node in the trace by a copy and source the copy from an incremented literal.
     auto param = dynamic_cast<Parameter *>(node);
     // Initialize the trace with the parameter node.
-    std::vector<Node *> trace{param};
-    param->Trace(&trace);
+    std::vector<Object *> obj_trace{param};
+    param->AppendReferences(&obj_trace);
+    // Parameter nodes can only reference nodes.
+    auto node_trace = As<Node>(obj_trace);
     // Sanity check the trace.
-    if (!trace.back()->IsLiteral()) {
+    if (!node_trace.back()->IsLiteral()) {
       CERATA_LOG(FATAL, "Parameter node " + param->ToString() + " not (indirectly) sourced by literal.");
     }
     // The second-last node is of importance, because this is the final parameter node.
-    auto second_last = trace[trace.size() - 2];
-    auto incremented = trace.back()->shared_from_this() + 1;
+    auto second_last = node_trace[node_trace.size() - 2];
+    auto incremented = node_trace.back()->shared_from_this() + 1;
     // Source the second last node with whatever literal was at the end of the trace, plus one.
     Connect(second_last, incremented);
     return node->shared_from_this();
@@ -52,6 +56,7 @@ static std::shared_ptr<Node> IncrementNode(Node *node) {
     CERATA_LOG(FATAL, "Can only increment literal, expression or parameter size node " + node->ToString());
   }
 }
+ */
 
 void NodeArray::SetSize(const std::shared_ptr<Node> &size) {
   if (!(size->IsLiteral() || size->IsParameter() || size->IsExpression())) {
@@ -71,7 +76,7 @@ void NodeArray::SetSize(const std::shared_ptr<Node> &size) {
 }
 
 void NodeArray::IncrementSize() {
-  SetSize(IncrementNode(size_.get()));
+  SetSize(size_ + 1);
 }
 
 Node *NodeArray::Append(bool increment_size) {
@@ -137,6 +142,48 @@ NodeArray::NodeArray(std::string name, Node::NodeID id, std::shared_ptr<Node> ba
     : Object(std::move(name), Object::ARRAY), node_id_(id), base_(std::move(base)) {
   base_->SetArray(this);
   SetSize(size);
+}
+
+NodeArray *NodeArray::CopyOnto(Graph *dst, const std::string &name, NodeMap *rebinding) {
+  // Make a normal copy (that does not rebind the type generics).
+  auto result = std::dynamic_pointer_cast<NodeArray>(Copy());
+  // Set the name.
+  result->SetName(name);
+
+  // Get the references of the base node.
+  std::vector<Object *> obj_refs;
+  obj_refs.push_back(base_.get());
+  base_->AppendReferences(&obj_refs);
+
+  // A node array can only reference nodes, so we should be able to safely cast to a vec of node ptrs.
+  auto refs = As<Node>(obj_refs);
+
+  // Check which references we need to rebind.
+  for (const auto &r : refs) {
+    if (rebinding->count(r) > 0) {
+      continue;
+    } else if (dst->Has(g->name())) {
+      // There might already be a node on the graph with that name. Implicitly use that node.
+      (*rebinding)[g] = dst->Get<Node>(g->name());
+    } else if (!g->IsLiteral()) {
+      // Otherwise, if the node is not a literal, which doesn't have to be on the graph, make a copy of the generic
+      // onto the graph.
+      g->CopyOnto(dst, g->name(), rebinding);
+    }
+  }
+  // Make a copy of the type, rebinding the generic nodes.
+  auto rebound_type = result->type()->Copy(*rebinding);
+  // Set the type of the new node to this new type.
+  result->SetType(rebound_type);
+
+
+  // Append this node to the rebind map.
+  (*rebinding)[this] = result.get();
+
+  // It should now be possible to add the copy onto the graph.
+  dst->Add(result);
+
+  return result.get();
 }
 
 PortArray::PortArray(const std::shared_ptr<Port> &base,

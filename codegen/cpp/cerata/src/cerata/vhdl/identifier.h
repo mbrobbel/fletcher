@@ -20,10 +20,9 @@
 #include <deque>
 #include <algorithm>
 
-namespace cerata::vhdl {
+#include "cerata/utils.h"
 
-/// @brief Return the upper-case version of a string.
-std::string ToUpper(std::string str);
+namespace cerata::vhdl {
 
 /**
  * @brief A VHDL Identifier convenience structure.

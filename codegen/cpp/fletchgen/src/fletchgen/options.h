@@ -45,7 +45,7 @@ struct Options {
   /// Custom 32-bit registers.
   std::vector<std::string> regs;
   /// Bus specification strings.
-  std::vector<std::string> bus_specs = {"64,512,64,8,1,16"};
+  std::vector<std::string> bus_specs = {"64,512,8,1,16"};
 
   /// Whether to generate an AXI top level.
   bool axi_top = false;

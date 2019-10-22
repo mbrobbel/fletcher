@@ -58,7 +58,7 @@ Mantle::Mantle(std::string name,
 
   // Handle the Nucleus.
   // Instantiate the nucleus and connect some default parameters.
-  nucleus_inst_ = AddInstanceOf(nucleus.get());
+  nucleus_inst_ = Instantiate(nucleus.get());
   nucleus_inst_->prt("kcd") <<= kcr;
   nucleus_inst_->prt("mmio") <<= axi;
 
@@ -77,7 +77,7 @@ Mantle::Mantle(std::string name,
 
   for (const auto &rb : recordbatches) {
     // Instantiate the RecordBatch
-    auto rbi = AddInstanceOf(rb.get());
+    auto rbi = Instantiate(rb.get());
     recordbatch_instances_.push_back(rbi);
 
     // Connect bus clock/reset and kernel clock/reset.
@@ -120,8 +120,8 @@ Mantle::Mantle(std::string name,
   // 2. Connect every RecordBatch bus port to the corresponding arbiter.
 
   // Instantiate and connect arbiters to top level.
-  //Instance *arb_read = nullptr;
-  //Instance *arb_write = nullptr;
+  // Instance *arb_read = nullptr;
+  // Instance *arb_write = nullptr;
 
   std::shared_ptr<Port> bus_read;
   std::shared_ptr<Port> bus_write;
@@ -129,6 +129,7 @@ Mantle::Mantle(std::string name,
   ArbiterMasterName(BusFunction::WRITE);
   for (const auto &rb_bus_port : rb_bus_ports) {
     FLETCHER_LOG(INFO, rb_bus_port->params_.spec_.ToString());
+    FLETCHER_LOG(INFO, rb_bus_port->params_.spec_.ToBusTypeName());
   }
 
   /*

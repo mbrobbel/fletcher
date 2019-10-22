@@ -34,7 +34,6 @@ using cerata::Object;
 // Bus channel constructs.
 PARAM_DECL_FACTORY(bus_addr_width, 64)
 PARAM_DECL_FACTORY(bus_data_width, 512)
-PARAM_DECL_FACTORY(bus_strobe_width, 64)
 PARAM_DECL_FACTORY(bus_len_width, 8)
 PARAM_DECL_FACTORY(bus_burst_step_len, 4)
 PARAM_DECL_FACTORY(bus_burst_max_len, 16)
@@ -48,13 +47,12 @@ enum class BusFunction {
 struct BusSpec {
   int aw = 64;   // Address width
   int dw = 512;  // Data width
-  int sw = 64;   // Strobe width
   int lw = 8;    // Len width
   int bs = 1;    // Burst step length
   int bm = 16;   // Burst max length
 
   /// @brief Return a bus specification from a string. See [common/cpp/include/fletcher/arrow-utils.h] for more info.
-  static BusSpec FromString(std::string str, BusSpec default_to);
+  static BusSpec FromString(const std::string &str, BusSpec default_to);
 
   /// @brief Return a human-readable version of the bus specification.
   [[nodiscard]] std::string ToString() const;
@@ -79,12 +77,11 @@ struct BusParam {
   BusSpec spec_;
 
   // Value nodes.
-  std::shared_ptr<Node> aw; ///< Address width node
-  std::shared_ptr<Node> dw; ///< Data width node
-  std::shared_ptr<Node> sw; ///< Strobe width node
-  std::shared_ptr<Node> lw; ///< Len width node
-  std::shared_ptr<Node> bs; ///< Burst step length node
-  std::shared_ptr<Node> bm; ///< Burst max length node
+  std::shared_ptr<Node> aw;  ///< Address width node
+  std::shared_ptr<Node> dw;  ///< Data width node
+  std::shared_ptr<Node> lw;  ///< Len width node
+  std::shared_ptr<Node> bs;  ///< Burst step length node
+  std::shared_ptr<Node> bm;  ///< Burst max length node
 
   /// @brief Return all parameters as an object vector.
   [[nodiscard]] std::vector<std::shared_ptr<Object>> all(BusFunction func) const;
@@ -128,8 +125,8 @@ std::shared_ptr<BusPort> bus_port(const std::string &name, Port::Dir dir, const 
 std::shared_ptr<BusPort> bus_port(Port::Dir dir, const BusParam &params);
 
 // TODO(johanpel): Perhaps generalize and build some sort of parameter struct/bundle in cerata for fast connection.
-/// @brief Connect all bus params on a graph to the supplied source params.
-void ConnectBusParam(cerata::Graph *dst, const BusParam &src);
+/// @brief Connect all bus params on a graph to the supplied source params, and append a rebind map.
+void ConnectBusParam(cerata::Graph *dst, const BusParam &src, const std::string &prefix, cerata::NodeMap *rebinding);
 
 /**
  * @brief Return a Cerata model of a BusArbiter.

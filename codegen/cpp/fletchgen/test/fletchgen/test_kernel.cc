@@ -37,11 +37,7 @@ static void TestReadKernel(const std::string &test_name, const std::shared_ptr<a
   auto rbr = record_batch("Test_" + fs->name(), fs, rbd);
   auto mmio_comp = mmio({rbd}, {});
   auto top = kernel("Test" + test_name, {rbr}, mmio_comp);
-  auto design = cerata::vhdl::Design(top);
-  auto code = design.Generate().ToString();
-  std::cerr.flush();
-  std::cout << code << std::endl;
-  VHDL_DUMP_TEST(code);
+  GenerateTestAll(top);
 }
 
 TEST(Kernel, PrimRead) {
