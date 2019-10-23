@@ -36,42 +36,40 @@ std::string Node::ToString() const {
   return name();
 }
 
+void ImplicitlyRebindNodes(Graph *dst, const std::vector<Node *> &nodes, NodeMap *rebinding) {
+  for (const auto &n : nodes) {
+    if (rebinding->count(n) > 0) {
+      // If it's already in the map, skip it.
+      continue;
+    } else if (dst->Has(n->name())) {
+      // If it already has a node with that name, select that one for rebinding. This is the implicit part.
+      (*rebinding)[n] = dst->Get<Node>(n->name());
+    } else if (!n->IsLiteral()) {
+      // We skip literals. Any other nodes we copy onto the destination graph.
+      n->CopyOnto(dst, n->name(), rebinding);
+    }
+  }
+}
+
 Node *Node::CopyOnto(Graph *dst, const std::string &name, NodeMap *rebinding) const {
   // Make a normal copy (that does not rebind the type generics).
   auto result = std::dynamic_pointer_cast<Node>(this->Copy());
   result->SetName(name);
-
   // Default node only has a type in which other nodes could be referenced through the type's generics.
   auto generics = this->type()->GetGenerics();
-
   // If it has any generics, we might need to rebind them.
   if (!generics.empty()) {
     // Resolve the rebinding.
-    for (const auto &g : generics) {
-      if (rebinding->count(g) > 0) {
-        // There could already be one. In this case, we're OK to copy and rebind the type.
-        continue;
-      } else if (dst->Has(g->name())) {
-        // There might already be a node on the graph with that name. Implicitly use that node.
-        (*rebinding)[g] = dst->Get<Node>(g->name());
-      } else if (!g->IsLiteral()) {
-        // Otherwise, if the node is not a literal, which doesn't have to be on the graph, make a copy of the generic
-        // onto the graph.
-        g->CopyOnto(dst, g->name(), rebinding);
-      }
-    }
+    ImplicitlyRebindNodes(dst, generics, rebinding);
     // Make a copy of the type, rebinding the generic nodes.
     auto rebound_type = result->type()->Copy(*rebinding);
     // Set the type of the new node to this new type.
     result->SetType(rebound_type);
   }
-
   // Append this node to the rebind map.
   (*rebinding)[this] = result.get();
-
-  // It should now be possible to add the copy onto the graph.
+  // It is now possible to add the copy onto the graph.
   dst->Add(result);
-
   return result.get();
 }
 
@@ -124,6 +122,8 @@ Node *Node::SetType(const std::shared_ptr<Type> &type) {
 void Node::AppendReferences(std::vector<Object *> *out) const {
   for (const auto &g : type()->GetGenerics()) {
     out->push_back(g);
+    // A type generic may refer to objects itself, append that as well.
+    g->AppendReferences(out);
   }
 }
 

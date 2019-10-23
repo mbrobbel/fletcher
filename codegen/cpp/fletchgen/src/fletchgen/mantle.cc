@@ -62,7 +62,6 @@ Mantle::Mantle(std::string name,
   nucleus_inst_->prt("kcd") <<= kcr;
   nucleus_inst_->prt("mmio") <<= axi;
 
-  Connect(nucleus_inst_->par(bus_addr_width()), par(bus_addr_width()));
   Connect(nucleus_inst_->par(tag_width()), par(tag_width()));
   Connect(nucleus_inst_->par(index_width()), par(index_width()));
 
@@ -96,6 +95,10 @@ Mantle::Mantle(std::string name,
     // Depending on their function (and direction), connect all of them to the nucleus.
     for (const auto &fp : field_ports) {
       if (fp->function_ == FieldPort::Function::ARROW) {
+        // Connect the address width parameter.
+        auto prefix = rb->schema()->name() + "_" + fp->field_->name();
+        Connect(nucleus_inst_->par(bus_addr_width(0, prefix)), par(bus_addr_width()));
+
         if (fp->dir() == cerata::Term::Dir::OUT) {
           Connect(nucleus_inst_->prt(fp->name()), fp);
         } else {

@@ -51,6 +51,6 @@ std::unique_ptr<cerata::Instance> profiler(const std::string &name,
  * @param profile_nodes The nodes that should be profiled.
  * @return              A mapping from each input node to the instantiated profiler and its relevant result port nodes.
  */
-NodeProfilerPorts EnableStreamProfiling(cerata::Component *comp, const std::vector<Node *> &profile_nodes);
+NodeProfilerPorts EnableStreamProfiling(cerata::Component *comp, const std::vector<cerata::Signal *> &profile_nodes);
 
 }  // namespace fletchgen

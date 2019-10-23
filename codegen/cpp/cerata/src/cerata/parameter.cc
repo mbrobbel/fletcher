@@ -19,49 +19,87 @@
 
 #include "cerata/parameter.h"
 #include "cerata/pool.h"
+#include "cerata/graph.h"
+#include "cerata/edge.h"
 
 namespace cerata {
 
-Parameter::Parameter(std::string name, const std::shared_ptr<Type> &type, std::shared_ptr<Node> value)
-    : MultiOutputNode(std::move(name), Node::NodeID::PARAMETER, type), value_(std::move(value)) {
-  if (value_ == nullptr) {
+Parameter::Parameter(std::string name, const std::shared_ptr<Type> &type, std::shared_ptr<Node> default_value)
+    : NormalNode(std::move(name), Node::NodeID::PARAMETER, type), default_value_(std::move(default_value)) {
+  if (default_value_ == nullptr) {
     switch (type->id()) {
-      case Type::ID::STRING: value_ = strl("");
+      case Type::ID::STRING: default_value_ = strl("");
         break;
-      case Type::ID::BOOLEAN: value_ = booll(false);
+      case Type::ID::BOOLEAN: default_value_ = booll(false);
         break;
-      case Type::ID::INTEGER: value_ = intl(0);
+      case Type::ID::INTEGER: default_value_ = intl(0);
         break;
-      default:CERATA_LOG(FATAL, "Parameter value can not be set implicitly.");
+      default:CERATA_LOG(ERROR, "Parameter default value can not be set implicitly.");
     }
+  } else if (!default_value_->IsLiteral()) {
+    CERATA_LOG(ERROR, "Parameter default value must be literal.");
   }
-}
-
-std::shared_ptr<Object> Parameter::Copy() const {
-  auto result = parameter(name(), type_, value_);
-  result->meta = this->meta;
-  return result;
+  Connect(this, default_value_);
 }
 
 std::shared_ptr<Parameter> parameter(const std::string &name,
                                      const std::shared_ptr<Type> &type,
-                                     std::shared_ptr<Node> value) {
-  auto p = new Parameter(name, type, std::move(value));
+                                     std::shared_ptr<Node> default_value) {
+  auto p = new Parameter(name, type, std::move(default_value));
   return std::shared_ptr<Parameter>(p);
+}
+
+std::shared_ptr<Parameter> parameter(const std::string &name, int default_value) {
+  auto p = new Parameter(name, integer(), intl(default_value));
+  return std::shared_ptr<Parameter>(p);
+}
+
+std::shared_ptr<Parameter> parameter(const std::string &name, bool default_value) {
+  auto p = new Parameter(name, boolean(), booll(default_value));
+  return std::shared_ptr<Parameter>(p);
+}
+
+std::shared_ptr<Parameter> parameter(const std::string &name, std::string default_value) {
+  auto p = new Parameter(name, string(), strl(std::move(default_value)));
+  return std::shared_ptr<Parameter>(p);
+}
+
+Node *Parameter::value() const {
+  if (input()) {
+    return input().value()->src();
+  } else {
+    CERATA_LOG(FATAL, "Parameter node " + name() + " lost input edge.");
+  }
 }
 
 Parameter *Parameter::SetValue(const std::shared_ptr<Node> &value) {
   if (value->IsSignal() || value->IsPort()) {
     CERATA_LOG(FATAL, "Parameter value can not be or refer to signal or port nodes.");
   }
-  value_ = value;
+
+  Connect(this, value);
   return this;
 }
 
+std::shared_ptr<Object> Parameter::Copy() const {
+  auto result = parameter(name(), type_, default_value_);
+  result->meta = this->meta;
+  return result;
+}
+
 void Parameter::AppendReferences(std::vector<Object *> *out) const {
-  out->push_back(value_.get());
+  out->push_back(default_value_.get());
   Node::AppendReferences(out);
-  value_->AppendReferences(out);
+  default_value_->AppendReferences(out);
+}
+
+void Parameter::TraceValue(std::vector<Node *> *trace) {
+  trace->push_back(this);
+  if (value()->IsParameter()) {
+    value()->AsParameter()->TraceValue(trace);
+  } else {
+    trace->push_back(value());
+  }
 }
 
 }  // namespace cerata

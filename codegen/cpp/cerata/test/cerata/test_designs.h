@@ -44,7 +44,7 @@ std::shared_ptr<Component> GetTypeExpansionComponent() {
 }
 
 std::shared_ptr<Component> GetArrayToArrayInternalComponent(bool invert = false) {
-  auto data = vector<8>();
+  auto data = vector(8);
 
   std::string a = !invert ? "src" : "dst";
   std::string x = !invert ? "dst0" : "src0";
@@ -93,7 +93,7 @@ std::shared_ptr<Component> GetArrayToArrayInternalComponent(bool invert = false)
 }
 
 std::shared_ptr<Component> GetArrayToArrayComponent(bool invert = false) {
-  auto data = vector<8>();
+  auto data = vector(8);
 
   auto top_size = parameter("top_size", integer(), intl(0));
   auto top_array = port_array("top_array", data, top_size, invert ? Term::OUT : Term::IN);
@@ -121,8 +121,8 @@ std::shared_ptr<Component> GetArrayToArrayComponent(bool invert = false) {
 }
 
 std::shared_ptr<Component> GetTypeConvComponent() {
-  auto t_wide = vector<4>();
-  auto t_narrow = vector<2>();
+  auto t_wide = vector(4);
+  auto t_narrow = vector(2);
   // Flat indices:
   auto tA = record("rec_A", {  // 0
       field("q", t_wide),      // 1
@@ -160,43 +160,6 @@ std::shared_ptr<Component> GetTypeConvComponent() {
 
   // Connect ports
   Connect(y->prt("B"), x->prt("A"));
-
-  return top;
-}
-
-std::shared_ptr<Component> GetArrayTypeConvComponent() {
-  auto t_wide = vector<4>();
-  auto t_narrow = vector<2>();
-  // Flat indices:
-  auto tA = record("TA", {   // 0
-      field("q", t_wide),    // 1
-  });
-
-  auto tB = record("TB", {   // 0
-      field("r", t_narrow),  // 1
-      field("s", t_narrow),  // 2
-  });
-
-  // Create a type mapping from tA to tE
-  auto mapper = std::make_shared<TypeMapper>(tA.get(), tB.get());
-  mapper->Add(1, 1);
-  mapper->Add(1, 2);
-  tA->AddMapper(mapper);
-
-  // Ports
-  auto parSize = parameter("ARRAY_SIZE", integer(), intl(0));
-  auto pA = port_array("A", tA, parSize, Port::OUT);
-  auto pB = port("B", tB, Port::OUT);
-  auto pC = port("C", tB, Port::OUT);
-
-  // Components and instantiations
-  auto top = component("top", {pB, pC});
-  auto x_comp = component("X", {parSize, pA});
-  auto x = top->Instantiate(x_comp);
-
-  // Drive B and C from A
-  pB <<= x->prt_arr("A")->Append();
-  pC <<= x->prt_arr("A")->Append();
 
   return top;
 }
@@ -260,18 +223,18 @@ std::shared_ptr<Component> GetStreamConcatComponent() {
 
 std::shared_ptr<Component> GetAllPortTypesComponent() {
   auto r_type = record("rec", {
-      field("a", vector<8>()),
-      field("b", vector<32>())
+      field("a", vector(8)),
+      field("b", vector(32))
   });
-  auto s_type = stream("stream", vector<16>());
+  auto s_type = stream("stream", vector(16));
 
   auto clk_domain = ClockDomain::Make("domain0");
-  auto clk_port = port("clk", bit(), Port::Dir::IN, clk_domain);
-  auto rst_port = port("reset", bit(), Port::Dir::IN, clk_domain);
+  auto clk_port = port("clk", bit(), Port::IN, clk_domain);
+  auto rst_port = port("reset", bit(), Port::IN, clk_domain);
   auto b_port = port("some_bool", boolean(), Port::OUT);
-  auto v_port = port("some_vector", vector<64>());
+  auto v_port = port("some_vector", vector(64), Port::IN);
   auto r_port = port("some_record", r_type, Port::OUT);
-  auto s_port = port("some_port", s_type);
+  auto s_port = port("some_port", s_type, Port::IN);
 
   auto par = parameter("depth", integer(), intl(16));
 
@@ -288,7 +251,7 @@ std::shared_ptr<Component> GetExampleDesign() {
                                            field("stream",
                                                  stream("d", record("other_rec_type", {
                                                      field("substream",
-                                                           stream(vector<32>())),
+                                                           stream(vector(32))),
                                                      field("int", integer())})))});
 
   // Construct two components with a port made from these types
@@ -298,7 +261,7 @@ std::shared_ptr<Component> GetExampleDesign() {
                                        port_array("my_array", my_type, my_array_size, Port::OUT)});
 
   auto my_other_comp = component("my_other_comp", {vec_width,
-                                                   port("my_port", my_type)});
+                                                   port("my_port", my_type, Port::IN)});
 
   // Create a top level and add instances of each component
   auto my_top = component("my_top_level");

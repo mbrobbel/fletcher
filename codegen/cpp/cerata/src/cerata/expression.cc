@@ -41,10 +41,15 @@ static std::string GenerateName(Expression *expr, std::shared_ptr<Node> lhs, std
   auto l = ::cerata::ToString(lhs);
   auto e = ::cerata::ToString(expr);
   auto r = ::cerata::ToString(rhs);
-  std::string result = "Expr_        ";
+#ifndef NDEBUG
+  // For debugging, make a tiny but somewhat readable string out of the addresses.
+  std::string result = "Expr_ABCDEFGH";
   for (size_t i = 0; i < l.size(); i++) {
     result[5 + i % 8] = static_cast<char>(65 + (l[i] ^ e[i] ^ r[i]) % 26);
   }
+#else
+  std::string result = "Expr_" + l + e + r;
+#endif
   return result;
 }
 
@@ -171,6 +176,7 @@ std::shared_ptr<Object> Expression::Copy() const {
 Node *Expression::CopyOnto(Graph *dst, const std::string &name, NodeMap *rebinding) const {
   auto new_lhs = lhs_;
   auto new_rhs = rhs_;
+  ImplicitlyRebindNodes(dst, {lhs_.get(), rhs_.get()}, rebinding);
   // Check for both sides if they were already in the rebind map.
   // If not, make copies onto the graph for those nodes as well.
   if (rebinding->count(lhs_.get()) > 0) {
@@ -184,10 +190,16 @@ Node *Expression::CopyOnto(Graph *dst, const std::string &name, NodeMap *rebindi
     new_rhs = rhs_->CopyOnto(dst, rhs_->name(), rebinding)->shared_from_this();
   }
   auto result = Expression::Make(operation_, new_lhs, new_rhs);
-  result->SetName(name);
   (*rebinding)[this] = result.get();
   dst->Add(result);
   return result.get();
+}
+
+void Expression::AppendReferences(std::vector<Object *> *out) const {
+  out->push_back(lhs_.get());
+  lhs_->AppendReferences(out);
+  out->push_back(rhs_.get());
+  rhs_->AppendReferences(out);
 }
 
 }  // namespace cerata

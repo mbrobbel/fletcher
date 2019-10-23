@@ -33,16 +33,20 @@ static void TestRecordBatchReader(const std::shared_ptr<arrow::Schema> &schema) 
   GenerateTestAll(rbr);
 }
 
+TEST(RecordBatch, PrimRead) {
+  TestRecordBatchReader(fletcher::GetPrimReadSchema());
+}
+
+TEST(RecordBatch, TwoPrimRead) {
+  TestRecordBatchReader(fletcher::GetTwoPrimReadSchema());
+}
+
 TEST(RecordBatch, StringRead) {
   TestRecordBatchReader(fletcher::GetStringReadSchema());
 }
 
 TEST(RecordBatch, NullablePrimRead) {
   TestRecordBatchReader(fletcher::GetNullablePrimReadSchema());
-}
-
-TEST(RecordBatch, TwoPrimRead) {
-  TestRecordBatchReader(fletcher::GetTwoPrimReadSchema());
 }
 
 }  // namespace fletchgen

@@ -36,6 +36,7 @@ using cerata::booll;
 using cerata::record;
 using cerata::stream;
 using cerata::integer;
+using cerata::parameter;
 
 using fletcher::Mode;
 
@@ -135,8 +136,8 @@ Component *array(Mode mode) {
   tw->SetName("CMD_TAG_WIDTH");
 
   result->Add({iw,
-               parameter("CFG", string(), strl("")),
-               parameter("CMD_TAG_ENABLE", boolean(), booll(true)),
+               parameter("CFG", ""),
+               parameter("CMD_TAG_ENABLE", true),
                tw});
 
   // Clocks and resets.

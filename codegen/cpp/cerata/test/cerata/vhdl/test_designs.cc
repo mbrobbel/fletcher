@@ -25,11 +25,11 @@ namespace cerata {
 TEST(VHDL_DESIGN, Simple) {
   default_component_pool()->Clear();
 
-  auto static_vec = vector<8>();
+  auto static_vec = vector(8);
   auto param = parameter("vec_width", integer(), intl(8));
   auto param_vec = vector("param_vec_type", param);
-  auto veca = port("static_vec", static_vec);
-  auto vecb = port("param_vec", param_vec);
+  auto veca = port("static_vec", static_vec, Port::IN);
+  auto vecb = port("param_vec", param_vec, Port::IN);
   auto comp = component("simple", {param, veca, vecb});
 
   auto generated = GenerateDebugOutput(comp);
@@ -45,7 +45,7 @@ TEST(VHDL_DESIGN, Simple) {
       "  );\n"
       "  port (\n"
       "    static_vec : in std_logic_vector(7 downto 0);\n"
-      "    param_vec  : in std_logic_vector(vec_width-1 downto 0)\n"
+      "    param_vec  : in std_logic_vector(VEC_WIDTH-1 downto 0)\n"
       "  );\n"
       "end entity;\n"
       "\n"
@@ -204,5 +204,54 @@ TEST(VHDL_DESIGN, Streams) {
   ASSERT_EQ(generated, expected);
 }
 
-}  // namespace cerata
+TEST(VHDL_DESIGN, Param) {
+  default_component_pool()->Clear();
+  auto par = parameter("width", 8);
+  auto prt = port("prt", vector(par), Port::OUT);
+  auto x = component("x", {par, prt});
 
+  auto top_par = parameter("top_width", 16);
+  auto top = component("top", {top_par});
+
+  auto xi = top->Instantiate(x);
+  xi->par("width")->SetValue(top_par);
+
+  auto generated = GenerateDebugOutput(top);
+
+  auto expected =
+      "library ieee;\n"
+      "use ieee.std_logic_1164.all;\n"
+      "use ieee.numeric_std.all;\n"
+      "\n"
+      "entity top is\n"
+      "  generic (\n"
+      "    TOP_WIDTH : integer := 16\n"
+      "  );\n"
+      "end entity;\n"
+      "\n"
+      "architecture Implementation of top is\n"
+      "  component x is\n"
+      "    generic (\n"
+      "      WIDTH : integer := 8\n"
+      "    );\n"
+      "    port (\n"
+      "      prt : out std_logic_vector(WIDTH-1 downto 0)\n"
+      "    );\n"
+      "  end component;\n"
+      "\n"
+      "  signal x_inst_prt : std_logic_vector(TOP_WIDTH-1 downto 0);\n"
+      "\n"
+      "begin\n"
+      "  x_inst : x\n"
+      "    generic map (\n"
+      "      WIDTH => TOP_WIDTH\n"
+      "    )\n"
+      "    port map (\n"
+      "    );\n"
+      "\n"
+      "end architecture;\n";
+
+  ASSERT_EQ(generated, expected);
+}
+
+}  // namespace cerata

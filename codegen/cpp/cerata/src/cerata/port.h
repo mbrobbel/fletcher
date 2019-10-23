@@ -69,11 +69,11 @@ class Port : public NormalNode, public Synchronous, public Term {
 /// @brief Make a new port with some name, type and direction.
 std::shared_ptr<Port> port(const std::string &name,
                            const std::shared_ptr<Type> &type,
-                           Term::Dir dir = Term::IN,
+                           Term::Dir dir,
                            const std::shared_ptr<ClockDomain> &domain = default_domain());
 /// @brief Make a new port. The name will be derived from the name of the type.
 std::shared_ptr<Port> port(const std::shared_ptr<Type> &type,
-                           Term::Dir dir = Term::IN,
+                           Term::Dir dir,
                            const std::shared_ptr<ClockDomain> &domain = default_domain());
 
 }  // namespace cerata

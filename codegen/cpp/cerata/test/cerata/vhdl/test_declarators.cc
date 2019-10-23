@@ -77,17 +77,11 @@ TEST(VHDL_DECL, SignalRecordParamArrayParam) {
                   "signal test_b : std_logic_vector(SIZE-1 downto 0);\n");
 }
 
-TEST(VHDL_DECL, Component) {
-  default_component_pool()->Clear();
-  auto code = vhdl::Decl::Generate(*GetAllPortTypesComponent());
-  std::cout << code.ToString() << std::endl;
-}
-
 TEST(VHDL_DECL, ArrayPort) {
   default_component_pool()->Clear();
 
   auto size = parameter("size", integer(), intl(0));
-  auto data = vector<8>();
+  auto data = vector(8);
   auto A = port_array("A", data, size, Term::OUT);
   auto B = port("B", data, Term::IN);
   auto C = port("C", data, Term::IN);
@@ -108,10 +102,6 @@ TEST(VHDL_DECL, ArrayPort) {
   Connect(yc, xa1);
 
   GenerateDebugOutput(top);
-
-  ASSERT_EQ(xa->size()->ToString(), "1");
-  ASSERT_EQ(xa->size()->ToString(), "2");
-  ASSERT_NE(xa, A.get());
 }
 
 }  // namespace cerata

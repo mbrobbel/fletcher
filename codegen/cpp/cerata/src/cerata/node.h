@@ -135,7 +135,7 @@ class Node : public Object, public std::enable_shared_from_this<Node> {
 /// @brief Convert a Node ID to a human-readable string.
 std::string ToString(Node::NodeID id);
 
-/// A mapping from one node to another node, used in e.g. type generic rebinding.
+/// A mapping from one object to another object, used in e.g. type generic rebinding.
 typedef std::unordered_map<const Node *, Node *> NodeMap;
 
 /**
@@ -146,9 +146,8 @@ struct MultiOutputNode : public Node {
   std::vector<std::shared_ptr<Edge>> outputs_;
 
   /// @brief MultiOutputNode constructor.
-  MultiOutputNode(std::string name, Node::NodeID id, std::shared_ptr<Type> type) : Node(std::move(name),
-                                                                                        id,
-                                                                                        std::move(type)) {}
+  MultiOutputNode(std::string name, Node::NodeID id, std::shared_ptr<Type> type)
+      : Node(std::move(name), id, std::move(type)) {}
 
   /// @brief Return the incoming edges (in this case just the single input edge) that sources this Node.
   std::vector<Edge *> sources() const override { return {}; }
@@ -196,5 +195,8 @@ struct NormalNode : public MultiOutputNode {
  * @param out The output.
  */
 void GetObjectReferences(const Object &obj, std::vector<Object *> *out);
+
+/// @brief Make sure that the NodeMap contains all nodes to be rebound onto the destination graph.
+void ImplicitlyRebindNodes(Graph*dst, const std::vector<Node *>& nodes, NodeMap *rebinding);
 
 }  // namespace cerata

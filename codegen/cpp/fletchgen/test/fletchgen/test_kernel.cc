@@ -40,6 +40,10 @@ static void TestReadKernel(const std::string &test_name, const std::shared_ptr<a
   GenerateTestAll(top);
 }
 
+TEST(Kernel, TwoPrimRead) {
+  TestReadKernel("PrimRead", fletcher::GetTwoPrimReadSchema());
+}
+
 TEST(Kernel, PrimRead) {
   TestReadKernel("PrimRead", fletcher::GetPrimReadSchema());
 }

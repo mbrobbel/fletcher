@@ -44,6 +44,8 @@ class Expression : public MultiOutputNode {
 
   /// @brief Copy this expression onto a graph and rebind anything in the expression tree.
   Node *CopyOnto(Graph *dst, const std::string &name, NodeMap *rebinding) const override;
+  /// @brief Depth-first traverse the expression tree and add any nodes owned.
+  void AppendReferences(std::vector<Object *> *out) const override;
 
   /// @brief Minimize the expression and convert it to a human-readable string.
   std::string ToString() const override;

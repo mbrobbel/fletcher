@@ -162,6 +162,8 @@ class Component : public Graph {
 
   /// @brief Add an object to the component.
   Graph &Add(const std::shared_ptr<Object> &object) override;
+  /// @brief Add a list of objects to the component.
+  Graph &Add(const std::vector<std::shared_ptr<Object>> &objects) override;
   /// @brief Remove an object from the component
   Graph &Remove(Object *object) override;
 
@@ -188,8 +190,13 @@ class Component : public Graph {
   /// @brief Returns all unique Components that are referred to by child Instances of this graph.
   virtual std::vector<const Component *> GetAllInstanceComponents() const;
 
-  /// @brief Return true of child graph exists on instance.
-  bool HasChild(const std::string &name);
+  /// @brief Return true if child graph exists on instance.
+  bool HasChild(const std::string &name) const;
+  /// @brief Return true if instance is a child of component.
+  bool HasChild(const Instance &inst) const;
+
+  /// @brief Return the component node to instance node mapping.
+  NodeMap *inst_to_comp_map() { return &inst_to_comp; }
 
  protected:
   /**
@@ -204,6 +211,9 @@ class Component : public Graph {
 
   /// Whether this component was instantiated.
   bool was_instantiated = false;
+
+  /// Mapping for instance nodes that have been connected.
+  NodeMap inst_to_comp;
 };
 
 /// @brief Construct a Component with initial nodes
@@ -230,7 +240,7 @@ class Instance : public Graph {
   /// @brief Set the parent.
   Graph &SetParent(Graph *parent);
   /// @brief Return the component node to instance node mapping.
-  NodeMap comp_to_inst_map() const { return comp_to_inst; }
+  NodeMap *comp_to_inst_map() { return &comp_to_inst; }
 
  protected:
   // Only a Component should be able to make instances.
@@ -240,14 +250,11 @@ class Instance : public Graph {
   /// Create an instance.
   static std::unique_ptr<Instance> Make(Component *component, const std::string &name);
   /// The component that this instance instantiates.
-  Component *component_{};
+  Component *component_;
   /// The parent of this instance.
-  Graph *parent_{};
-  /// Mapping from component nodes to instance nodes.
+  Graph *parent_;
+  /// Mapping from component port and parameter nodes to instantiated nodes.
   NodeMap comp_to_inst;
 };
-
-/// @brief Rebind a type generic node to a component.
-void RebindGeneric(Component *comp, Node *generic, NodeMap *rebinding);
 
 }  // namespace cerata

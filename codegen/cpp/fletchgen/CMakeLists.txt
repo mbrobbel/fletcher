@@ -67,6 +67,7 @@ add_compile_unit(
     test/fletchgen/test_array.cc
     test/fletchgen/test_bus.cc
     test/fletchgen/test_kernel.cc
+    test/fletchgen/test_nucleus.cc
     test/fletchgen/test_mantle.cc
     test/fletchgen/test_recordbatch.cc
     test/fletchgen/test_types.cc

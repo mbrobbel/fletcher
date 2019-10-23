@@ -33,7 +33,41 @@ TEST(VHDL_INST, StreamTypeMapper) {
 
 TEST(VHDL_INST, ArrayTypeMapper) {
   default_component_pool()->Clear();
-  auto top = GetArrayTypeConvComponent();
+
+  auto t_wide = vector(4);
+  auto t_narrow = vector(2);
+  // Flat indices:
+  auto tA = record("TA", {   // 0
+      field("q", t_wide),    // 1
+  });
+
+  auto tB = record("TB", {   // 0
+      field("r", t_narrow),  // 1
+      field("s", t_narrow),  // 2
+  });
+
+  // Create a type mapping from tA to tE
+  auto mapper = std::make_shared<TypeMapper>(tA.get(), tB.get());
+  mapper->Add(1, 1);
+  mapper->Add(1, 2);
+  tA->AddMapper(mapper);
+
+  // Array component
+  auto parSize = parameter("ARRAY_SIZE", integer(), intl(0));
+  auto pA = port_array("A", tA, parSize, Port::OUT);
+  auto x_comp = component("X", {parSize, pA});
+
+  // Ports
+  auto pB = port("B", tB, Port::OUT);
+  auto pC = port("C", tB, Port::OUT);
+  // Components and instantiations
+  auto top = component("top", {pB, pC});
+  auto x = top->Instantiate(x_comp);
+
+  // Drive B and C from A
+  pB <<= x->prt_arr("A")->Append();
+  pC <<= x->prt_arr("A")->Append();
+
   auto src = GenerateDebugOutput(top);
   ASSERT_EQ(src,
             "library ieee;\n"

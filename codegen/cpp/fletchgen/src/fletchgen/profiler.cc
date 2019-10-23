@@ -84,7 +84,7 @@ std::vector<MmioReg> GetProfilingRegs(const std::vector<std::shared_ptr<RecordBa
 }
 
 std::shared_ptr<cerata::Type> stream_probe(const std::shared_ptr<Node> &count_width) {
-  auto result = stream("", record("probe_rec", {field("count", vector("count_width", count_width))}));
+  auto result = stream("probe", "", vector("count", count_width));
   return result;
 }
 
@@ -126,7 +126,7 @@ static Component *profiler() {
 }
 
 NodeProfilerPorts EnableStreamProfiling(cerata::Component *comp,
-                                        const std::vector<Node *> &profile_nodes) {
+                                        const std::vector<cerata::Signal *> &profile_nodes) {
   cerata::NodeMap rebinding;
   NodeProfilerPorts result;
   // Get all nodes and check if their type contains a stream, then check if they should be profiled.
@@ -171,7 +171,9 @@ NodeProfilerPorts EnableStreamProfiling(cerata::Component *comp,
         // Set up a type mapper.
         auto mapper = TypeMapper::Make(node->type(), p_probe->type());
         auto matrix = mapper->map_matrix().Empty();
-        matrix(fti, 0) = 1;  // Connect the stream
+        matrix(fti, 0) = 1;  // Connect the stream record
+        matrix(++fti, 1) = 1;  // Connect the stream valid
+        matrix(++fti, 2) = 1;  // Connect the stream ready
 
         // Now we need to find field marked with "count" metadata for EPC streams, if it exists.
         // Increase the flat type field index, until we hit the next stream, or we see a field with metadata meant for
@@ -187,16 +189,17 @@ NodeProfilerPorts EnableStreamProfiling(cerata::Component *comp,
               auto width = std::strtol(flat_types[fti].type_->meta.at(meta::COUNT).c_str(), nullptr, 10);
               p_in_count_width <<= intl(static_cast<int>(width));
               // We've found the count field.
-              matrix(fti, 2) = 2;  // Connect the count.
+              matrix(fti, 3) = 1;  // Connect the count.
               break;
             }
           }
           fti++;
         }
-
         // Set the mapping matrix of the new mapper, and add it to the probe.
         mapper->SetMappingMatrix(matrix);
         node->type()->AddMapper(mapper);
+
+        std::cout << mapper->ToString() << std::endl;
 
         // Connect the clock/reset, probe and profile output.
         Connect(p_cr, *cr_node);

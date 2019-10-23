@@ -133,11 +133,16 @@ void RecordBatch::AddArrays(const std::shared_ptr<FletcherSchema> &fletcher_sche
 
       // Get the command stream port and set its real type.
       auto a_cmd = a->Get<Port>("cmd");
-      // For now, just get the first address width.
-      auto a_aw = a->GetAll<BusPort>()[0]->params_.aw;
-      a_cmd->SetType(cmd_type(iw, tw, GetCtrlWidth(*field, a_aw->shared_from_this())));
-      auto cmd = a_cmd->CopyOnto(this, prefix + "_" + a_cmd->name(), &rebinding);
+      auto a_aw = Get<Parameter>(prefix + "_" + bus_addr_width()->name())->shared_from_this();
+      auto ctrl_width = GetCtrlWidth(*field, a_aw->shared_from_this());
+      auto cmd = command_port(fletcher_schema, field, iw, tw, ctrl_width, a_aw, kernel_cd());
       Connect(a_cmd, cmd);
+      Add(cmd);
+
+      auto a_unl = a->Get<Port>("unl");
+      auto unl = unlock_port(fletcher_schema, field, tw, kernel_cd());
+      Connect(unl, a_unl);
+      Add(unl);
     }
   }
 }

@@ -49,7 +49,7 @@ class NodeArray : public Object {
   /// @brief Return the type of the nodes in the NodeArray.
   Type *type() const { return base_->type(); }
 
-  /// @brief Deep-copy the NodeArray, but not the array nodes.
+  /// @brief Deep-copy the NodeArray, but not the array nodes. Resets the size node to an integer literal of 0.
   std::shared_ptr<Object> Copy() const override;
 
   /// @brief Copy the NodeArray onto a graph, but not the array nodes. Creates a new size node set to zero.

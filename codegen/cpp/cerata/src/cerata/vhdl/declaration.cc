@@ -29,8 +29,7 @@
 
 namespace cerata::vhdl {
 
-static std::string GenerateTypeDecl(const Type &type,
-                                    std::optional<Node *> multiplier = std::nullopt) {
+static std::string GenerateTypeDecl(const Type &type, std::optional<Node *> multiplier = std::nullopt) {
   std::shared_ptr<Node> mult;
   if (multiplier) {
     mult = multiplier.value()->shared_from_this();
@@ -40,7 +39,7 @@ static std::string GenerateTypeDecl(const Type &type,
       if (!multiplier) {
         return "std_logic";
       } else {
-        return "std_logic_vector(" + (mult - 1)->ToString() + " downto 0)";
+        return "std_logic_vector(" + ToUpper((mult - 1)->ToString()) + " downto 0)";
       }
     }
     case Type::VECTOR: {
@@ -48,10 +47,10 @@ static std::string GenerateTypeDecl(const Type &type,
       auto width = vec.width().value()->shared_from_this();
       if (!multiplier) {
         auto expr = width->shared_from_this() - 1;
-        return "std_logic_vector(" + expr->ToString() + " downto 0)";
+        return "std_logic_vector(" + ToUpper(expr->ToString()) + " downto 0)";
       } else {
         auto expr = mult * width - 1;
-        return "std_logic_vector(" + expr->ToString() + " downto 0)";
+        return "std_logic_vector(" + ToUpper(expr->ToString()) + " downto 0)";
       }
     }
     case Type::RECORD: {

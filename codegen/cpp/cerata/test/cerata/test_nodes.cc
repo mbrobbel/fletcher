@@ -22,18 +22,22 @@ namespace cerata {
 
 TEST(Nodes, ParamReferences) {
   auto lit = strl("foo");
-  auto expr = lit * 2;
   auto a = parameter("a", string(), lit);
   auto b = parameter("b", string(), a);
   auto c = parameter("c", string(), b);
+  auto expr = c * 2;
   auto d = parameter("d", string(), expr);
 
   std::vector<Object *> trace;
-  c->AppendReferences(&trace);
+  d->AppendReferences(&trace);
 
-  ASSERT_EQ(trace[0], b.get());
-  ASSERT_EQ(trace[1], a.get());
-  ASSERT_EQ(trace[2], lit.get());
+  ASSERT_EQ(trace[0], expr.get());
+  ASSERT_EQ(trace[1], c.get());
+  ASSERT_EQ(trace[2], b.get());
+  ASSERT_EQ(trace[3], a.get());
+  ASSERT_EQ(trace[4], lit.get());
+  ASSERT_EQ(trace[5], rintl(2));
+
 }
 
 }  // namespace cerata

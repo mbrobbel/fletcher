@@ -24,19 +24,22 @@ namespace cerata {
 /**
  * @brief A Parameter node.
  *
- * Can be used as a type generic node or a static input to signal or port nodes.
+ * Can be used as a type generic node or as input to signal or port nodes.
  */
-class Parameter : public MultiOutputNode {
+class Parameter : public NormalNode {
  public:
   /// @brief Construct a new Parameter, optionally defining a default value Literal.
-  Parameter(std::string name, const std::shared_ptr<Type> &type, std::shared_ptr<Node> value);
+  Parameter(std::string name, const std::shared_ptr<Type> &type, std::shared_ptr<Node> default_value);
   /// @brief Create a copy of this Parameter.
   std::shared_ptr<Object> Copy() const override;
   /// @brief Return the value node.
-  Node *value() const { return value_.get(); }
+  Node *value() const;
   /// @brief Set the value of the parameter node. Can only be expression, parameter, or literal.
   Parameter *SetValue(const std::shared_ptr<Node> &value);
-
+  /// @brief Append this node and nodes that source this node's value, until an expression or literal is encountered.
+  void TraceValue(std::vector<Node*>* trace);
+  /// @brief Return the default value node.
+  Node *default_value() { return default_value_.get(); }
   /// @brief Return all objects that this parameter owns. This includes the value node and type generics.
   void AppendReferences(std::vector<Object *> *out) const override;
 
@@ -45,12 +48,30 @@ class Parameter : public MultiOutputNode {
   std::optional<NodeArray *> node_array_parent;
 
   /// Parameter value.
-  std::shared_ptr<Node> value_;
+  std::shared_ptr<Node> default_value_;
 };
 
-/// @brief Get a smart pointer to a new Parameter, optionally owning a default value Literal.
+/**
+ * @brief Create a new parameter.
+ *
+ * If no default value is supplied, a default value is implicitly created based on the type.
+ *
+ * @param name           The name of the parameter.
+ * @param type           The type of the parameter.
+ * @param default_value  The default value of the parameter.
+ * @return               A shared pointer to a new parameter.
+ */
 std::shared_ptr<Parameter> parameter(const std::string &name,
                                      const std::shared_ptr<Type> &type,
-                                     std::shared_ptr<Node> value = nullptr);
+                                     std::shared_ptr<Node> default_value = nullptr);
+
+/// @brief Create a new integer-type parameter.
+std::shared_ptr<Parameter> parameter(const std::string &name, int default_value);
+
+/// @brief Create a new boolean-type parameter.
+std::shared_ptr<Parameter> parameter(const std::string &name, bool default_value);
+
+/// @brief Create a new string-type parameter.
+std::shared_ptr<Parameter> parameter(const std::string &name, std::string default_value);
 
 }  // namespace cerata

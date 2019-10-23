@@ -28,6 +28,7 @@
 namespace cerata {
 
 // Forward decl.
+class Object;
 class Node;
 class Literal;
 class Graph;
@@ -240,27 +241,11 @@ class Vector : public Type {
 
 /// @brief Create a new vector type, and return a shared pointer to it.
 std::shared_ptr<Type> vector(const std::string &name, const std::shared_ptr<Node> &width);
-
 /// @brief Create a new vector type, and return a shared pointer to it.
 std::shared_ptr<Type> vector(const std::shared_ptr<Node> &width);
-
-/// @brief Create a new vector type of width W and return a shared pointer to it.
-template<int64_t W>
-std::shared_ptr<Type> vector(const std::string &name) {
-  return std::make_shared<Vector>(name, intl(W));
-}
-
-/// @brief Create a new vector type of width W and returns a shared pointer to it.
-template<int64_t W>
-std::shared_ptr<Type> vector() {
-  auto result = std::make_shared<Vector>("vec" + std::to_string(W), intl(W));
-  return result;
-}
-
-/// @brief Create a new Vector Type of some width.
+/// @brief Create a new vector type with an integer literal as width.
 std::shared_ptr<Type> vector(unsigned int width);
-
-/// @brief Create a new Vector Type of some width.
+/// @brief Create a new vector type with an integer literl as width and a custom name.
 std::shared_ptr<Type> vector(std::string name, unsigned int width);
 
 /// @brief A Record field.

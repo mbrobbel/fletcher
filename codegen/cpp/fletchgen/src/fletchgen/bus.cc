@@ -32,6 +32,7 @@ using cerata::strl;
 using cerata::intl;
 using cerata::booll;
 using cerata::component;
+using cerata::parameter;
 
 PARAM_FACTORY(bus_addr_width)
 PARAM_FACTORY(bus_data_width)
@@ -90,13 +91,13 @@ Component *bus_arbiter(BusFunction function) {
   result->Add(num_slv);
 
   auto empty_str = strl("");
-  result->Add({parameter("ARB_METHOD", string(), strl("RR-STICKY")),
-               parameter("MAX_OUTSTANDING", integer(), intl(4)),
-               parameter("RAM_CONFIG", string(), empty_str),
-               parameter("SLV_REQ_SLICES", boolean(), booll(true)),
-               parameter("MST_REQ_SLICE", boolean(), booll(true)),
-               parameter("MST_DAT_SLICE", boolean(), booll(true)),
-               parameter("SLV_DAT_SLICES", boolean(), booll(true))
+  result->Add({parameter("ARB_METHOD", "RR-STICKY"),
+               parameter("MAX_OUTSTANDING", 4),
+               parameter("RAM_CONFIG", ""),
+               parameter("SLV_REQ_SLICES", true),
+               parameter("MST_REQ_SLICE", true),
+               parameter("MST_DAT_SLICE", true),
+               parameter("SLV_DAT_SLICES", true)
               });
 
   // Clock/reset

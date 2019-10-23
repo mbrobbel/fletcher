@@ -298,14 +298,32 @@ Instance *Component::Instantiate(Component *comp, const std::string &name) {
     new_name = comp->name() + "_inst" + std::to_string(i);
   }
   auto inst = Instance::Make(comp, new_name);
+  inst->parent_ = this;
+
+  // Now, all parameters are reconnected to their defaults. Add all these to the inst to component node map.
+  // Whenever we derive stuff from instantiated nodes, like signalizing a port, we will know what value to use.
+  for (const auto& param : inst->GetAll<Parameter>()) {
+    inst_to_comp[param] = param->default_value();
+  }
+
   auto raw_ptr = inst.get();
   AddChild(std::move(inst));
+
   return raw_ptr;
 }
 
-bool Component::HasChild(const std::string &name) {
+bool Component::HasChild(const std::string &name) const {
   for (const auto &g : this->children()) {
     if (g->name() == name) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool Component::HasChild(const Instance& inst) const {
+  for (const auto &g : this->children()) {
+    if (&inst == g) {
       return true;
     }
   }
@@ -343,6 +361,8 @@ Graph &Component::Remove(Object *object) {
   return Graph::Remove(object);
 }
 
+Graph &Component::Add(const std::vector<std::shared_ptr<Object>> &objects) { return Graph::Add(objects); }
+
 std::unique_ptr<Instance> Instance::Make(Component *component, const std::string &name) {
   auto inst = new Instance(component, name);
   return std::unique_ptr<Instance>(inst);
@@ -360,32 +380,8 @@ Instance::Instance(Component *comp, std::string name) : Graph(std::move(name), I
   }
 
   // Make copies of port arrays
-  for (const auto &pa : component_->GetAll<PortArray>()) {
-    // Make a copy of the port array.
-    auto inst_pa = std::dynamic_pointer_cast<PortArray>(pa->Copy());
-
-    // Same story here. Check if the base type is a generic type. If so, rebind it to the instance nodes and change the
-    // type of the instance port array to the newly bound type.
-    if (inst_pa->type()->IsGeneric()) {
-      auto type = inst_pa->type()->Copy(comp_to_inst);
-      inst_pa->SetType(type);
-    }
-
-    // We also need to rebind the port array size to a copy of the size node.
-    std::shared_ptr<Node> inst_size;
-    // Look up if we've already copied the size node.
-    if (comp_to_inst.count(pa->size()) > 0) {
-      inst_size = dynamic_cast<Node *>(comp_to_inst.at(pa->size()))->shared_from_this();
-    } else {
-      // There is no copy of the size node yet. Make a copy, add it to the Instance, and remember we made this copy.
-      inst_size = std::dynamic_pointer_cast<Node>(pa->size()->Copy());
-      Add(inst_size);
-      comp_to_inst[pa->size()] = inst_size.get();
-    }
-    // We now know which size node we're going to use.
-    inst_pa->SetSize(inst_size);
-    // Now that the size node is on the instance graph, we can copy over the PortArray.
-    Add(inst_pa);
+  for (const auto &port_array : component_->GetAll<PortArray>()) {
+    port_array->CopyOnto(this, port_array->name(), &comp_to_inst);
   }
 }
 
@@ -404,42 +400,6 @@ Graph &Instance::Add(const std::shared_ptr<Object> &object) {
 Graph &Instance::SetParent(Graph *parent) {
   parent_ = parent;
   return *this;
-}
-
-void RebindGeneric(Component *comp, Node *generic, NodeMap *rebinding) {
-  // Check if the generic is not already on the rebind map. If it is, we don't have to do anything.
-  // Any copies of a type with the intend to rebind its generics will be solved already.
-  if (((*rebinding).count(generic) == 0)) {
-    // If the type generic is a parameter, its value could be present on this graph already.
-    // It could also be a literal. We can just rebind to that value or literal.
-    // Go over all sources of this parameter and check if any of them is on the parent.
-    bool rebound = false;
-    if (generic->IsParameter()) {
-      std::vector<Object *> param_refs;
-      generic->AsParameter()->AppendReferences(&param_refs);
-      for (const auto &pr : param_refs) {
-        if (pr->IsNode()) {
-          auto nr = dynamic_cast<Node *>(pr);
-          if (nr->parent() == comp || nr->IsLiteral()) {
-            (*rebinding)[generic] = nr;
-            rebound = true;
-            break;
-          }
-        }
-      }
-    }
-    // If going through the parameter trace didn't deliver us with a rebinding, make a new copy of the type generic
-    // node and add it tot he rebind map.
-    if (!rebound) {
-      // Prefix the generic node with the name of its original parent, if it has any.
-      auto new_name = generic->name();
-      if (generic->parent()) {
-        new_name = generic->parent().value()->name() + "_" + new_name;
-      }
-      auto new_g = dynamic_cast<Node *>(generic->CopyOnto(comp, new_name, rebinding));
-      (*rebinding)[generic] = new_g;
-    }
-  }
 }
 
 }  // namespace cerata

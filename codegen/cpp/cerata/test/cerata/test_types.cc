@@ -81,13 +81,13 @@ TEST(Types, Flatten) {
 
 TEST(Types, TypeMapper) {
   auto a = bit();
-  auto b = vector<8>();
+  auto b = vector(8);
   auto c = record("rec_K", {field("a", a),
                                   field("b", b)});
   auto d = stream(c);
 
   auto q = bit();
-  auto r = vector<8>();
+  auto r = vector(8);
   auto s = record("rec_L", {field("q", q),
                                   field("r0", r),
                                   field("r1", stream(r))});

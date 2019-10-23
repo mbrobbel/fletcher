@@ -33,7 +33,8 @@ MultiBlock Design::Generate() {
   //  in case multiple back ends are processing the graph. This currently modifies the original structure.
 
   // Resolve VHDL specific problems
-  // Make signals out of all ports, because VHDL is terrible.
+  // Make signals out of all ports, because of a whole bunch of reasons, including the most annoying locally static
+  // errors for port maps when wanting to use generics on the left hand side.
   Resolve::SignalizePorts(component_);
 
   // Place header

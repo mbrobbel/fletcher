@@ -17,6 +17,7 @@
 #include <cerata/api.h>
 #include <vector>
 #include <string>
+#include <cerata/parameter.h>
 
 #include "fletchgen/basic_types.h"
 #include "fletchgen/recordbatch.h"
@@ -30,6 +31,7 @@ namespace fletchgen {
 using cerata::port;
 using cerata::vector;
 using cerata::component;
+using cerata::parameter;
 
 Component *accm() {
   // Check if the Array component was already created.
@@ -110,15 +112,13 @@ Nucleus::Nucleus(const std::string &name,
 
     // For each one of the command streams, make an inverted copy of the RecordBatch full command stream port.
     // This one will expose all command stream fields to the nucleus user.
-    for (const auto &cmd : rb->GetFieldPorts(FieldPort::Function::COMMAND)) {
+    auto cmd_ports = rb->GetFieldPorts(FieldPort::Function::COMMAND);
+    for (const auto &cmd : cmd_ports) {
       // The command stream port type references the bus address width.
       // Add that parameter to the nucleus.
       auto prefix = rb->schema()->name() + "_" + cmd->field_->name();
       auto ba = bus_addr_width(64, prefix);
       Add(ba);
-      auto rb_ba = rb->par(bus_addr_width(64, prefix));
-
-      rebinding[rb_ba] = ba.get();
 
       auto nucleus_cmd = dynamic_cast<FieldPort *>(cmd->CopyOnto(this, cmd->name(), &rebinding));
       nucleus_cmd->InvertDirection();
@@ -126,7 +126,7 @@ Nucleus::Nucleus(const std::string &name,
       // Now, instantiate an ACCM that will merge the buffer addresses onto the command stream at the nucleus level.
       auto accm_inst = Instantiate(accm(), cmd->name() + "_accm_inst");
       // Connect the parameters.
-      Connect(accm_inst->par(bus_addr_width()), par(bus_addr_width()));
+      accm_inst->par(bus_addr_width())->SetValue(ba);
       Connect(accm_inst->par(index_width()), par(index_width()));
       Connect(accm_inst->par(tag_width()), par(tag_width()));
       // Remember the instance.
@@ -230,7 +230,7 @@ std::vector<FieldPort *> Nucleus::GetFieldPorts(FieldPort::Function fun) const {
 void Nucleus::ProfileDataStreams(Instance *mmio_inst) {
   cerata::NodeMap rebinding;
   // Insert a signal in between, and then mark that signal for profiling.
-  std::vector<Node *> profile_nodes;
+  std::vector<cerata::Signal *> profile_nodes;
   for (const auto &p : GetFieldPorts(FieldPort::Function::ARROW)) {
     if (p->profile_) {
       // At this point, these ports should only have one edge straight into the kernel.

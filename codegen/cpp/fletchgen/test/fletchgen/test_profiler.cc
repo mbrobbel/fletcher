@@ -28,11 +28,14 @@ TEST(Profiler, Connect) {
   cerata::default_component_pool()->Clear();
 
   auto stream_type = cerata::stream("test_stream", "data", cerata::vector(8));
-  auto stream_port = port(stream_type);
-  auto crp = port("bcd", cr());
-  auto top = cerata::component("top", {crp, stream_port});
+  auto stream_port_in = port("input", stream_type, Port::IN);
+  auto stream_port_out = port("output", stream_type, Port::OUT);
+  auto crp = port("bcd", cr(), Port::IN);
+  auto top = cerata::component("top", {crp, stream_port_in, stream_port_out});
+  auto stream_sig =
+      cerata::AttachSignalToNode(top.get(), stream_port_out.get(), top->inst_to_comp_map(), "Pr_" + stream_port_out->name());
 
-  EnableStreamProfiling(top.get(), {stream_port.get()});
+  EnableStreamProfiling(top.get(), {stream_sig});
 
   GenerateTestAll(top);
 }

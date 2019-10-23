@@ -59,11 +59,10 @@ static int ResolvePortArrays(Component *comp, Instance *inst, NodeMap *rebinding
 Component *Resolve::SignalizePorts(Component *comp) {
   // We are potentially going to make a bunch of copies of type generic nodes and array sizes.
   // Remember which ones we did already and where we left their copy through a map.
-  NodeMap rebinding;
   auto children = comp->children();
   for (const auto &inst : children) {
-    ResolvePorts(comp, inst, &rebinding);
-    ResolvePortArrays(comp, inst, &rebinding);
+    ResolvePorts(comp, inst, comp->inst_to_comp_map());
+    ResolvePortArrays(comp, inst, comp->inst_to_comp_map());
   }
   return comp;
 }

@@ -41,7 +41,7 @@ add_compile_unit(
     test/cerata/test_pool.cc
     test/cerata/test_types.cc
     test/cerata/test_nodes.cc
-    test/cerata/test_instances.cc
+        test/cerata/test_graphs.cc
 )
 
 add_compile_unit(
@@ -53,7 +53,7 @@ add_compile_unit(
     src/cerata/dot/dot.cc
     src/cerata/dot/style.cc
   TSTS
-    test/cerata/dot/test_graphs.cc
+        test/cerata/dot/test_dot.cc
   DEPS
     cerata::core
 )

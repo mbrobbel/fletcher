@@ -67,10 +67,10 @@ static void CheckDomains(Node *src, Node *dst) {
 std::shared_ptr<Edge> Connect(Node *dst, Node *src) {
   // Check for potential errors
   if (src == nullptr) {
-    CERATA_LOG(ERROR, "Source node is null");
+    CERATA_LOG(FATAL, "Source node is null");
     return nullptr;
   } else if (dst == nullptr) {
-    CERATA_LOG(ERROR, "Destination node is null");
+    CERATA_LOG(FATAL, "Destination node is null");
     return nullptr;
   }
 
@@ -80,11 +80,42 @@ std::shared_ptr<Edge> Connect(Node *dst, Node *src) {
 
   // Check if either source or destination is a signal or port.
   if (src->IsPort() || src->IsSignal()) {
-    // Check if the types can be mapped onto each other
+    // Check if the types can be mapped onto each other.
     if (!src->type()->GetMapper(dst->type())) {
-      CERATA_LOG(FATAL, "No known type mapping available for connection between node ["
+      CERATA_LOG(ERROR, "No known type mapping available for connection between node ["
           + dst->ToString() + "] and ["
           + src->ToString() + "]");
+    }
+    // TODO(johanpel): do something similar for parameters, literals, etc...
+  }
+
+  // Deal with specific of nodes that are on a graph.
+  if (src->parent() && dst->parent()) {
+    auto sp = src->parent().value();
+    auto dp = dst->parent().value();
+    if (dp->IsComponent()) {
+      // Check if we're not making a component to component connection:
+      if (sp->IsComponent()) {
+        CERATA_LOG(ERROR, "Edge between component " + dp->name() + " node " + dst->name() +
+            " and component " + sp->name() + " node " + src->name() + " not allowed.");
+      }
+      auto si = dynamic_cast<Instance *>(sp);
+      auto dc = dynamic_cast<Component *>(dp);
+      // Check if we're not sourcing from an instance parameter into a node on the instance parent:
+      if (dc->HasChild(*si) && src->IsParameter()) {
+        CERATA_LOG(ERROR, "Instance parameters can not source component nodes.");
+      }
+    }
+  }
+  if (dst->parent()) {
+    auto dp = dst->parent().value();
+    if (dp->IsInstance()) {
+      auto ip = dynamic_cast<Instance *>(dp);
+      // When we're connecting a parameter node of an instance, add it to the instance-to-component rebind map.
+      // We must do this because otherwise, if we e.g. attach signals to instance ports, the signal type generics
+      // could be bound to the instance parameter. They should be rebound to the source of the parameter.
+      auto map = dynamic_cast<Component *>(ip->parent())->inst_to_comp_map();
+      (*map)[dst] = src;
     }
   }
 
@@ -116,12 +147,12 @@ std::shared_ptr<Edge> Connect(Node *dst, Node *src) {
       auto parent = *src->parent();
       if (parent->IsInstance() && port->IsInput()) {
         // If the parent is an instance, and the terminator node is an input, then we may not source from it.
-        CERATA_LOG(FATAL, "Cannot source from instance port " + src->ToString() + " of mode input "
-                                                                                  "on " + parent->ToString());
+        CERATA_LOG(FATAL,
+                   "Cannot source from instance port " + src->ToString() + " of mode input on " + parent->ToString());
       } else if (parent->IsComponent() && port->IsOutput()) {
         // If the parent is a component, and the terminator node is an output, then we may not source from it.
-        CERATA_LOG(FATAL, "Cannot source from component port " + src->ToString() + " of mode output "
-                                                                                   "on " + parent->ToString());
+        CERATA_LOG(FATAL,
+                   "Cannot source from component port " + src->ToString() + " of mode output on " + parent->ToString());
       }
     }
   }
@@ -235,9 +266,7 @@ Signal *AttachSignalToNode(Component *comp, NormalNode *node, NodeMap *rebinding
     auto generics = type->GetGenerics();
     // We need to copy over any type generic nodes that are not on the component yet.
     // Potentially produce new generics in the rebind map.
-    for (const auto &g : generics) {
-      RebindGeneric(comp, g, rebinding);
-    }
+    ImplicitlyRebindNodes(comp, generics, rebinding);
     // Now we must rebind the type generics to the nodes on the component graph.
     // Copy the type and provide the rebind map.
     type = type->Copy(*rebinding);
@@ -299,6 +328,10 @@ Signal *AttachSignalToNode(Component *comp, NormalNode *node, NodeMap *rebinding
 }
 
 SignalArray *AttachSignalArrayToNodeArray(Component *comp, NodeArray *array, NodeMap *rebinding) {
+  // The size parameter must potentially be "rebound".
+  ImplicitlyRebindNodes(comp, {array->size()}, rebinding);
+  auto size = rebinding->at(array->size())->shared_from_this();
+
   // Get the base node.
   auto base = array->base();
 
@@ -309,17 +342,11 @@ SignalArray *AttachSignalArrayToNodeArray(Component *comp, NodeArray *array, Nod
     auto generics = base->type()->GetGenerics();
     // We need to copy over any type generic nodes that are not on the component yet.
     // Potentially produce new generics in the rebind map.
-    for (const auto &g : generics) {
-      RebindGeneric(comp, g, rebinding);
-    }
+    ImplicitlyRebindNodes(comp, generics, rebinding);
     // Now we must rebind the type generics to the nodes on the component graph.
     // Copy the type and provide the rebind map.
     type = array->type()->Copy(*rebinding);
   }
-
-  // The size parameter must potentially be "rebound" as well.
-  RebindGeneric(comp, array->size(), rebinding);
-  auto size = rebinding->at(array->size())->shared_from_this();
 
   // Get the clock domain of the array node
   auto domain = DomainOf(array);
