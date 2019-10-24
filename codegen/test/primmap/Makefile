@@ -20,7 +20,7 @@ gui:
 
 clean:
 	rm -rf vhdmmio-doc
+	rm -rf dot
 	rm -f fletchgen.mmio.yaml
 	rm -f memory.srec
-	rm -r dot/*.dot
 	rm -f vhdl/*.gen.vhd

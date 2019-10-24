@@ -277,6 +277,10 @@ void TypeMapper::SetMappingMatrix(MappingMatrix<int64_t> map_matrix) {
   matrix_ = std::move(map_matrix);
 }
 
+std::shared_ptr<TypeMapper> TypeMapper::Make(const std::shared_ptr<Type> &a, const std::shared_ptr<Type> &b) {
+  return Make(a.get(), b.get());
+}
+
 std::string MappingPair::ToString() const {
   std::stringstream ret;
   ret << "MappingPair: " << std::endl;

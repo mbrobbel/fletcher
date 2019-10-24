@@ -75,8 +75,10 @@ Nucleus::Nucleus(const std::string &name,
     : Component(name) {
   cerata::NodeMap rebinding;
 
-  Add(index_width());
-  Add(tag_width());
+  auto iw = index_width();
+  auto tw = tag_width();
+  Add(iw);
+  Add(tw);
   // Add clock/reset
   auto kcd = port("kcd", cr(), Port::Dir::IN, kernel_cd());
   Add(kcd);
@@ -120,8 +122,9 @@ Nucleus::Nucleus(const std::string &name,
       auto ba = bus_addr_width(64, prefix);
       Add(ba);
 
-      auto nucleus_cmd = dynamic_cast<FieldPort *>(cmd->CopyOnto(this, cmd->name(), &rebinding));
+      auto nucleus_cmd = command_port(cmd->fletcher_schema_, cmd->field_, iw, tw, ba, kernel_cd());
       nucleus_cmd->InvertDirection();
+      Add(nucleus_cmd);
 
       // Now, instantiate an ACCM that will merge the buffer addresses onto the command stream at the nucleus level.
       auto accm_inst = Instantiate(accm(), cmd->name() + "_accm_inst");

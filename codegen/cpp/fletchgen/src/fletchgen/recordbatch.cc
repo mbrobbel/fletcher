@@ -131,18 +131,21 @@ void RecordBatch::AddArrays(const std::shared_ptr<FletcherSchema> &fletcher_sche
         a_data_port <<= kernel_arrow_port;
       }
 
-      // Get the command stream port and set its real type.
+      // Get the command stream and unlock stream ports and set their real type and connect.
       auto a_cmd = a->Get<Port>("cmd");
-      auto a_aw = Get<Parameter>(prefix + "_" + bus_addr_width()->name())->shared_from_this();
-      auto ctrl_width = GetCtrlWidth(*field, a_aw->shared_from_this());
-      auto cmd = command_port(fletcher_schema, field, iw, tw, ctrl_width, a_aw, kernel_cd());
+      auto aw = Get<Parameter>(prefix + "_" + bus_addr_width()->name())->shared_from_this();
+      auto cmd = command_port(fletcher_schema, field, iw, tw, aw, kernel_cd());
       Connect(a_cmd, cmd);
       Add(cmd);
+      a_cmd->SetType(cmd_type(a->par(index_width())->shared_from_this(),
+                              a->par("CMD_TAG_WIDTH")->shared_from_this(),
+                              GetCtrlWidth(*field, a->par(bus_addr_width())->shared_from_this())));
 
       auto a_unl = a->Get<Port>("unl");
       auto unl = unlock_port(fletcher_schema, field, tw, kernel_cd());
       Connect(unl, a_unl);
       Add(unl);
+      a_unl->SetType(unlock_type(a->par("CMD_TAG_WIDTH")->shared_from_this()));
     }
   }
 }
@@ -165,17 +168,18 @@ void RecordBatch::ConnectBusPorts(Instance *array, const std::string &prefix, ce
   auto a_bus_ports = array->GetAll<BusPort>();
   for (const auto &a_bus_port : a_bus_ports) {
     auto rb_port_prefix = prefix + "_bus";
-    auto a_bus_params = a_bus_port->params_;
+    auto a_bus_spec = a_bus_port->spec_;
     // Create new bus parameters to bind to and prefix it with the bus name.
-    auto rb_bus_params = BusParam(this, a_bus_params.func_, a_bus_params.spec_, prefix);
+    auto rb_bus_params = BusDimParams(this, a_bus_spec.dim.plain, prefix);
+    auto rb_bus_spec = BusSpecParams{rb_bus_params, a_bus_spec.func};
     // Copy over the ArrayReader/Writer's bus port
-    auto rb_bus_port = bus_port(rb_port_prefix, a_bus_port->dir(), rb_bus_params);
+    auto rb_bus_port = bus_port(rb_port_prefix, a_bus_port->dir(), rb_bus_spec);
     // Add them to the RecordBatch
     Add(rb_bus_port);
     // Connect them to the ArrayReader/Writer
     Connect(rb_bus_port, array->prt("bus"));
     // Connect the bus parameters. Array bus port has no prefix.
-    ConnectBusParam(array, rb_bus_params, "", rebinding);
+    ConnectBusParam(array, "", rb_bus_params, rebinding);
   }
 }
 
@@ -215,11 +219,10 @@ std::shared_ptr<FieldPort> command_port(const std::shared_ptr<FletcherSchema> &f
                                         const std::shared_ptr<arrow::Field> &field,
                                         const std::shared_ptr<Node> &index_width,
                                         const std::shared_ptr<Node> &tag_width,
-                                        std::optional<std::shared_ptr<Node>> ctrl_width,
                                         std::optional<std::shared_ptr<Node>> addr_width,
                                         const std::shared_ptr<ClockDomain> &domain) {
   std::shared_ptr<cerata::Type> type;
-  if (ctrl_width && addr_width) {
+  if (addr_width) {
     type = cmd_type(index_width, tag_width, GetCtrlWidth(*field, *addr_width));
   } else {
     type = cmd_type(index_width, GetTagWidth(*field));

@@ -32,23 +32,29 @@ namespace fletchgen {
 
 using cerata::intl;
 
-static std::string ArbiterMasterName(BusFunction function) {
-  return std::string(function == BusFunction::READ ? "rd" : "wr") + "_mst";
-}
+//static std::string ArbiterMasterName(BusFunction function) {
+//  return std::string(function == BusFunction::READ ? "rd" : "wr") + "_mst";
+//}
 
 Mantle::Mantle(std::string name,
                const std::vector<std::shared_ptr<RecordBatch>> &recordbatches,
                const std::shared_ptr<Nucleus> &nucleus,
-               BusSpec bus_spec)
-    : Component(std::move(name)), bus_spec_(bus_spec) {
+               BusDim bus_dim)
+    : Component(std::move(name)), bus_dim_(bus_dim) {
+
+  using std::pair;
 
   // Add some default parameters.
   auto iw = index_width();
   auto tw = tag_width();
   Add({iw, tw});
-  
+
   // Top level bus parameters.
-  auto bus_params = BusParam(this, BusFunction::WRITE, bus_spec);
+  auto bus_params = BusDimParams(this, bus_dim);
+  auto bus_rd_spec = BusSpecParams{bus_params, BusFunction::READ};
+  auto bus_wr_spec = BusSpecParams{bus_params, BusFunction::WRITE};
+  std::shared_ptr<Port> bus_rd = bus_port("rd_mst", Port::OUT, bus_rd_spec);
+  std::shared_ptr<Port> bus_wr = bus_port("wr_mst", Port::OUT, bus_wr_spec);
 
   // Add default ports; bus clock/reset, kernel clock/reset and AXI4-lite port.
   auto bcr = port("bcd", cr(), Port::Dir::IN, bus_cd());
@@ -95,9 +101,12 @@ Mantle::Mantle(std::string name,
     // Depending on their function (and direction), connect all of them to the nucleus.
     for (const auto &fp : field_ports) {
       if (fp->function_ == FieldPort::Function::ARROW) {
-        // Connect the address width parameter.
+        // Connect the address width parameter on the nucleus.
         auto prefix = rb->schema()->name() + "_" + fp->field_->name();
         Connect(nucleus_inst_->par(bus_addr_width(0, prefix)), par(bus_addr_width()));
+
+        // Connect the other bus params.
+        ConnectBusParam(rbi, prefix + "_", bus_params, inst_to_comp_map());
 
         if (fp->dir() == cerata::Term::Dir::OUT) {
           Connect(nucleus_inst_->prt(fp->name()), fp);
@@ -126,65 +135,52 @@ Mantle::Mantle(std::string name,
   // Instance *arb_read = nullptr;
   // Instance *arb_write = nullptr;
 
-  std::shared_ptr<Port> bus_read;
-  std::shared_ptr<Port> bus_write;
+  // Gather all unique bus specs from RecordBatch bus interfaces.
+  std::vector<BusSpec> bus_specs;
+  for (const auto &bp : rb_bus_ports) {
+    bus_specs.push_back(BusSpec(bp->spec_));
+  }
+  cerata::FilterDuplicates(&bus_specs);
 
-  ArbiterMasterName(BusFunction::WRITE);
-  for (const auto &rb_bus_port : rb_bus_ports) {
-    FLETCHER_LOG(INFO, rb_bus_port->params_.spec_.ToString());
-    FLETCHER_LOG(INFO, rb_bus_port->params_.spec_.ToBusTypeName());
+  // For every required bus, instantiate a bus arbiter.
+  std::unordered_map<BusSpec, Instance *> arb_map;
+  for (const auto &b : bus_specs) {
+    //auto params = BusDimParams(this, b.dim);
+    auto prefix = b.ToName();
+    Instance *inst = Instantiate(bus_arbiter(b.func), prefix + "_inst");
+
+    // Connect clock and reset
+    inst->prt("bcd") <<= bcr;
+
+    // TODO(johanpel): for now, we only support one top-level bus spec, so we connect all arbiter generics to it.
+    //  Also we just connect the top-level port directly.
+    ConnectBusParam(inst, "", bus_params, this->inst_to_comp_map());
+    if (b.func == BusFunction::READ) {
+      Connect(bus_rd, inst->Get<Port>("mst"));
+      Add(bus_rd);
+    } else {
+      Connect(bus_wr, inst->Get<Port>("mst"));
+      Add(bus_wr);
+    }
+    arb_map[b] = inst;
   }
 
-  /*
-  if (require_read_arb) {
-    // Create a master bus port on the mantle.
-    // bus_read = bus_port(ArbiterMasterName(BusFunction::READ), Port::Dir::OUT, bus_params, BusFunction::READ);
-    Add(bus_read);
-    // Instantiate and parametrize the arbiter.
-    arb_read = AddInstanceOf(bus_arbiter(BusFunction::READ));
-    Connect(arb_read->par(bus_addr_width()), params.addr_width);
-    Connect(arb_read->par(bus_data_width()), params.data_width);
-    Connect(arb_read->par(bus_len_width()), params.len_width);
-    Connect(arb_read->prt("bcd"), bcr.get());
-    // Connect the top level bus port to the arbiter.
-    Connect(bus_read.get(), arb_read->prt("mst"));
-  }
-  if (require_write_arb) {
-    // Create a bus port on the mantle.
-    bus_write = bus_port(ArbiterMasterName(BusFunction::WRITE), Port::Dir::OUT, params, BusFunction::WRITE);
-    Add(bus_write);
-    // Instantiate and parametrize the arbiter.
-    arb_write = AddInstanceOf(bus_arbiter(BusFunction::WRITE));
-    Connect(arb_write->par(bus_addr_width()), params.addr_width);
-    Connect(arb_write->par(bus_data_width()), params.data_width);
-    Connect(arb_write->par(bus_strobe_width()), params.strobe_width);
-    Connect(arb_write->par(bus_len_width()), params.len_width);
-    Connect(arb_write->prt("bcd"), bcr.get());
-    // Connect the top level bus port to the arbiter.
-    Connect(bus_write.get(), arb_write->prt("mst"));
-  }
-
-  // Connect recordbatch bus ports to the appropriate arbiter.
+  // Now we loop over all bus ports again and connect them to the arbiters.
   for (const auto &bp : rb_bus_ports) {
     // Select the corresponding arbiter.
-    auto arb = bp->function_ == BusFunction::READ ? arb_read : arb_write;
+    auto arb = arb_map[BusSpec(bp->spec_)];
     // Get the PortArray.
     auto array = arb->prt_arr("bsv");
-    // Extend the recordbatch bus port because VHDL sucks.
-    auto bp_sig = cerata::signal("int_" + bp->name(), bp->type()->shared_from_this(), bp->domain());
-    Add(bp_sig);
-    Connect(bp_sig.get(), bp);
     // Append the PortArray and connect.
-    Connect(array->Append(), bp_sig.get());
+    Connect(array->Append(), bp);
   }
-   */
 }
 
 /// @brief Construct a Mantle and return a shared pointer to it.
 std::shared_ptr<Mantle> mantle(const std::string &name,
                                const std::vector<std::shared_ptr<RecordBatch>> &recordbatches,
                                const std::shared_ptr<Nucleus> &nucleus,
-                               BusSpec bus_spec) {
+                               BusDim bus_spec) {
   return std::make_shared<Mantle>(name, recordbatches, nucleus, bus_spec);
 }
 

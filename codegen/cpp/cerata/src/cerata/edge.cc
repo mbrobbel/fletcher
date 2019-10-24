@@ -298,6 +298,10 @@ Signal *AttachSignalToNode(Component *comp, NormalNode *node, NodeMap *rebinding
 
   // Create the new signal.
   auto new_signal = signal(name, type, domain);
+
+  // Copy metadata
+  new_signal->meta = node->meta;
+
   comp->Add(new_signal);
 
   // Iterate over any existing edges that are sinks of the original node.

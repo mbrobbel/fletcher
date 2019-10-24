@@ -33,7 +33,6 @@ std::string GenerateAXITop(const Mantle &mantle,
   // Bus properties
   t.Replace("BUS_ADDR_WIDTH", 64);
   t.Replace("BUS_DATA_WIDTH", 512);
-  t.Replace("BUS_STROBE_WIDTH", 512 / 8);
   t.Replace("BUS_LEN_WIDTH", 8);
   t.Replace("BUS_BURST_STEP_LEN", 1);
   t.Replace("BUS_BURST_MAX_LEN", 64);
@@ -123,7 +122,7 @@ std::string GenerateAXITop(const Mantle &mantle,
               "      wr_mst_wdat_valid        : out std_logic;\n"
               "      wr_mst_wdat_ready        : in std_logic;\n"
               "      wr_mst_wdat_data         : out std_logic_vector(BUS_DATA_WIDTH-1 downto 0);\n"
-              "      wr_mst_wdat_strobe       : out std_logic_vector(BUS_STROBE_WIDTH-1 downto 0);\n"
+              "      wr_mst_wdat_strobe       : out std_logic_vector(BUS_DATA_WIDTH/8-1 downto 0);\n"
               "      wr_mst_wdat_last         : out std_logic;");
 
     t.Replace("MST_WREQ_INSTANTIATE",

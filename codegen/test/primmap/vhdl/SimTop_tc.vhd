@@ -31,15 +31,10 @@ entity SimTop_tc is
 
     -- Host bus properties
     BUS_ADDR_WIDTH              : natural := 64;
-    BUS_DATA_WIDTH              : natural := 64;
-    BUS_STROBE_WIDTH            : natural := 64;
+    BUS_DATA_WIDTH              : natural := 512;
     BUS_LEN_WIDTH               : natural := 8;
     BUS_BURST_MAX_LEN           : natural := 64;
-    BUS_BURST_STEP_LEN          : natural := 1;
-
-    -- MMIO bus properties
-    SLV_BUS_ADDR_WIDTH          : natural := 32;
-    SLV_BUS_DATA_WIDTH          : natural := 32
+    BUS_BURST_STEP_LEN          : natural := 1
   );
 end SimTop_tc;
 
@@ -54,7 +49,6 @@ architecture Behavorial of SimTop_tc is
       BUS_DATA_WIDTH     : integer;
       BUS_BURST_STEP_LEN : integer;
       BUS_BURST_MAX_LEN  : integer;
-      BUS_STROBE_WIDTH   : integer;
       BUS_LEN_WIDTH      : integer;
       INDEX_WIDTH        : integer;
       TAG_WIDTH          : integer
@@ -80,7 +74,7 @@ architecture Behavorial of SimTop_tc is
       wr_mst_wdat_valid         : out std_logic;
       wr_mst_wdat_ready         : in std_logic;
       wr_mst_wdat_data          : out std_logic_vector(BUS_DATA_WIDTH-1 downto 0);
-      wr_mst_wdat_strobe        : out std_logic_vector(BUS_STROBE_WIDTH-1 downto 0);
+      wr_mst_wdat_strobe        : out std_logic_vector(BUS_DATA_WIDTH/8-1 downto 0);
       wr_mst_wdat_last          : out std_logic;
       mmio_awvalid              : in  std_logic;
       mmio_awready              : out std_logic;
@@ -195,7 +189,7 @@ architecture Behavorial of SimTop_tc is
   signal bus_wreq_valid         : std_logic;
   signal bus_wreq_ready         : std_logic;
   signal bus_wdat_data          : std_logic_vector(BUS_DATA_WIDTH-1 downto 0);
-  signal bus_wdat_strobe        : std_logic_vector(BUS_STROBE_WIDTH-1 downto 0);
+  signal bus_wdat_strobe        : std_logic_vector(BUS_DATA_WIDTH/8-1 downto 0);
   signal bus_wdat_last          : std_logic;
   signal bus_wdat_valid         : std_logic;
   signal bus_wdat_ready         : std_logic;
@@ -299,6 +293,7 @@ begin
   mmio_sink.rdata   <= mmio_rdata;
   mmio_sink.rresp   <= mmio_rresp;
 
+
   -- Typical stimuli process:
   stimuli_proc : process is
     variable read_data        : std_logic_vector(REG_WIDTH-1 downto 0) := X"DEADBEEF";
@@ -318,16 +313,20 @@ begin
     mmio_write(REG_CONTROL, CONTROL_CLEAR, mmio_source, mmio_sink, bcd_clk, bcd_reset);
 
     -- 2. Write addresses of the arrow buffers in the SREC file.
-    mmio_write(8, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- PrimRead number_values
+    mmio_write(8, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- R A_values
     mmio_write(9, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset);
-    mmio_write(10, X"00001000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- PrimWrite number_values
+    mmio_write(10, X"00000040", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- R B_values
     mmio_write(11, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset);
+    mmio_write(12, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- W C_values
+    mmio_write(13, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset);
+    mmio_write(14, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- W D_values
+    mmio_write(15, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset);
 
     -- 3. Write recordbatch bounds.
-    mmio_write(4, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- PrimRead first index
-    mmio_write(5, X"00000004", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- PrimRead last index
-    mmio_write(6, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- PrimWrite first index
-    mmio_write(7, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- PrimWrite last index
+    mmio_write(4, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- R first index
+    mmio_write(5, X"00000004", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- R last index
+    mmio_write(6, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- W first index
+    mmio_write(7, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- W last index
 
     -- 4. Write any kernel-specific registers.
     mmio_write(12, X"00000001", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- Number to add
@@ -340,7 +339,7 @@ begin
     loop
       -- Wait a bunch of cycles.
       for I in 0 to 64 loop
-        wait until rising_edge(kcd_clk);
+        wait until rising_edge(bcd_clk);
       end loop;
 
       -- Read the status register.
@@ -421,7 +420,6 @@ begin
     BUS_ADDR_WIDTH              => BUS_ADDR_WIDTH,
     BUS_LEN_WIDTH               => BUS_LEN_WIDTH,
     BUS_DATA_WIDTH              => BUS_DATA_WIDTH,
-    BUS_STROBE_WIDTH            => BUS_STROBE_WIDTH,
     SEED                        => 1337,
     RANDOM_REQUEST_TIMING       => false,
     RANDOM_RESPONSE_TIMING      => false,
@@ -451,7 +449,6 @@ begin
       BUS_DATA_WIDTH            => BUS_DATA_WIDTH,
       BUS_BURST_STEP_LEN        => BUS_BURST_STEP_LEN,
       BUS_BURST_MAX_LEN         => BUS_ADDR_WIDTH,
-      BUS_STROBE_WIDTH          => BUS_STROBE_WIDTH,
       BUS_LEN_WIDTH             => BUS_LEN_WIDTH,
       INDEX_WIDTH               => INDEX_WIDTH,
       TAG_WIDTH                 => TAG_WIDTH

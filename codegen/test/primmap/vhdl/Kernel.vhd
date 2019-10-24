@@ -27,6 +27,10 @@ use work.UtilStr_pkg.all;
 --
 -- It also calculates the sum of the input and outputs that on the sum register.
 entity Kernel is
+  generic (
+    INDEX_WIDTH : integer := 32;
+    TAG_WIDTH   : integer := 1
+  );
   port (
     kcd_clk          : in  std_logic;
     kcd_reset        : in  std_logic;
@@ -42,19 +46,19 @@ entity Kernel is
     R_B              : in  std_logic_vector(7 downto 0);
     R_A_unl_valid    : in  std_logic;
     R_A_unl_ready    : out std_logic;
-    R_A_unl_tag      : in  std_logic_vector(0 downto 0);
+    R_A_unl_tag      : in  std_logic_vector(TAG_WIDTH-1 downto 0);
     R_B_unl_valid    : in  std_logic;
     R_B_unl_ready    : out std_logic;
-    R_B_unl_tag      : in  std_logic_vector(0 downto 0);
+    R_B_unl_tag      : in  std_logic_vector(TAG_WIDTH-1 downto 0);
     R_A_cmd_valid    : out std_logic;
     R_A_cmd_ready    : in  std_logic;
-    R_A_cmd_firstIdx : out std_logic_vector(31 downto 0);
-    R_A_cmd_lastidx  : out std_logic_vector(31 downto 0);
+    R_A_cmd_firstIdx : out std_logic_vector(INDEX_WIDTH-1 downto 0);
+    R_A_cmd_lastIdx  : out std_logic_vector(INDEX_WIDTH-1 downto 0);
     R_A_cmd_tag      : out std_logic_vector(0 downto 0);
     R_B_cmd_valid    : out std_logic;
     R_B_cmd_ready    : in  std_logic;
-    R_B_cmd_firstIdx : out std_logic_vector(31 downto 0);
-    R_B_cmd_lastidx  : out std_logic_vector(31 downto 0);
+    R_B_cmd_firstIdx : out std_logic_vector(INDEX_WIDTH-1 downto 0);
+    R_B_cmd_lastIdx  : out std_logic_vector(INDEX_WIDTH-1 downto 0);
     R_B_cmd_tag      : out std_logic_vector(0 downto 0);
     W_C_valid        : out std_logic;
     W_C_ready        : in  std_logic;
@@ -68,19 +72,19 @@ entity Kernel is
     W_D              : out std_logic_vector(7 downto 0);
     W_C_unl_valid    : in  std_logic;
     W_C_unl_ready    : out std_logic;
-    W_C_unl_tag      : in  std_logic_vector(0 downto 0);
+    W_C_unl_tag      : in  std_logic_vector(TAG_WIDTH-1 downto 0);
     W_D_unl_valid    : in  std_logic;
     W_D_unl_ready    : out std_logic;
-    W_D_unl_tag      : in  std_logic_vector(0 downto 0);
+    W_D_unl_tag      : in  std_logic_vector(TAG_WIDTH-1 downto 0);
     W_C_cmd_valid    : out std_logic;
     W_C_cmd_ready    : in  std_logic;
-    W_C_cmd_firstIdx : out std_logic_vector(31 downto 0);
-    W_C_cmd_lastidx  : out std_logic_vector(31 downto 0);
+    W_C_cmd_firstIdx : out std_logic_vector(INDEX_WIDTH-1 downto 0);
+    W_C_cmd_lastIdx  : out std_logic_vector(INDEX_WIDTH-1 downto 0);
     W_C_cmd_tag      : out std_logic_vector(0 downto 0);
     W_D_cmd_valid    : out std_logic;
     W_D_cmd_ready    : in  std_logic;
-    W_D_cmd_firstIdx : out std_logic_vector(31 downto 0);
-    W_D_cmd_lastidx  : out std_logic_vector(31 downto 0);
+    W_D_cmd_firstIdx : out std_logic_vector(INDEX_WIDTH-1 downto 0);
+    W_D_cmd_lastIdx  : out std_logic_vector(INDEX_WIDTH-1 downto 0);
     W_D_cmd_tag      : out std_logic_vector(0 downto 0);
     start            : in  std_logic;
     stop             : in  std_logic;

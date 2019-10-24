@@ -155,6 +155,23 @@ std::vector<T *> As(const std::vector<U *> &vec) {
 }
 
 /**
+ * @brief Remove all duplicates from a vector.
+ */
+template<typename T>
+std::vector<T> Unique(const std::vector<T> &vec) {
+  auto result = vec;
+  auto last = std::unique(result.begin(), result.end());
+  result.erase(last, result.end());
+  return vec;
+}
+
+template<typename T>
+void FilterDuplicates(std::vector<T> *vec) {
+  auto last = std::unique(vec->begin(), vec->end());
+  vec->erase(last, vec->end());
+}
+
+/**
  * @brief Return a human-readable string from a type.
  * @tparam T  The type.
  * @return    The human-readable string.

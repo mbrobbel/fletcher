@@ -80,16 +80,20 @@ std::shared_ptr<Type> unlock_type(const std::shared_ptr<Node> &tag_width) {
 }
 
 std::shared_ptr<Type> array_reader_out(int num_streams, int full_width) {
-  auto data_stream = stream(record({field(data(full_width)),
-                                    field(dvalid(num_streams, true)),
-                                    field(last(num_streams, true))}));
+  auto data_stream = stream("ar_out", "", record({field(data(full_width)),
+                                                  field(dvalid(num_streams, true)),
+                                                  field(last(num_streams, true))}),
+                            {field("valid", vector(num_streams)),
+                             field("ready", vector(num_streams))});
   return data_stream;
 }
 
 std::shared_ptr<Type> array_writer_in(int num_streams, int full_width) {
-  auto data_stream = stream(record({field(data(full_width)),
-                                    field(dvalid(num_streams, true)),
-                                    field(last(num_streams, true))}));
+  auto data_stream = stream("aw_in", "", record({field(data(full_width)),
+                                                 field(dvalid(num_streams, true)),
+                                                 field(last(num_streams, true))}),
+                            {field("valid", vector(num_streams)),
+                             field("ready", vector(num_streams))});
   return data_stream;
 }
 
@@ -128,9 +132,10 @@ Component *array(Mode mode) {
   // Create anew component.
   auto result = cerata::component(ArrayName(mode));
 
-  // Parameters.
+  BusDimParams params(result);
   auto func = mode == Mode::READ ? BusFunction::READ : BusFunction::WRITE;
-  BusParam params(result, func);
+  BusSpecParams spec{params, func};
+
   auto iw = index_width();
   auto tw = tag_width();
   tw->SetName("CMD_TAG_WIDTH");
@@ -151,7 +156,7 @@ Component *array(Mode mode) {
   auto unlock = port("unl", unlock_type(tw), Port::Dir::OUT, kernel_cd());
 
   // Bus port.
-  auto bus = bus_port("bus", Port::Dir::OUT, params);
+  auto bus = bus_port("bus", Port::Dir::OUT, spec);
 
   // Arrow data port.
   auto type = mode == Mode::READ ? array_reader_out() : array_writer_in();
@@ -304,7 +309,7 @@ std::shared_ptr<TypeMapper> GetStreamTypeMapper(Type *stream_type, Type *other) 
     auto t = flat_stream[i].type_;
     // If we see a record, check if its a stream.
     if (t->Is(Type::RECORD)) {
-      if (dynamic_cast<cerata::Stream*>(t) != nullptr) {
+      if (dynamic_cast<cerata::Stream *>(t) != nullptr) {
         // If it is, we map it, because we can.
         result->Add(i, idx_stream);
       }
@@ -436,9 +441,11 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
   if (level == 0) {
     // Create the stream record
     auto rec = record({field("dvalid", dvalid()),
-                       field("count", count(e_count_width)),
                        field("last", last()),
                        field("", type)});
+    if (epc > 1) {
+      rec->AddField(field("count", count(e_count_width)), 2);
+    }
     if (arrow_field.nullable()) {
       rec->AddField(field("validity", validity()));
     }

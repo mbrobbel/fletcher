@@ -61,7 +61,7 @@ Kernel::Kernel(std::string name,
     for (auto &rb_cmd : rb_cmds) {
       // Next, make a simplified version of the command stream for the kernel user.
       auto kernel_cmd =
-          command_port(rb_cmd->fletcher_schema_, rb_cmd->field_, iw, tw, std::nullopt, std::nullopt, kernel_cd());
+          command_port(rb_cmd->fletcher_schema_, rb_cmd->field_, iw, tw, std::nullopt, kernel_cd());
       kernel_cmd->InvertDirection();
       Add(kernel_cmd);
     }

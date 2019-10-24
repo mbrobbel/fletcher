@@ -124,7 +124,6 @@ std::shared_ptr<FieldPort> command_port(const std::shared_ptr<FletcherSchema> &f
                                         const std::shared_ptr<arrow::Field> &field,
                                         const std::shared_ptr<Node> &index_width,
                                         const std::shared_ptr<Node> &tag_width,
-                                        std::optional<std::shared_ptr<Node>> ctrl_width = std::nullopt,
                                         std::optional<std::shared_ptr<Node>> addr_width = std::nullopt,
                                         const std::shared_ptr<ClockDomain> &domain = default_domain());
 

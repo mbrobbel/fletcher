@@ -120,4 +120,26 @@ TEST(VHDL_ASSIGN, SignalRecordParamArrayParam) {
   ASSERT_EQ(cb, "");
 }
 
+TEST(VHDL_ASSIGN, VecOneToBit) {
+  auto vec = vector(1);
+
+  auto mapper = TypeMapper::Make(bit(), vec);
+  mapper->Add(0, 0);
+  bit()->AddMapper(mapper);
+
+  auto a = signal("a", bit());
+  auto b = signal("b", vec);
+  auto c = signal("c", vec);
+  auto d = signal("d", bit());
+
+  Connect(a, b);
+  Connect(c, d);
+
+  auto ca = vhdl::Arch::Generate(*a).ToString();
+  auto cc = vhdl::Arch::Generate(*c).ToString();
+
+  ASSERT_EQ(ca, "a <= b(0);\n");
+  ASSERT_EQ(cc, "c(0) <= d;\n");
+}
+
 }  // namespace cerata

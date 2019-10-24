@@ -43,9 +43,9 @@ static std::string GenerateName(Expression *expr, std::shared_ptr<Node> lhs, std
   auto r = ::cerata::ToString(rhs);
 #ifndef NDEBUG
   // For debugging, make a tiny but somewhat readable string out of the addresses.
-  std::string result = "Expr_ABCDEFGH";
+  std::string result = "Expr_ABCDEFGHIJKLMNOP";
   for (size_t i = 0; i < l.size(); i++) {
-    result[5 + i % 8] = static_cast<char>(65 + (l[i] ^ e[i] ^ r[i]) % 26);
+    result[5 + i % 16] = static_cast<char>(65 + (l[i] ^ e[i] ^ r[i]) % 26);
   }
 #else
   std::string result = "Expr_" + l + e + r;

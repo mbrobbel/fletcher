@@ -123,24 +123,34 @@ static Block GenerateMappingPair(const MappingPair &p,
   next_offset_b = (offset_b + (a_width ? a_width.value() : rintl(0)));
 
   if (p.flat_type_a(0).type_->Is(Type::RECORD)) {
-    // Don't output anything for the abstract record type.
+    // Don't output anything for the nested record type.
   } else {
+    auto a_ft = p.flat_type_a(ia);
+    auto b_ft = p.flat_type_b(ib);
+
+    if (a_ft.type_->Is(Type::BIT) && b_ft.type_->Is(Type::VECTOR)) {
+      b_is_array = true;
+    }
+    if (b_ft.type_->Is(Type::BIT) && a_ft.type_->Is(Type::VECTOR)) {
+      a_is_array = true;
+    }
     std::string a;
     std::string b;
-    a = p.flat_type_a(ia).name(NamePart(lh_prefix, true));
+
+    a = a_ft.name(NamePart(lh_prefix, true));
     // if right side is concatenated onto the left side
     // or the left side is an array (right is also concatenated onto the left side)
     if ((p.num_b() > 1) || a_is_array) {
-      if (p.flat_type_a(ia).type_->Is(Type::BIT)) {
+      if (a_ft.type_->Is(Type::BIT) || (b_ft.type_->Is(Type::BIT) && a_ft.type_->Is(Type::VECTOR))) {
         a += "(" + offset_a->ToString() + ")";
       } else {
         a += "(" + (next_offset_a - 1ul)->ToString();
         a += " downto " + offset_a->ToString() + ")";
       }
     }
-    b = p.flat_type_b(ib).name(NamePart(rh_prefix, true));
+    b = b_ft.name(NamePart(rh_prefix, true));
     if ((p.num_a() > 1) || b_is_array) {
-      if (p.flat_type_b(ib).type_->Is(Type::BIT)) {
+      if (b_ft.type_->Is(Type::BIT) || (a_ft.type_->Is(Type::BIT) && b_ft.type_->Is(Type::VECTOR))) {
         b += "(" + offset_b->ToString() + ")";
       } else {
         b += "(" + (next_offset_b - 1ul)->ToString();
@@ -233,8 +243,8 @@ Block Arch::Generate(const Port &port, int indent) {
   }
   // Generate the assignment.
   auto edge = port.input().value();
-  if (edge->src()->IsPort()) {
-    CERATA_LOG(FATAL, "Component port is unexpectedly sourced by another port.");
+  if (!edge->src()->IsSignal()) {
+    CERATA_LOG(FATAL, "Component port is not sourced by signal.");
   }
   ret << GenerateNodeAssignment(*edge->dst(), *edge->src());
 

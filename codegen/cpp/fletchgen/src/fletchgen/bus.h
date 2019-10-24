@@ -34,49 +34,49 @@ using cerata::Object;
 // Bus channel constructs.
 PARAM_DECL_FACTORY(bus_addr_width, 64)
 PARAM_DECL_FACTORY(bus_data_width, 512)
+PARAM_DECL_FACTORY(bus_strobe_width, 512/8) // to be removed
 PARAM_DECL_FACTORY(bus_len_width, 8)
 PARAM_DECL_FACTORY(bus_burst_step_len, 4)
 PARAM_DECL_FACTORY(bus_burst_max_len, 16)
 
-/// Defines function of a bus interface.
+/// Defines function of a bus interface (read/write).
 enum class BusFunction {
   READ,  ///< Interface reads from memory.
   WRITE  ///< Interface writes to memory.
 };
 
-struct BusSpec {
+/// Holds bus interface dimensions.
+struct BusDim {
   int aw = 64;   // Address width
   int dw = 512;  // Data width
   int lw = 8;    // Len width
   int bs = 1;    // Burst step length
   int bm = 16;   // Burst max length
 
-  /// @brief Return a bus specification from a string. See [common/cpp/include/fletcher/arrow-utils.h] for more info.
-  static BusSpec FromString(const std::string &str, BusSpec default_to);
+  /// @brief Returns a BusDim from a string. See [common/cpp/include/fletcher/arrow-utils.h] for more info.
+  static BusDim FromString(const std::string &str, BusDim default_to);
 
-  /// @brief Return a human-readable version of the bus specification.
+  /// @brief Return a human-readable version of the bus dimensions.
   [[nodiscard]] std::string ToString() const;
-  /// @brief Return a type name for a Cerata type based on this bus specification.
-  [[nodiscard]] std::string ToBusTypeName() const;
+  /// @brief Return a shorter somewhat human-readable name for this BusDims, can be used for comparisons.
+  [[nodiscard]] std::string ToName() const;
 };
 
-/// @brief Bus specification using parameters.
-struct BusParam {
-  /// @brief Construct a new bunch of bus parameters based on a bus spec and function, and add them to a graph.
-  BusParam(cerata::Graph *parent, BusFunction func, BusSpec spec = BusSpec{}, const std::string &prefix = "");
-  /// @brief Construct a new bunch of bus parameters based on a bus spec and function, and add them to a graph.
-  explicit BusParam(const std::shared_ptr<cerata::Graph> &parent,
-                    BusFunction func = BusFunction::READ,
-                    BusSpec spec = BusSpec{},
-                    const std::string &prefix = "")
-      : BusParam(parent.get(), func, spec, prefix) {}
+/// @brief Returns true if BusDims are equal.
+bool operator==(const BusDim &lhs, const BusDim &rhs);
 
-  /// Function of this bus parameter struct.
-  BusFunction func_;
-  /// Integer value specification of bus parameters.
-  BusSpec spec_;
-
-  // Value nodes.
+/// Holds bus parameters based on bus dimensions, that has actual nodes representing the dimensions.
+struct BusDimParams {
+  /// @brief Construct a new bunch of bus parameters based on a bus spec and function, and add them to a graph.
+  BusDimParams(cerata::Graph *parent, BusDim dim = BusDim{}, const std::string &prefix = "");
+  /// @brief Construct a new bunch of bus parameters based on a bus spec and function, and add them to a graph.
+  explicit BusDimParams(const std::shared_ptr<cerata::Graph> &parent,
+                        BusDim spec = BusDim{},
+                        const std::string &prefix = "")
+      : BusDimParams(parent.get(), spec, prefix) {}
+  /// Plain bus dimensions, not as nodes.
+  BusDim plain;
+  /// Value nodes.
   std::shared_ptr<Node> aw;  ///< Address width node
   std::shared_ptr<Node> dw;  ///< Data width node
   std::shared_ptr<Node> lw;  ///< Len width node
@@ -84,11 +84,29 @@ struct BusParam {
   std::shared_ptr<Node> bm;  ///< Burst max length node
 
   /// @brief Return all parameters as an object vector.
-  [[nodiscard]] std::vector<std::shared_ptr<Object>> all(BusFunction func) const;
+  [[nodiscard]] std::vector<std::shared_ptr<Object>> all() const;
 };
 
-/// @brief Returns true if bus specifications are equal, false otherwise.
-bool operator==(const BusParam &lhs, const BusParam &rhs);
+/// Holds bus parameters and function based on bus dimensions, that has actual nodes representing the dimensions.
+struct BusSpecParams {
+  BusDimParams dim;
+  BusFunction func;
+  /// @brief Return a shorter somewhat human-readable name, can be used for comparisons.
+  [[nodiscard]] std::string ToName() const;
+};
+
+/// Holds bus dimensions and function, without instantiating Cerata nodes.
+struct BusSpec {
+  BusSpec() = default;
+  BusSpec(const BusSpecParams &params) : dim(params.dim.plain), func(params.func) {};
+  BusDim dim;
+  BusFunction func;
+  /// @brief Return a shorter somewhat human-readable name, can be used for comparisons.
+  [[nodiscard]] std::string ToName() const;
+};
+
+/// @brief Returns true if BusSpecs are equal.
+bool operator==(const BusSpec &lhs, const BusSpec &rhs);
 
 /// @brief Return a Cerata type for a Fletcher bus read interface.
 std::shared_ptr<Type> bus_read(const std::shared_ptr<Node> &addr_width,
@@ -102,31 +120,34 @@ std::shared_ptr<Type> bus_write(const std::shared_ptr<Node> &addr_width,
                                 const std::shared_ptr<Node> &len_width);
 
 /// @brief Fletcher bus type with access mode conveyed through spec of params.
-std::shared_ptr<Type> bus(const BusParam &param);
+std::shared_ptr<Type> bus(const BusSpecParams &param);
 
 /// A port derived from bus parameters.
 struct BusPort : public Port {
   /// @brief Construct a new port based on a bus parameters..
   BusPort(const std::string &name,
           Port::Dir dir,
-          const BusParam &params,
+          const BusSpecParams &params,
           std::shared_ptr<ClockDomain> domain = bus_cd())
-      : Port(name, bus(params), dir, std::move(domain)), params_(params) {}
+      : Port(name, bus(params), dir, std::move(domain)), spec_(params) {}
 
-  /// The bus parameters to which the type generics of the bus port are bound.
-  BusParam params_;
+  /// The bus spec to which the type generics of the bus port are bound.
+  BusSpecParams spec_;
 
   /// @brief Deep-copy the BusPort.
   std::shared_ptr<Object> Copy() const override;
 };
 /// @brief Make a new port and return a shared pointer to it.
-std::shared_ptr<BusPort> bus_port(const std::string &name, Port::Dir dir, const BusParam &params);
-/// @brief Make a new port, name it automatically based on the bus specification, and return a shared pointer to it.
-std::shared_ptr<BusPort> bus_port(Port::Dir dir, const BusParam &params);
+std::shared_ptr<BusPort> bus_port(const std::string &name, Port::Dir dir, const BusSpecParams &params);
+/// @brief Make a new port, name it automatically based on the bus parameters, and return a shared pointer to it.
+std::shared_ptr<BusPort> bus_port(Port::Dir dir, const BusDimParams &params);
 
 // TODO(johanpel): Perhaps generalize and build some sort of parameter struct/bundle in cerata for fast connection.
-/// @brief Connect all bus params on a graph to the supplied source params, and append a rebind map.
-void ConnectBusParam(cerata::Graph *dst, const BusParam &src, const std::string &prefix, cerata::NodeMap *rebinding);
+/// @brief Find and connect all prefixed bus params on a graph to the supplied source params, and append a rebind map.
+void ConnectBusParam(cerata::Graph *dst,
+                     const std::string &prefix,
+                     const BusDimParams &src,
+                     cerata::NodeMap *rebinding);
 
 /**
  * @brief Return a Cerata model of a BusArbiter.
@@ -154,10 +175,10 @@ std::shared_ptr<Component> BusWriteSerializer();
 
 ///  Specialization of std::hash for BusSpec
 template<>
-struct std::hash<fletchgen::BusParam> {
+struct std::hash<fletchgen::BusSpec> {
   /// @brief Hash a BusSpec.
-  size_t operator()(fletchgen::BusParam const &param) const noexcept {
-    auto str = param.spec_.ToBusTypeName();
+  size_t operator()(fletchgen::BusSpec const &spec) const noexcept {
+    auto str = spec.ToName();
     return std::hash<std::string>()(str);
   }
 };

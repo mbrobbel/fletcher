@@ -17,14 +17,11 @@
 #include <gtest/gtest.h>
 #include <vector>
 #include <memory>
-#include <vector>
 
 #include "fletchgen/design.h"
 #include "fletchgen/mantle.h"
 #include "fletchgen/profiler.h"
 #include "fletchgen/test_utils.h"
-#include "fletcher/arrow-utils.h"
-#include "fletcher/arrow-schema.h"
 #include "fletcher/test_schemas.h"
 
 namespace fletchgen {
@@ -45,7 +42,7 @@ static void TestReadMantle(const std::shared_ptr<arrow::Schema> &schema) {
   auto m = mmio({rbd}, regs);
   auto k = kernel("Test_Kernel", {r}, m);
   auto n = nucleus("Test_Nucleus", {r}, k, m);
-  auto man = mantle("Test_Mantle", {r}, n, BusSpec());
+  auto man = mantle("Test_Mantle", {r}, n, BusDim());
   GenerateTestAll(man);
 }
 

@@ -161,7 +161,6 @@ struct Bit : public Type {
   bool IsPhysical() const override { return true; }
   bool IsGeneric() const override { return false; }
   bool IsNested() const override { return false; }
-
   /// @brief Bit type constructor.
   explicit Bit(std::string name) : Type(std::move(name), Type::BIT) {}
   /// @brief Bit width returns integer literal 1.

@@ -72,8 +72,7 @@ void GetAllTypes(Component *top_component, std::vector<Type *> *types, bool incl
     }
   }
   // Filter out duplicates.
-  auto i = std::unique(types->begin(), types->end());
-  types->resize(std::distance(types->begin(), i));
+  FilterDuplicates(types);
 }
 
 }  // namespace cerata

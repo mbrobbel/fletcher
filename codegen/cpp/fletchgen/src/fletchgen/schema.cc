@@ -142,10 +142,10 @@ FletcherSchema::FletcherSchema(const std::shared_ptr<arrow::Schema> &arrow_schem
                         "Schema: " + arrow_schema->ToString());
   }
   auto bus_spec_val = fletcher::GetMeta(*arrow_schema_, fletcher::meta::BUS_SPEC);
-  bus_spec_ = BusSpec::FromString(bus_spec_val, BusSpec());
+  bus_dims_ = BusDim::FromString(bus_spec_val, BusDim());
   FLETCHER_LOG(DEBUG, "Schema " + name() + ":");
   FLETCHER_LOG(DEBUG, "  Direction : " + cerata::Term::str(mode2dir(mode_)));
-  FLETCHER_LOG(DEBUG, "  Bus spec  : " + bus_spec_.ToString());
+  FLETCHER_LOG(DEBUG, "  Bus spec  : " + bus_dims_.ToString());
 }
 
 std::shared_ptr<FletcherSchema> FletcherSchema::Make(const std::shared_ptr<arrow::Schema> &arrow_schema,

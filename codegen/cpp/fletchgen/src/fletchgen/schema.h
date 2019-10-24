@@ -61,8 +61,8 @@ class FletcherSchema {
   Mode mode_;
   /// The name of this schema used to identify the components generated from it.
   std::string name_;
-  /// The bus specification for this schema.
-  BusSpec bus_spec_;
+  /// The bus dimensions for the RecordBatch resulting from this schema.
+  BusDim bus_dims_;
 };
 
 /**

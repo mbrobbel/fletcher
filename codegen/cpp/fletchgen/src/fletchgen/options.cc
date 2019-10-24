@@ -66,7 +66,7 @@ bool Options::Parse(Options *options, int argc, char **argv) {
                  "  s : (status) register content is controlled by hardware kernel.\n"
                  "Example: \"-reg32 c:my_host_to_kernel_signaling_reg s:my_kernel_to_host_signaling_reg\"");
 
-  app.add_option("--bus_specs", options->bus_specs,
+  app.add_option("--bus_specs", options->bus_dims,
                  "Specify top-level bus parameters.\n"
                  "Value must be a tuple of the following form: \"aw,dw,sw,lw,bs,bm\"\n"
                  "Where:\n"

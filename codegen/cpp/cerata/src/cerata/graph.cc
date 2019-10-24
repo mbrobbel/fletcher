@@ -187,8 +187,7 @@ std::vector<Node *> Graph::GetImplicitNodes() const {
       }
     }
   }
-  auto last = std::unique(result.begin(), result.end());
-  result.erase(last, result.end());
+  FilterDuplicates(&result);
   return result;
 }
 
@@ -302,7 +301,7 @@ Instance *Component::Instantiate(Component *comp, const std::string &name) {
 
   // Now, all parameters are reconnected to their defaults. Add all these to the inst to component node map.
   // Whenever we derive stuff from instantiated nodes, like signalizing a port, we will know what value to use.
-  for (const auto& param : inst->GetAll<Parameter>()) {
+  for (const auto &param : inst->GetAll<Parameter>()) {
     inst_to_comp[param] = param->default_value();
   }
 
@@ -321,7 +320,7 @@ bool Component::HasChild(const std::string &name) const {
   return false;
 }
 
-bool Component::HasChild(const Instance& inst) const {
+bool Component::HasChild(const Instance &inst) const {
   for (const auto &g : this->children()) {
     if (&inst == g) {
       return true;

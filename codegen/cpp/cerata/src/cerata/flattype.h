@@ -333,6 +333,8 @@ class TypeMapper : public Named {
   static std::shared_ptr<TypeMapper> MakeImplicit(Type *a, Type *b);
   /// @brief Construct a new, empty TypeMapper between two types.
   static std::shared_ptr<TypeMapper> Make(Type *a, Type *b);
+  /// @brief Construct a new, empty TypeMapper between two types.
+  static std::shared_ptr<TypeMapper> Make(const std::shared_ptr<Type> &a, const std::shared_ptr<Type> &b);
 
   /// @brief Add a mapping between two FlatTypes to the mapper.
   TypeMapper &Add(int64_t a, int64_t b);

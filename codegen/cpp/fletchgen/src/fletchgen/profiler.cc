@@ -93,7 +93,7 @@ std::vector<MmioReg> GetProfilingRegs(const std::vector<std::shared_ptr<RecordBa
 }
 
 std::shared_ptr<cerata::Type> stream_probe(const std::shared_ptr<Node> &count_width) {
-  auto result = stream("probe", "", vector("count", count_width));
+  auto result = stream("probe", "count", vector(count_width));
   return result;
 }
 

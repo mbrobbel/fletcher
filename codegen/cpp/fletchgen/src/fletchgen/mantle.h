@@ -39,7 +39,7 @@ class Mantle : public Component {
   explicit Mantle(std::string name,
                   const std::vector<std::shared_ptr<RecordBatch>> &recordbatches,
                   const std::shared_ptr<Nucleus> &nucleus,
-                  BusSpec bus_spec);
+                  BusDim bus_dim);
   /// @brief Return the kernel component of this Mantle.
   std::shared_ptr<Nucleus> nucleus() const { return nucleus_; }
   /// @brief Return all RecordBatch(Reader/Writer) instances of this Mantle.
@@ -48,7 +48,7 @@ class Mantle : public Component {
   std::vector<std::shared_ptr<RecordBatch>> recordbatch_components() const { return recordbatch_components_; }
 
  protected:
-  BusSpec bus_spec_;
+  BusDim bus_dim_;
   /// The Nucleus to be instantiated by this Mantle.
   std::shared_ptr<Nucleus> nucleus_;
   /// Shortcut to the instantiated Nucleus.
@@ -72,6 +72,6 @@ class Mantle : public Component {
 std::shared_ptr<Mantle> mantle(const std::string &name,
                                const std::vector<std::shared_ptr<RecordBatch>> &recordbatches,
                                const std::shared_ptr<Nucleus> &nucleus,
-                               BusSpec bus_spec);
+                               BusDim bus_spec);
 
 }  // namespace fletchgen

@@ -135,7 +135,7 @@ std::optional<std::shared_ptr<TypeMapper>> Type::GetMapper(Type *other, bool gen
     }
 
     // Or if its an "equal" type, where each flattened type is equal.
-    if (IsEqual(*other)) {
+    if (this->IsEqual(*other)) {
       // Generate an implicit type mapping.
       return TypeMapper::MakeImplicit(this, other);
     }
@@ -213,8 +213,14 @@ Type &Vector::SetWidth(std::shared_ptr<Node> width) {
 }
 
 std::shared_ptr<Type> bit(const std::string &name) {
-  std::shared_ptr<Type> result = std::make_shared<Bit>(name);
-  return result;
+  if (name == "bit") {
+    // Return a static bit for the default bit.
+    static std::shared_ptr<Type> result = std::make_shared<Bit>(name);
+    return result;
+  } else {
+    std::shared_ptr<Type> result = std::make_shared<Bit>(name);
+    return result;
+  }
 }
 
 std::shared_ptr<Type> nul() {

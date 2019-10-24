@@ -28,7 +28,7 @@ using cerata::Port;
 TEST(Bus, BusArbiter) {
   cerata::default_component_pool()->Clear();
   auto top = cerata::component("top");
-  BusParam param(top);
+  BusDimParams param(top);
   top->Instantiate(bus_arbiter(BusFunction::READ));
 
   GenerateTestAll(top);

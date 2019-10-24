@@ -34,20 +34,13 @@ std::shared_ptr<Type> axi4_lite_type(Axi4LiteSpec spec) {
     return opt_existing_axi_typename.value()->shared_from_this();
   } else {
     auto new_axi_lite_type = record(axi_typename, {
-        NoSep(field("aw", stream(record("aw", {
-            field("addr", vector(spec.addr_width))})))),
-        NoSep(field("w", stream(record("w", {
-            field("data", vector(spec.data_width)),
-            field("strb", vector(spec.data_width / 8))
-        })))),
-        NoSep(field("b", stream(record("b", {
-            field("resp", vector(2))})), true)),
-        NoSep(field("ar", stream(record("ar", {
-            field("addr", vector(spec.addr_width))
-        })))),
-        NoSep(field("r", stream(record("r", {
-            field("data", vector(spec.data_width)),
-            field("resp", vector(2))})), true)),
+        NoSep(field("aw", stream("addr", vector(spec.addr_width)))),
+        NoSep(field("w", stream(record({field("data", vector(spec.data_width)),
+                                        field("strb", vector(spec.data_width / 8))})))),
+        NoSep(field("b", stream("resp", vector(2)))->Reverse()),
+        NoSep(field("ar", stream("addr", vector(spec.addr_width)))),
+        NoSep(field("r", stream(record({field("data", vector(spec.data_width)),
+                                        field("resp", vector(2))})))->Reverse())
     });
     cerata::default_type_pool()->Add(new_axi_lite_type);
     return new_axi_lite_type;

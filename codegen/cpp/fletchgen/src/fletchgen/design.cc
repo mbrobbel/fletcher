@@ -180,7 +180,7 @@ Design::Design(const std::shared_ptr<Options> &opts) {
   profiling_regs = GetProfilingRegs(recordbatch_comps);
   auto regs = cerata::Merge({default_regs, recordbatch_regs, kernel_regs, profiling_regs});
 
-  auto bus_spec = BusSpec::FromString(opts->bus_specs[0], BusSpec());
+  auto bus_spec = BusDim::FromString(opts->bus_dims[0], BusDim());
 
   // Generate the MMIO component.
   mmio_comp = mmio(batch_desc, regs);
