@@ -262,7 +262,7 @@ void Nucleus::ProfileDataStreams(Instance *mmio_inst) {
     // Gather all mmio profile result ports
     std::vector<MmioPort *> mmio_profile_ports;
     for (auto &p : mmio_inst->GetAll<MmioPort>()) {
-      if (p->reg.function == MmioReg::Function::PROFILE) {
+      if ((p->reg.function == MmioReg::Function::PROFILE) && (p->reg.behavior == MmioReg::Behavior::STATUS)) {
         mmio_profile_ports.push_back(p);
       }
     }

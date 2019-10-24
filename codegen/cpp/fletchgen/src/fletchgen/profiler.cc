@@ -56,6 +56,19 @@ std::vector<MmioReg> GetProfilingRegs(const std::vector<std::shared_ptr<RecordBa
   using Behavior = MmioReg::Behavior;
   using std::to_string;
   std::vector<MmioReg> profile_regs;
+
+  profile_regs.push_back(MmioReg{Function::PROFILE,
+                                 Behavior::CONTROL,
+                                 "profile_enable",
+                                 "Activates profiler counting when this bit is high.",
+                                 1});
+
+  profile_regs.push_back(MmioReg{Function::PROFILE,
+                                 Behavior::STROBE,
+                                 "profile_clear",
+                                 "Resets profiler counters when this bit is asserted.",
+                                 1});
+
   for (const auto &rb : recordbatches) {
     auto fps = rb->GetFieldPorts();
     for (const auto &fp : fps) {
@@ -76,10 +89,6 @@ std::vector<MmioReg> GetProfilingRegs(const std::vector<std::shared_ptr<RecordBa
       }
     }
   }
-  profile_regs.push_back(MmioReg{MmioReg::Function::PROFILE, MmioReg::Behavior::CONTROL, "profile_enable",
-                                 "Activates profiler counting when this bit is high.", 1});
-  profile_regs.push_back(MmioReg{MmioReg::Function::PROFILE, MmioReg::Behavior::STROBE, "profile_clear",
-                                 "Resets profiler counters when this bit is asserted.", 1});
   return profile_regs;
 }
 
@@ -198,8 +207,6 @@ NodeProfilerPorts EnableStreamProfiling(cerata::Component *comp,
         // Set the mapping matrix of the new mapper, and add it to the probe.
         mapper->SetMappingMatrix(matrix);
         node->type()->AddMapper(mapper);
-
-        std::cout << mapper->ToString() << std::endl;
 
         // Connect the clock/reset, probe and profile output.
         Connect(p_cr, *cr_node);

@@ -290,96 +290,38 @@ std::string GenerateConfigString(const arrow::Field &field, int level) {
 }
 
 std::shared_ptr<TypeMapper> GetStreamTypeMapper(Type *stream_type, Type *other) {
-  auto conversion = TypeMapper::Make(stream_type, other);
+  auto result = TypeMapper::Make(stream_type, other);
 
   size_t idx_stream = 0;
-  // Unused: size_t idx_record = 1;
-  size_t idx_data = 2;
-  size_t idx_dvalid = 3;
-  size_t idx_last = 4;
+  size_t idx_valid = 1;
+  size_t idx_ready = 2;
+  size_t idx_data = 4;
+  size_t idx_dvalid = 5;
+  size_t idx_last = 6;
 
-  auto flat_stream = conversion->flat_a();
+  auto flat_stream = result->flat_a();
   for (size_t i = 0; i < flat_stream.size(); i++) {
     auto t = flat_stream[i].type_;
+    // If we see a record, check if its a stream.
     if (t->Is(Type::RECORD)) {
-      conversion->Add(i, idx_stream);
-    } else if (t == dvalid().get()) {
-      conversion->Add(i, idx_dvalid);
-    } else if (t == last().get()) {
-      conversion->Add(i, idx_last);
+      if (dynamic_cast<cerata::Stream*>(t) != nullptr) {
+        // If it is, we map it, because we can.
+        result->Add(i, idx_stream);
+      }
+    } else if (t == cerata::Stream::valid().get()) {
+      result->Add(i, idx_valid);
+    } else if (t == cerata::Stream::ready().get()) {
+      result->Add(i, idx_ready);
+    } else if (t->name() == dvalid()->name()) {
+      result->Add(i, idx_dvalid);
+    } else if (t->name() == last()->name()) {
+      result->Add(i, idx_last);
     } else {
       // If it's not any of the default control signals on the stream, it must be data.
-      conversion->Add(i, idx_data);
+      result->Add(i, idx_data);
     }
   }
-  return conversion;
-}
-
-// TODO(johanpel): move this into GetStreamType
-std::pair<int, int> GetArrayDataSpec(const arrow::Field &arrow_field) {
-  int epc = fletcher::GetIntMeta(arrow_field, meta::EPC, 1);
-  int lepc = fletcher::GetIntMeta(arrow_field, meta::LEPC, 1);
-
-  auto e_count_width = static_cast<int>(ceil(log2(epc + 1)));
-  auto l_count_width = static_cast<int>(ceil(log2(lepc + 1)));
-
-  std::shared_ptr<Type> type;
-
-  switch (arrow_field.type()->id()) {
-    case arrow::Type::BINARY: {
-      // Special case: binary type has a length stream and byte stream. The EPC is assumed to relate to the list
-      // values, as there is no explicit child field to place this metadata in.
-      auto data_width = epc * 8;
-      auto length_width = lepc * 32;
-      return {2, e_count_width + l_count_width + data_width + length_width};
-    }
-
-    case arrow::Type::STRING: {
-      // Special case: string type has a length stream and utf8 character stream. The EPC is assumed to relate to the
-      // list values, as there is no explicit child field to place this metadata in.
-      auto data_width = epc * 8;
-      auto length_width = lepc * 32;
-      return {2, e_count_width + l_count_width + data_width + length_width};
-    }
-
-      // Lists
-    case arrow::Type::LIST: {
-      if (arrow_field.type()->num_children() != 1) {
-        FLETCHER_LOG(FATAL, "Encountered Arrow list type with other than 1 child.");
-      }
-      if (epc > 1) {
-        FLETCHER_LOG(FATAL, "Elements per cycle on non-primitive list is unsupported.");
-      }
-      auto arrow_child = arrow_field.type()->child(0);
-      auto elem_spec = GetArrayDataSpec(*arrow_child);
-      auto length_width = 32;
-      // Add a length stream to number of streams, and length width to data width.
-      return {elem_spec.first + 1, elem_spec.second + length_width};
-    }
-
-      // Structs
-    case arrow::Type::STRUCT: {
-      if (arrow_field.type()->num_children() < 1) {
-        FLETCHER_LOG(FATAL, "Encountered Arrow struct type without any children.");
-      }
-      auto spec = std::pair<int, int>{0, 0};
-      for (const auto &f : arrow_field.type()->children()) {
-        auto child_spec = GetArrayDataSpec(*f);
-        spec.first += child_spec.first;
-        spec.second += child_spec.second;
-      }
-      return spec;
-    }
-
-      // Non-nested types or unsupported types.
-    default: {
-      auto fwt = std::dynamic_pointer_cast<arrow::FixedWidthType>(arrow_field.type());
-      if (fwt == nullptr) {
-        FLETCHER_LOG(FATAL, "Encountered unsupported Arrow type: " + arrow_field.type()->ToString());
-      }
-      return {1, fwt->bit_width()};
-    }
-  }
+  return result;
 }
 
 std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::Mode mode, int level) {
@@ -402,8 +344,9 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
 
   switch (arrow_id) {
     case arrow::Type::BINARY: {
-      // Special case: binary type has a length stream and byte stream. The EPC is assumed to relate to the list
-      // values, as there is no explicit child field to place this metadata in.
+      // Special case: binary type has a length stream and byte stream.
+      // The EPC is assumed to relate to the list values.
+      // The LEPC can be used for the length stream.
       auto data_width = epc * 8;
       auto length_width = lepc * 32;
 
@@ -422,8 +365,9 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
     }
 
     case arrow::Type::STRING: {
-      // Special case: string type has a length stream and utf8 character stream. The EPC is assumed to relate to the
-      // list values, as there is no explicit child field to place this metadata in.
+      // Special case: string type has a length stream and utf8 character stream.
+      // The EPC is assumed to relate to the list values.
+      // The LEPC can be used for the length stream.
       auto data_width = epc * 8;
       auto length_width = lepc * 32;
 
@@ -504,5 +448,72 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
     return type;
   }
 }
+
+// TODO(johanpel): move this into GetStreamType
+std::pair<int, int> GetArrayDataSpec(const arrow::Field &arrow_field) {
+  int epc = fletcher::GetIntMeta(arrow_field, fletcher::meta::VALUE_EPC, 1);
+  int lepc = fletcher::GetIntMeta(arrow_field, fletcher::meta::LIST_EPC, 1);
+
+  auto e_count_width = static_cast<int>(ceil(log2(epc + 1)));
+  auto l_count_width = static_cast<int>(ceil(log2(lepc + 1)));
+
+  int validity_bit = arrow_field.nullable() ? 1 : 0;
+
+  switch (arrow_field.type()->id()) {
+    case arrow::Type::BINARY: {
+      auto data_width = epc * 8;
+      auto length_width = lepc * 32;
+      return {2, e_count_width + l_count_width + data_width + length_width + validity_bit};
+    }
+
+    case arrow::Type::STRING: {
+      auto data_width = epc * 8;
+      auto length_width = lepc * 32;
+      return {2, e_count_width + l_count_width + data_width + length_width + validity_bit};
+    }
+
+      // Lists
+    case arrow::Type::LIST: {
+      if (arrow_field.type()->num_children() != 1) {
+        FLETCHER_LOG(FATAL, "Encountered Arrow list type with other than 1 child.");
+      }
+      if (epc > 1) {
+        FLETCHER_LOG(FATAL, "Elements per cycle on non-primitive list is unsupported.");
+      }
+      auto arrow_child = arrow_field.type()->child(0);
+      auto elem_spec = GetArrayDataSpec(*arrow_child);
+      auto length_width = 32;
+      // Add a length stream to number of streams, and length width to data width.
+      return {elem_spec.first + 1, elem_spec.second + length_width + validity_bit};
+    }
+
+      // Structs
+    case arrow::Type::STRUCT: {
+      if (arrow_field.type()->num_children() < 1) {
+        FLETCHER_LOG(FATAL, "Encountered Arrow struct type without any children.");
+      }
+      auto spec = std::pair<int, int>{0, 0};
+      for (const auto &f : arrow_field.type()->children()) {
+        auto child_spec = GetArrayDataSpec(*f);
+        spec.first += child_spec.first;
+        spec.second += child_spec.second;
+      }
+      return spec;
+    }
+
+      // Non-nested types or unsupported types.
+    default: {
+      auto fwt = std::dynamic_pointer_cast<arrow::FixedWidthType>(arrow_field.type());
+      if (fwt == nullptr) {
+        FLETCHER_LOG(FATAL, "Encountered unsupported Arrow type: " + arrow_field.type()->ToString());
+      }
+      return {1, fwt->bit_width() + validity_bit};
+    }
+  }
+}
+
+std::shared_ptr<Type> array_reader_out(std::pair<int, int> spec) { return array_reader_out(spec.first, spec.second); }
+
+std::shared_ptr<Type> array_writer_in(std::pair<int, int> spec) { return array_writer_in(spec.first, spec.second); }
 
 }  // namespace fletchgen

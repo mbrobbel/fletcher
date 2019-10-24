@@ -47,7 +47,6 @@ std::string GetMeta(const arrow::Field &field, const std::string &key) {
   if (field.metadata() != nullptr) {
     std::unordered_map<std::string, std::string> meta;
     field.metadata()->ToUnorderedMap(&meta);
-
     auto k = meta.find(key);
     if (k != meta.end()) {
       return k->second;
@@ -115,8 +114,9 @@ std::shared_ptr<arrow::Schema> WithMetaBusSpec(const arrow::Schema &schema,
 }
 
 std::shared_ptr<arrow::Field> WithMetaEPC(const arrow::Field &field, int epc) {
-  auto meta = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>({meta::VALUE_EPC}),
-                                                        std::vector<std::string>({std::to_string(epc)}));
+  auto meta = std::make_shared<arrow::KeyValueMetadata>(
+      std::vector<std::string>({meta::VALUE_EPC}),
+      std::vector<std::string>({std::to_string(epc)}));
   return field.WithMetadata(meta);
 }
 

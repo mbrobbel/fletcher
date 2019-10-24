@@ -45,10 +45,16 @@ std::shared_ptr<Type> cmd_type(const std::shared_ptr<Node> &index_width,
                                const std::optional<std::shared_ptr<Node>> &ctrl_width = std::nullopt);
 /// @brief Fletcher unlock stream
 std::shared_ptr<Type> unlock_type(const std::shared_ptr<Node> &tag_width);
+
 /// @brief Fletcher read data
 std::shared_ptr<Type> array_reader_out(int num_streams = 0, int full_width = 0);
+/// @brief Fletcher read data, where the pair contains {num_streams, full_width}.
+std::shared_ptr<Type> array_reader_out(std::pair<int, int> spec);
+
 /// @brief Fletcher write data
 std::shared_ptr<Type> array_writer_in(int num_streams = 0, int full_width = 0);
+/// @brief Fletcher write data, where the pair contains {num_streams, full_width}.
+std::shared_ptr<Type> array_writer_in(std::pair<int, int> spec);
 
 /// @brief Types for ArrayReader/Writer configuration string.
 enum class ConfigType {

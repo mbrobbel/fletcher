@@ -94,8 +94,8 @@ std::shared_ptr<Edge> Connect(Node *dst, Node *src) {
     auto sp = src->parent().value();
     auto dp = dst->parent().value();
     if (dp->IsComponent()) {
-      // Check if we're not making a component to component connection:
-      if (sp->IsComponent()) {
+      if (sp->IsComponent() && (sp != dp)) {
+        // Check if we're not making a component to component connection on different components.
         CERATA_LOG(ERROR, "Edge between component " + dp->name() + " node " + dst->name() +
             " and component " + sp->name() + " node " + src->name() + " not allowed.");
       }
