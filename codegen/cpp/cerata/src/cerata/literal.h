@@ -76,6 +76,8 @@ class Literal : public MultiOutputNode {
  LITERAL_DECL_FACTORY(String, std::string) //NOLINT
 
  public:
+  /// @brief Literal nodes are only owned by the literal pool, hence never have a parent graph.
+  void SetParent(Graph* graph) override;
   /// @brief Create a boolean literal.
   static std::shared_ptr<Literal> Make(bool value) { return MakeBool(value); }
   /// @brief Create an integer literal.

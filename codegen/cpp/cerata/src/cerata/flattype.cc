@@ -326,16 +326,18 @@ std::shared_ptr<Node> MappingPair::width_a(const std::optional<std::shared_ptr<N
 }
 
 std::shared_ptr<Node> MappingPair::width_b(const std::optional<std::shared_ptr<Node>> &no_width_increment) const {
-  std::shared_ptr<Node> w = intl(0);
+  std::shared_ptr<Node> result = intl(0);
   for (int64_t i = 0; i < num_b(); i++) {
     auto fw = flat_type_b(i).type_->width();
     if (fw) {
-      w = w + fw.value();
+      std::cerr << "flat width incr: " + fw.value()->ToString() << std::endl;
+      result = result + fw.value();
     } else if (no_width_increment) {
-      w = w + *no_width_increment;
+      result = result + *no_width_increment;
     }
   }
-  return w;
+  std::cerr << "flat width result: " + result->ToString() << std::endl;
+  return result;
 }
 
 }  // namespace cerata

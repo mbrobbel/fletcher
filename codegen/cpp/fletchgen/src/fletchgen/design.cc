@@ -18,6 +18,7 @@
 #include <vector>
 #include <regex>
 #include <algorithm>
+#include <thread>
 
 #include "fletcher/common.h"
 #include "fletchgen/design.h"
@@ -178,20 +179,18 @@ Design::Design(const std::shared_ptr<Options> &opts) {
   recordbatch_regs = GetRecordBatchRegs(batch_desc);
   kernel_regs = ParseCustomRegs(opts->regs);
   profiling_regs = GetProfilingRegs(recordbatch_comps);
-  auto regs = cerata::Merge({default_regs, recordbatch_regs, kernel_regs, profiling_regs});
+  all_regs = cerata::Merge({default_regs, recordbatch_regs, kernel_regs, profiling_regs});
 
   auto bus_spec = BusDim::FromString(opts->bus_dims[0], BusDim());
 
   // Generate the MMIO component.
-  mmio_comp = mmio(batch_desc, regs);
+  mmio_comp = mmio(batch_desc, all_regs);
   // Generate the kernel.
   kernel_comp = kernel(opts->kernel_name, recordbatch_comps, mmio_comp);
   // Generate the nucleus.
   nucleus_comp = nucleus(opts->kernel_name + "_Nucleus", recordbatch_comps, kernel_comp, mmio_comp);
   // Generate the mantle.
   mantle_comp = mantle(opts->kernel_name + "_Mantle", recordbatch_comps, nucleus_comp, bus_spec);
-  // Run vhdmmio to generate the mmio infrastructure.
-  RunVhdmmio(regs);
 }
 
 void Design::RunVhdmmio(std::vector<MmioReg> regs) {

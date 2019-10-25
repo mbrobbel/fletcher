@@ -20,6 +20,7 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include <tuple>
 
 #include "cerata/utils.h"
 #include "cerata/flattype.h"
@@ -104,7 +105,7 @@ class Type : public Named, public std::enable_shared_from_this<Type> {
   /// @brief Return true if the Type is a generic type.
   virtual bool IsGeneric() const = 0;
   /// @brief Return the width of the type, if it is synthesizable.
-  virtual std::optional<Node *> width() const { return {}; }
+  virtual std::optional<Node *> width() const { return std::nullopt; }
   /// @brief Return the Type ID as a human-readable string.
   std::string ToString(bool show_meta = false, bool show_mappers = false) const;
 
@@ -146,6 +147,15 @@ class Type : public Named, public std::enable_shared_from_this<Type> {
    * @return A copy.
    */
   virtual std::shared_ptr<Type> Copy() const { return Copy({}); }
+
+  /**
+   * @brief Make a copy of the type, and rebind any type generic nodes in order of the GetGenerics call.
+   * @param node The nodes to rebind the type to.
+   * @return     The rebound type.
+   */
+  std::shared_ptr<Type> operator()(std::vector<Node *> nodes);
+
+  std::shared_ptr<Type> operator()(std::vector<std::shared_ptr<Node>> nodes);
 
  protected:
   /// Type ID
@@ -306,7 +316,7 @@ class Record : public Type {
   /// @brief Return the field at index i contained by this record.
   Field *at(size_t i) const;
   /// @brief Return the field at index i contained by this record.
-  Field *operator()(size_t i) const;
+  Field *operator[](size_t i) const;
   /// @brief Return all fields contained by this record.
   std::vector<std::shared_ptr<Field>> fields() const { return fields_; }
   /// @brief Return the number of fields in this record.

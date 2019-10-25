@@ -43,11 +43,11 @@ Component *accm() {
   auto ba = bus_addr_width();
   auto iw = index_width();
   auto tw = tag_width();
-  auto cw = parameter("num_addr", integer(), intl(0));
-  auto nucleus_side_cmd = port("nucleus_cmd", cmd_type(iw, tw, cw), Port::Dir::OUT, kernel_cd());
+  auto num_addr = parameter("num_addr", 0);
   auto kernel_side_cmd = port("kernel_cmd", cmd_type(iw, tw), Port::Dir::IN, kernel_cd());
-  auto ctrl = port_array("ctrl", vector(64), cw, Port::Dir::IN, kernel_cd());
-  auto result = component("ArrayCmdCtrlMerger", {cw, ba, iw, tw, nucleus_side_cmd, kernel_side_cmd, ctrl});
+  auto nucleus_side_cmd = port("nucleus_cmd", cmd_type(iw, tw, num_addr * ba), Port::Dir::OUT, kernel_cd());
+  auto ctrl = port_array("ctrl", vector(ba), num_addr, Port::Dir::IN, kernel_cd());
+  auto result = component("ArrayCmdCtrlMerger", {num_addr, ba, iw, tw, kernel_side_cmd, nucleus_side_cmd, ctrl});
 
   // This is a primitive component from the hardware lib
   result->SetMeta(cerata::vhdl::meta::PRIMITIVE, "true");
@@ -64,7 +64,7 @@ static void CopyFieldPorts(Component *nucleus, const RecordBatch &record_batch, 
   for (const auto &fp : field_ports) {
     // Create a copy and invert for the Nucleus
     auto copied_port = dynamic_cast<FieldPort *>(fp->CopyOnto(nucleus, fp->name(), &rebinding));
-    copied_port->InvertDirection();
+    copied_port->Reverse();
   }
 }
 
@@ -116,22 +116,21 @@ Nucleus::Nucleus(const std::string &name,
     // This one will expose all command stream fields to the nucleus user.
     auto cmd_ports = rb->GetFieldPorts(FieldPort::Function::COMMAND);
     for (const auto &cmd : cmd_ports) {
-      // The command stream port type references the bus address width.
-      // Add that parameter to the nucleus.
+      // The command stream port type references the bus address width. Add that parameter to the nucleus.
       auto prefix = rb->schema()->name() + "_" + cmd->field_->name();
       auto ba = bus_addr_width(64, prefix);
       Add(ba);
 
       auto nucleus_cmd = command_port(cmd->fletcher_schema_, cmd->field_, iw, tw, ba, kernel_cd());
-      nucleus_cmd->InvertDirection();
+      nucleus_cmd->Reverse();
       Add(nucleus_cmd);
 
       // Now, instantiate an ACCM that will merge the buffer addresses onto the command stream at the nucleus level.
       auto accm_inst = Instantiate(accm(), cmd->name() + "_accm_inst");
       // Connect the parameters.
-      accm_inst->par(bus_addr_width())->SetValue(ba);
-      Connect(accm_inst->par(index_width()), par(index_width()));
-      Connect(accm_inst->par(tag_width()), par(tag_width()));
+      accm_inst->par("BUS_ADDR_WIDTH")->SetValue(ba);
+      accm_inst->par("INDEX_WIDTH")->SetValue(iw);
+      accm_inst->par("TAG_WIDTH")->SetValue(tw);
       // Remember the instance.
       accms.push_back(accm_inst);
     }
@@ -170,7 +169,7 @@ Nucleus::Nucleus(const std::string &name,
       auto accm_ctrl = accms[accm_idx]->prt_arr("ctrl");
 
       // Get the corresponding cmd ports on this nucleus and the kernel.
-      auto nucleus_cmd = prt(cmd->name());
+      auto nucleus_cmd = this->prt(cmd->name());
       auto kernel_cmd = kernel_inst->prt(cmd->name());
 
       // Connect the nucleus cmd to the ACCM cmd and the ACCM command to the kernel cmd.
@@ -255,12 +254,12 @@ void Nucleus::ProfileDataStreams(Instance *mmio_inst) {
     //  to figure out a better way to keep this synchronized.
 
     // Get the enable and clear ports.
-    auto mmio_enable = signal("profile_enable", cerata::bit(), kernel_cd());
-    auto mmio_clear = signal("profile_clear", cerata::bit(), kernel_cd());
-    Add({mmio_enable, mmio_clear});
+    auto enable = signal("profile_enable", cerata::bit(), kernel_cd());
+    auto clear = signal("profile_clear", cerata::bit(), kernel_cd());
+    Add({enable, clear});
 
-    Connect(mmio_enable.get(), mmio_inst->prt("f_profile_enable_data"));
-    Connect(mmio_clear.get(), mmio_inst->prt("f_profile_clear_data"));
+    enable <<= mmio_inst->prt("f_profile_enable_data");
+    clear <<= mmio_inst->prt("f_profile_clear_data");
 
     // Gather all mmio profile result ports
     std::vector<MmioPort *> mmio_profile_ports;
@@ -276,8 +275,8 @@ void Nucleus::ProfileDataStreams(Instance *mmio_inst) {
       auto prof_ports = pair.second.second;
 
       for (const auto &prof_inst : prof_instances) {
-        Connect(prof_inst->prt("enable"), mmio_enable.get());
-        Connect(prof_inst->prt("clear"), mmio_clear.get());
+        Connect(prof_inst->prt("enable"), enable.get());
+        Connect(prof_inst->prt("clear"), clear.get());
       }
 
       for (const auto &profile_result : prof_ports) {

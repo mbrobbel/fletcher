@@ -24,7 +24,7 @@
 
 namespace cerata {
 
-Parameter::Parameter(std::string name, const std::shared_ptr<Type> &type, std::shared_ptr<Node> default_value)
+Parameter::Parameter(std::string name, const std::shared_ptr<Type> &type, std::shared_ptr<Literal> default_value)
     : NormalNode(std::move(name), Node::NodeID::PARAMETER, type), default_value_(std::move(default_value)) {
   if (default_value_ == nullptr) {
     switch (type->id()) {
@@ -44,7 +44,7 @@ Parameter::Parameter(std::string name, const std::shared_ptr<Type> &type, std::s
 
 std::shared_ptr<Parameter> parameter(const std::string &name,
                                      const std::shared_ptr<Type> &type,
-                                     std::shared_ptr<Node> default_value) {
+                                     std::shared_ptr<Literal> default_value) {
   auto p = new Parameter(name, type, std::move(default_value));
   return std::shared_ptr<Parameter>(p);
 }
@@ -60,7 +60,7 @@ std::shared_ptr<Parameter> parameter(const std::string &name, bool default_value
 }
 
 std::shared_ptr<Parameter> parameter(const std::string &name, std::string default_value) {
-  auto p = new Parameter(name, string(), strl(std::move(default_value)));
+  auto p = new Parameter(name, string(), strl(default_value));
   return std::shared_ptr<Parameter>(p);
 }
 
@@ -85,12 +85,6 @@ std::shared_ptr<Object> Parameter::Copy() const {
   auto result = parameter(name(), type_, default_value_);
   result->meta = this->meta;
   return result;
-}
-
-void Parameter::AppendReferences(std::vector<Object *> *out) const {
-  out->push_back(default_value_.get());
-  Node::AppendReferences(out);
-  default_value_->AppendReferences(out);
 }
 
 void Parameter::TraceValue(std::vector<Node *> *trace) {

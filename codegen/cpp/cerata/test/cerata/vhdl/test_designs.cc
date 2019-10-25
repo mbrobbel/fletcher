@@ -254,4 +254,92 @@ TEST(VHDL_DESIGN, Param) {
   ASSERT_EQ(generated, expected);
 }
 
+
+TEST(VHDL_DESIGN, WidthMap) {
+  default_component_pool()->Clear();
+  auto top_par = parameter("top_width", 8);
+  auto top_port = port("a", vector(top_par), Port::IN);
+  auto top = component("top", {top_par, top_port});
+
+  auto child_par = parameter("child_width", 8);
+  auto child_port = port("b", vector(child_par), Port::IN);
+  auto child = component("child", {child_par, child_port});
+
+  auto inst = top->Instantiate(child);
+  Connect(inst->prt("b"), top_port);
+
+  auto generated = GenerateDebugOutput(top);
+}
+
+TEST(VHDL_DESIGN, ExprGenericInArray) {
+  default_component_pool()->Clear();
+  auto par = parameter("top_width", 8);
+  auto a = port("a", vector(par), Port::IN);
+  auto b = port("b", vector(par), Port::IN);
+  auto top = component("top", {par, a, b});
+
+  auto cpar = parameter("child_width", 2);
+  auto csize = parameter("size", 0);
+  auto cprt = port_array("arr", vector(cpar), csize, Port::IN);
+  auto ctop = component("child", {cpar, csize, cprt});
+
+  auto inst = top->Instantiate(ctop);
+
+  inst->par("child_width") <<= par;
+  inst->prt_arr("arr")->Append() <<= a;
+  inst->prt_arr("arr")->Append() <<= b;
+
+  auto generated = GenerateDebugOutput(top);
+  auto expected =
+      "library ieee;\n"
+      "use ieee.std_logic_1164.all;\n"
+      "use ieee.numeric_std.all;\n"
+      "\n"
+      "entity top is\n"
+      "  generic (\n"
+      "    TOP_WIDTH : integer := 8\n"
+      "  );\n"
+      "  port (\n"
+      "    a : in std_logic_vector(TOP_WIDTH-1 downto 0);\n"
+      "    b : in std_logic_vector(TOP_WIDTH-1 downto 0)\n"
+      "  );\n"
+      "end entity;\n"
+      "\n"
+      "architecture Implementation of top is\n"
+      "  component child is\n"
+      "    generic (\n"
+      "      CHILD_WIDTH : integer := 2;\n"
+      "      SIZE        : integer := 0\n"
+      "    );\n"
+      "    port (\n"
+      "      arr : in std_logic_vector(SIZE*CHILD_WIDTH-1 downto 0)\n"
+      "    );\n"
+      "  end component;\n"
+      "\n"
+      "  signal child_inst_arr : std_logic_vector(2*TOP_WIDTH-1 downto 0);\n"
+      "\n"
+      "begin\n"
+      "  child_inst_arr(top_width-1 downto 0)                   <= a;\n"
+      "  child_inst_arr(top_width+top_width-1 downto top_width) <= b;\n"
+      "\n"
+      "  child_inst : child\n"
+      "    generic map (\n"
+      "      CHILD_WIDTH => TOP_WIDTH,\n"
+      "      SIZE        => 2\n"
+      "    )\n"
+      "    port map (\n"
+      "      arr => child_inst_arr\n"
+      "    );\n"
+      "\n"
+      "end architecture;\n";
+
+  ASSERT_EQ(generated, expected);
+}
+
+
+TEST(VHDL_DESIGN, Example) {
+  default_component_pool()->Clear();
+  GenerateDebugOutput(GetExampleDesign());
+}
+
 }  // namespace cerata

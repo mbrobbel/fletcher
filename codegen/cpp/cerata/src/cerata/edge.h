@@ -101,16 +101,13 @@ std::shared_ptr<Edge> Connect(const std::shared_ptr<Node> &dst, const std::share
 std::shared_ptr<Edge> Connect(Node *dst, std::string str);
 
 // Connect operators:
+
 /// @brief Create an edge, connecting the src node to the dst node.
 std::shared_ptr<Edge> operator<<=(Node *dst, const std::shared_ptr<Node> &src);
 /// @brief Create an edge, connecting the src node to the dst node.
-std::shared_ptr<Edge> operator<<=(const std::weak_ptr<Node> &dst, Node *src);
-/// @brief Create an edge, connecting the src node to the dst node.
-std::shared_ptr<Edge> operator<<=(const std::weak_ptr<Node> &dst, const std::weak_ptr<Node> &src);
-/// @brief Create an edge, connecting the src node to the dst node.
-std::shared_ptr<Edge> operator<<=(const std::weak_ptr<Node> &dst, const std::shared_ptr<Node> &src);
-/// @brief Create an edge, connecting the src node to the dst node.
 std::shared_ptr<Edge> operator<<=(const std::shared_ptr<Node> &dst, const std::shared_ptr<Node> &src);
+/// @brief Create an edge, connecting the src node to the dst node.
+std::shared_ptr<Edge> operator<<=(const std::shared_ptr<Node> &dst, Node *src);
 
 /// @brief Obtain all edges in a graph.
 std::vector<Edge *> GetAllEdges(const Graph &graph);

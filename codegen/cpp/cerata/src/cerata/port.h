@@ -30,7 +30,7 @@ class Term {
   enum Dir { IN, OUT };
 
   /// @brief Return the inverse of a direction.
-  static Dir Invert(Dir dir);
+  static Dir Reverse(Dir dir);
 
   /// @brief Return the direction of this terminator.
   [[nodiscard]] inline Dir dir() const { return dir_; }
@@ -61,7 +61,7 @@ class Port : public NormalNode, public Synchronous, public Term {
   /// @brief Deep-copy the port.
   std::shared_ptr<Object> Copy() const override;
   /// @brief Invert the direction of this port. Removes any edges.
-  Port &InvertDirection();
+  Port &Reverse();
 
   std::string ToString() const override;
 };

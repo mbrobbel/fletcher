@@ -41,11 +41,11 @@ std::shared_ptr<Object> Port::Copy() const {
 Port::Port(std::string name, std::shared_ptr<Type> type, Term::Dir dir, std::shared_ptr<ClockDomain> domain)
     : NormalNode(std::move(name), Node::NodeID::PORT, std::move(type)), Synchronous(std::move(domain)), Term(dir) {}
 
-Port &Port::InvertDirection() {
+Port &Port::Reverse() {
   for (auto &e : edges()) {
     RemoveEdge(e);
   }
-  dir_ = Term::Invert(dir_);
+  dir_ = Term::Reverse(dir_);
   return *this;
 }
 
@@ -61,7 +61,7 @@ std::string Term::str(Term::Dir dir) {
   return "corrupt";
 }
 
-Term::Dir Term::Invert(Term::Dir dir) {
+Term::Dir Term::Reverse(Term::Dir dir) {
   switch (dir) {
     case IN: return OUT;
     case OUT: return IN;

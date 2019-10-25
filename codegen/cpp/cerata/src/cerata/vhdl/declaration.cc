@@ -92,7 +92,7 @@ Block Decl::Generate(const Port &port, int depth) {
     auto port_name_prefix = port.name();
     l << ft.name(NamePart(port_name_prefix, true)) << " : ";
     if (ft.reverse_) {
-      l << ToString(Term::Invert(port.dir())) + " ";
+      l << ToString(Term::Reverse(port.dir())) + " ";
     } else {
       l << ToString(port.dir()) + " ";
     }
@@ -132,7 +132,7 @@ Block Decl::Generate(const PortArray &port_array, int depth) {
     auto port_name_prefix = port_array.name();
     l << ft.name(NamePart(port_name_prefix, true)) << " : ";
     if (ft.reverse_) {
-      l << ToString(Term::Invert(port_array.dir())) + " ";
+      l << ToString(Term::Reverse(port_array.dir())) + " ";
     } else {
       l << ToString(port_array.dir()) + " ";
     }

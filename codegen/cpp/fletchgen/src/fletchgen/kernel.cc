@@ -32,7 +32,7 @@ static void CopyFieldPorts(Component *kernel, const RecordBatch &record_batch, F
   for (const auto &fp : field_ports) {
     // Create a copy and invert for the Kernel
     auto copied_port = dynamic_cast<FieldPort *>(fp->CopyOnto(kernel, fp->name(), &rebinding));
-    copied_port->InvertDirection();
+    copied_port->Reverse();
   }
 }
 
@@ -62,7 +62,7 @@ Kernel::Kernel(std::string name,
       // Next, make a simplified version of the command stream for the kernel user.
       auto kernel_cmd =
           command_port(rb_cmd->fletcher_schema_, rb_cmd->field_, iw, tw, std::nullopt, kernel_cd());
-      kernel_cmd->InvertDirection();
+      kernel_cmd->Reverse();
       Add(kernel_cmd);
     }
   }
@@ -74,7 +74,7 @@ Kernel::Kernel(std::string name,
     if (mmio_port != nullptr) {
       if (ExposeToKernel(mmio_port->reg.function)) {
         auto kernel_port = std::dynamic_pointer_cast<MmioPort>(p->Copy());
-        kernel_port->InvertDirection();
+        kernel_port->Reverse();
         kernel_port->SetName(mmio_port->reg.name);
         Add(kernel_port);
       }

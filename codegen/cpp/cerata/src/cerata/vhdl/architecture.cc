@@ -113,6 +113,9 @@ static Block GenerateMappingPair(const MappingPair &p,
                                  bool b_is_array) {
   Block ret;
 
+  if (lh_prefix == "WRAW64DW512LW8BS1BM16_inst_bsv") {
+    std::cerr << "a off: " << offset_a->ToString() << " b off: " << offset_b->ToString() << std::endl;
+  }
   std::shared_ptr<Node> next_offset_a;
   std::shared_ptr<Node> next_offset_b;
 
@@ -191,13 +194,19 @@ static Block GenerateAssignmentPair(std::vector<MappingPair> pairs, const Node &
   // Loop over all pairs
   for (const auto &pair : pairs) {
     // Offset on the right side
-    std::shared_ptr<Node> b_offset = pair.width_a(intl(1)) * intl(b_idx);
+    std::shared_ptr<Node> b_offset = pair.width_a(intl(1)) * b_idx;
     // Loop over everything on the left side
     for (int64_t ia = 0; ia < pair.num_a(); ia++) {
       // Get the width of the left side.
       auto a_width = pair.flat_type_a(ia).type_->width();
       // Offset on the left side.
-      std::shared_ptr<Node> a_offset = pair.width_b(intl(1)) * intl(a_idx);
+      auto pwb = pair.width_b(intl(1));
+      std::cerr << "PWB: " << pwb->ToString() << std::endl;
+      auto expr = pwb * a_idx;
+      if (expr->ToString() == "BUS_DATA_WIDTH*8") {
+        std::cerr << "WHYYYYYYYY" << std::endl;
+      }
+      std::shared_ptr<Node> a_offset = pair.width_b(intl(1)) * a_idx;
       for (int64_t ib = 0; ib < pair.num_b(); ib++) {
         // Get the width of the right side.
         auto b_width = pair.flat_type_b(ib).type_->width();

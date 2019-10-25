@@ -91,7 +91,7 @@ Component *bus_arbiter(BusFunction function) {
   result->Remove(params.bs.get());
   result->Remove(params.bm.get());
 
-  auto num_slv = parameter("NUM_SLAVE_PORTS", integer(), intl(0));
+  auto num_slv = parameter("NUM_SLAVE_PORTS", 0);
 
   result->Add(num_slv);
 
@@ -111,9 +111,9 @@ Component *bus_arbiter(BusFunction function) {
   // Master port
   auto mst = bus_port("mst", Port::Dir::OUT, spec);
   // Slave ports
-  auto slv_base = std::dynamic_pointer_cast<BusPort>(mst->Copy());
+  auto slv_base = bus_port("slv", Port::Dir::OUT, spec);
   slv_base->SetName("bsv");
-  slv_base->InvertDirection();
+  slv_base->Reverse();
   auto slv_arr = port_array(slv_base, num_slv);
   // Add all ports.
   result->Add({clk_rst, mst, slv_arr});

@@ -132,11 +132,7 @@ NodeArray::NodeArray(std::string name, Node::NodeID id, std::shared_ptr<Node> ba
 }
 
 std::shared_ptr<Object> NodeArray::Copy() const {
-  auto p = parent();
   auto ret = std::make_shared<NodeArray>(name(), node_id_, base_, intl(0));
-  if (p) {
-    ret->SetParent(*p);
-  }
   return ret;
 }
 

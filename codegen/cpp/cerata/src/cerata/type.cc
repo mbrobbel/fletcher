@@ -160,6 +160,27 @@ bool Type::IsEqual(const Type &other) const {
   return other.id() == id_;
 }
 
+std::shared_ptr<Type> Type::operator()(std::vector<Node *> nodes) {
+  auto generics = GetGenerics();
+
+  if (nodes.size() != generics.size()) {
+    CERATA_LOG(ERROR, "Type contains " + std::to_string(generics.size())
+        + " generics, but only " + std::to_string(nodes.size())
+        + " arguments were supplied.");
+  }
+
+  NodeMap map;
+  for (size_t i = 0; i < generics.size(); i++) {
+    map[generics[i]] = nodes[i];
+  }
+
+  return Copy(map);
+}
+
+std::shared_ptr<Type> Type::operator()(std::vector<std::shared_ptr<Node>> nodes) {
+  return this->operator()(ToRawPointers(nodes));
+}
+
 Vector::Vector(std::string name, const std::shared_ptr<Node> &width)
     : Type(std::move(name), Type::VECTOR) {
   // Sanity check the width generic node.
@@ -204,7 +225,11 @@ bool Vector::IsEqual(const Type &other) const {
 }
 
 std::vector<Node *> Vector::GetGenerics() const {
-  return {width_.get()};
+  if (!width_->IsLiteral()) {
+    return {width_.get()};
+  } else {
+    return {};
+  }
 }
 
 Type &Vector::SetWidth(std::shared_ptr<Node> width) {
@@ -429,6 +454,6 @@ Field *Record::at(size_t i) const {
   return fields_[i].get();
 }
 
-Field *Record::operator()(size_t i) const { return at(i); }
+Field *Record::operator[](size_t i) const { return at(i); }
 
 }  // namespace cerata

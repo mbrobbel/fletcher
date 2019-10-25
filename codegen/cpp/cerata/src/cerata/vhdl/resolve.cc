@@ -29,7 +29,8 @@ namespace cerata::vhdl {
 
 static int ResolvePorts(Component *comp, Instance *inst, NodeMap *rebinding) {
   int i = 0;
-  for (const auto &port : inst->GetAll<Port>()) {
+  auto ports = inst->GetAll<Port>();
+  for (const auto &port : ports) {
     AttachSignalToNode(comp, port, rebinding);
     i++;
   }

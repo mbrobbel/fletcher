@@ -20,23 +20,28 @@
 
 namespace cerata {
 
-TEST(Nodes, ParamReferences) {
+TEST(Nodes, ParamTrace) {
   auto lit = strl("foo");
   auto a = parameter("a", string(), lit);
-  auto b = parameter("b", string(), a);
-  auto c = parameter("c", string(), b);
+  auto b = parameter("b", std::string("bdef"));
+  auto c = parameter("c", std::string("cdef"));
   auto expr = c * 2;
-  auto d = parameter("d", string(), expr);
+  auto d = parameter("d", std::string("ddef"));
 
-  std::vector<Object *> trace;
-  d->AppendReferences(&trace);
+  a <<= lit;
+  b <<= a;
+  c <<= b;
+  d <<= expr;
 
-  ASSERT_EQ(trace[0], expr.get());
-  ASSERT_EQ(trace[1], c.get());
-  ASSERT_EQ(trace[2], b.get());
-  ASSERT_EQ(trace[3], a.get());
-  ASSERT_EQ(trace[4], lit.get());
-  ASSERT_EQ(trace[5], rintl(2));
+  std::vector<Node *> trace;
+  d->TraceValue(&trace);
+
+  for (const auto &t : trace) {
+    std::cout << "T: " + t->ToString() << std::endl;
+  }
+
+  ASSERT_EQ(trace[0], d.get());
+  ASSERT_EQ(trace[1], expr.get());
 
 }
 

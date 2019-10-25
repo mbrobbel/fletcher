@@ -58,6 +58,8 @@ struct Design {
   std::vector<MmioReg> kernel_regs;
   /// Profiling registers.
   std::vector<MmioReg> profiling_regs;
+  /// All registers.
+  std::vector<MmioReg> all_regs;
 
   /// The RecordBatchDescriptions to use in SREC generation.
   std::vector<fletcher::RecordBatchDescription> batch_desc;

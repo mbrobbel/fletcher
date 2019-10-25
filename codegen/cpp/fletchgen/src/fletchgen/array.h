@@ -27,15 +27,16 @@ namespace fletchgen {
 using cerata::Component;
 using cerata::Instance;
 using cerata::intl;
+using cerata::Literal;
 
 // ArrayReader/Writer parameters:
 PARAM_DECL_FACTORY(index_width, 32)
 PARAM_DECL_FACTORY(tag_width, 1)
 
-/// @brief Return the width of the control data of this field.
-std::shared_ptr<Node> GetCtrlWidth(const arrow::Field &field, const std::shared_ptr<Node> &bus_address_width);
+/// @brief Return the number of buffers for the control field.
+int GetCtrlBufferCount(const arrow::Field &field);
 /// @brief Return the tag width of this field as a literal node. Settable through Arrow metadata. Default: 1.
-std::shared_ptr<Node> GetTagWidth(const arrow::Field &field);
+int GetTagWidth(const arrow::Field &field);
 
 // ArrayReader/Writer types:
 

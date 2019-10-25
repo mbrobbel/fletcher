@@ -29,7 +29,7 @@ namespace cerata {
 class Parameter : public NormalNode {
  public:
   /// @brief Construct a new Parameter, optionally defining a default value Literal.
-  Parameter(std::string name, const std::shared_ptr<Type> &type, std::shared_ptr<Node> default_value);
+  Parameter(std::string name, const std::shared_ptr<Type> &type, std::shared_ptr<Literal> default_value);
   /// @brief Create a copy of this Parameter.
   std::shared_ptr<Object> Copy() const override;
   /// @brief Return the value node.
@@ -37,18 +37,16 @@ class Parameter : public NormalNode {
   /// @brief Set the value of the parameter node. Can only be expression, parameter, or literal.
   Parameter *SetValue(const std::shared_ptr<Node> &value);
   /// @brief Append this node and nodes that source this node's value, until an expression or literal is encountered.
-  void TraceValue(std::vector<Node*>* trace);
+  void TraceValue(std::vector<Node *> *trace);
   /// @brief Return the default value node.
-  Node *default_value() { return default_value_.get(); }
-  /// @brief Return all objects that this parameter owns. This includes the value node and type generics.
-  void AppendReferences(std::vector<Object *> *out) const override;
+  Literal *default_value() { return default_value_.get(); }
 
   // TODO(johanpel): Work-around for parameters nodes that are size nodes of arrays.
   //  To prevent this, it requires a restructuring of node arrays.
   std::optional<NodeArray *> node_array_parent;
 
   /// Parameter value.
-  std::shared_ptr<Node> default_value_;
+  std::shared_ptr<Literal> default_value_;
 };
 
 /**
@@ -63,7 +61,7 @@ class Parameter : public NormalNode {
  */
 std::shared_ptr<Parameter> parameter(const std::string &name,
                                      const std::shared_ptr<Type> &type,
-                                     std::shared_ptr<Node> default_value = nullptr);
+                                     std::shared_ptr<Literal> default_value = nullptr);
 
 /// @brief Create a new integer-type parameter.
 std::shared_ptr<Parameter> parameter(const std::string &name, int default_value);

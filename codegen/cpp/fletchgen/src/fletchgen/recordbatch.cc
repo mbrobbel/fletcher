@@ -133,19 +133,23 @@ void RecordBatch::AddArrays(const std::shared_ptr<FletcherSchema> &fletcher_sche
 
       // Get the command stream and unlock stream ports and set their real type and connect.
       auto a_cmd = a->Get<Port>("cmd");
+      auto ct = cmd_type(iw,
+                         tw,
+                         a->par(bus_addr_width())->shared_from_this() * GetCtrlBufferCount(*field));
+      a_cmd->SetType(ct);
+
       auto aw = Get<Parameter>(prefix + "_" + bus_addr_width()->name())->shared_from_this();
       auto cmd = command_port(fletcher_schema, field, iw, tw, aw, kernel_cd());
       Connect(a_cmd, cmd);
       Add(cmd);
-      a_cmd->SetType(cmd_type(a->par(index_width())->shared_from_this(),
-                              a->par("CMD_TAG_WIDTH")->shared_from_this(),
-                              GetCtrlWidth(*field, a->par(bus_addr_width())->shared_from_this())));
 
       auto a_unl = a->Get<Port>("unl");
+      auto ut = unlock_type(a->par("CMD_TAG_WIDTH")->shared_from_this());
+      a_unl->SetType(ut);
+
       auto unl = unlock_port(fletcher_schema, field, tw, kernel_cd());
       Connect(unl, a_unl);
       Add(unl);
-      a_unl->SetType(unlock_type(a->par("CMD_TAG_WIDTH")->shared_from_this()));
     }
   }
 }
@@ -196,26 +200,22 @@ std::shared_ptr<FieldPort> arrow_port(const std::shared_ptr<FletcherSchema> &fle
                                       const std::shared_ptr<arrow::Field> &field,
                                       bool invert,
                                       const std::shared_ptr<ClockDomain> &domain) {
+  auto name = fletcher_schema->name() + "_" + field->name();
+  auto type = GetStreamType(*field, fletcher_schema->mode());
   Port::Dir dir;
   if (invert) {
-    dir = Term::Invert(mode2dir(fletcher_schema->mode()));
+    dir = Term::Reverse(mode2dir(fletcher_schema->mode()));
   } else {
     dir = mode2dir(fletcher_schema->mode());
   }
   // Check if the Arrow data stream should be profiled. This is disabled by default but can be conveyed through
   // the schema.
   bool profile = fletcher::GetBoolMeta(*field, fletcher::meta::PROFILE, false);
-  return std::make_shared<FieldPort>(fletcher_schema->name() + "_" + field->name(),
-                                     FieldPort::ARROW,
-                                     field,
-                                     fletcher_schema,
-                                     GetStreamType(*field, fletcher_schema->mode()),
-                                     dir,
-                                     domain,
-                                     profile);
+
+  return std::make_shared<FieldPort>(name, FieldPort::ARROW, field, fletcher_schema, type, dir, domain, profile);
 }
 
-std::shared_ptr<FieldPort> command_port(const std::shared_ptr<FletcherSchema> &fletcher_schema,
+std::shared_ptr<FieldPort> command_port(const std::shared_ptr<FletcherSchema> &schema,
                                         const std::shared_ptr<arrow::Field> &field,
                                         const std::shared_ptr<Node> &index_width,
                                         const std::shared_ptr<Node> &tag_width,
@@ -223,26 +223,23 @@ std::shared_ptr<FieldPort> command_port(const std::shared_ptr<FletcherSchema> &f
                                         const std::shared_ptr<ClockDomain> &domain) {
   std::shared_ptr<cerata::Type> type;
   if (addr_width) {
-    type = cmd_type(index_width, tag_width, GetCtrlWidth(*field, *addr_width));
+    type = cmd_type(index_width, tag_width, *addr_width * GetCtrlBufferCount(*field));
   } else {
-    type = cmd_type(index_width, GetTagWidth(*field));
+    type = cmd_type(index_width, tag_width);
   }
-  return std::make_shared<FieldPort>(fletcher_schema->name() + "_" + field->name() + "_cmd",
-                                     FieldPort::COMMAND, field, fletcher_schema, type, Port::Dir::IN, domain, false);
+  auto name = schema->name() + "_" + field->name() + "_cmd";
+
+  return std::make_shared<FieldPort>(name, FieldPort::COMMAND, field, schema, type, Port::Dir::IN, domain, false);
 }
 
-std::shared_ptr<FieldPort> unlock_port(const std::shared_ptr<FletcherSchema> &fletcher_schema,
+std::shared_ptr<FieldPort> unlock_port(const std::shared_ptr<FletcherSchema> &schema,
                                        const std::shared_ptr<arrow::Field> &field,
                                        const std::shared_ptr<Node> &tag_width,
                                        const std::shared_ptr<ClockDomain> &domain) {
-  return std::make_shared<FieldPort>(fletcher_schema->name() + "_" + field->name() + "_unl",
-                                     FieldPort::UNLOCK,
-                                     field,
-                                     fletcher_schema,
-                                     unlock_type(tag_width),
-                                     Port::Dir::OUT,
-                                     domain,
-                                     false);
+  auto type = unlock_type(tag_width);
+  auto name = schema->name() + "_" + field->name() + "_unl";
+
+  return std::make_shared<FieldPort>(name, FieldPort::UNLOCK, field, schema, type, Port::Dir::OUT, domain, false);
 }
 
 std::shared_ptr<Node> FieldPort::data_width() {

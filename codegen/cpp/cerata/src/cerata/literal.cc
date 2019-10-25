@@ -54,4 +54,8 @@ std::shared_ptr<Object> Literal::Copy() const {
   }
 }
 
+void Literal::SetParent(Graph *graph) {
+  parent_ = std::nullopt;
+}
+
 }  // namespace cerata

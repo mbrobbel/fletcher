@@ -18,6 +18,7 @@
 #include <fletcher/common.h>
 
 #include <fstream>
+#include <thread>
 
 #include "fletchgen/options.h"
 #include "fletchgen/design.h"
@@ -54,10 +55,15 @@ int fletchgen(int argc, char **argv) {
 
   // Generate designs in Cerata
   if (!options->MustGenerateDesign()) {
-    FLETCHER_LOG(ERROR, "No schemas detected. Cannot generate design.");
+    FLETCHER_LOG(INFO, "No schemas or recordbatches were supplied. No design was generated.");
+    exit(0);
   }
 
+  // Generate the whole Cerata design.
   fletchgen::Design design(options);
+  // Run vhdmmio to generate the mmio infrastructure.
+  std::thread vhdmmio(Design::RunVhdmmio, design.all_regs);
+
 
   // Generate SREC output
   if (options->MustGenerateSREC()) {
@@ -125,6 +131,12 @@ int fletchgen(int argc, char **argv) {
     hls_template_file << fletchgen::hls::GenerateVivadoHLSTemplate(*design.kernel);
     */
   }
+
+  // Wait for vhdmmio.
+  if (!vhdmmio.joinable()) {
+    FLETCHER_LOG(INFO, "Waiting for vhdmmio to complete...");
+  }
+  vhdmmio.join();
 
   FLETCHER_LOG(INFO, program_name + " completed.");
 

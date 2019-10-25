@@ -24,21 +24,22 @@
 namespace cerata {
 
 std::shared_ptr<Component> GetTypeExpansionComponent() {
-  auto width = parameter("width", integer(), intl(8));
-  auto vec_type = vector("data", width);
-  auto rec_type = record("rec_type", {
-      field("cerata", vec_type),
-      field("is", vec_type),
-      field("awesome", vec_type)
-  });
-  auto stream_type = stream("stream_type", rec_type);
-  auto data_in = port("data", stream_type, Port::Dir::IN);
-  auto data_out = port("data", stream_type, Port::Dir::OUT);
-  auto foo = component("foo", {width, data_in});
-  auto bar = component("bar", {width, data_out});
+  auto w1 = parameter("width", integer(), intl(8));
+  auto w2 = parameter("width", integer(), intl(8));
+  NodeMap rb;
+  rb[w1.get()] = w2.get();
+  auto vec = vector("data", w1);
+  auto rec = record({field("cerata", vec),
+                     field("is", vec),
+                     field("awesome", vec)});
+  auto str = stream(rec);
+  auto data_in = port("data", str, Port::Dir::IN);
+  auto data_out = port("data", str->Copy(rb), Port::Dir::OUT);
+  auto foo = component("foo", {w1, data_in});
+  auto bar = component("bar", {w2, data_out});
   auto top = component("top");
-  auto foo_inst = top->Instantiate(foo.get(), "foo");
-  auto bar_inst = top->Instantiate(bar.get(), "bar");
+  auto foo_inst = top->Instantiate(foo, "foo");
+  auto bar_inst = top->Instantiate(bar, "bar");
   Connect(foo_inst->prt("data"), bar_inst->prt("data"));
   return top;
 }
@@ -244,37 +245,28 @@ std::shared_ptr<Component> GetAllPortTypesComponent() {
 }
 
 std::shared_ptr<Component> GetExampleDesign() {
-  auto vec_width = parameter("vec_width", integer(), intl(32));
-  // Construct a deeply nested type to showcase Cerata's capabilities.
-  auto my_type = record("my_record_type", {field("bit", bit()),
-                                           field("vec", vector("param_vec", vec_width)),
-                                           field("stream",
-                                                 stream("d", record("other_rec_type", {
-                                                     field("substream",
-                                                           stream(vector(32))),
-                                                     field("int", integer())})))});
+  auto xw = parameter("width", 32);
+  auto rec = record({field("bit", bit()),
+                     field("vec", vector(xw)),
+                     field("parent", stream("child",
+                         stream("data", vector(32))))});
 
-  // Construct two components with a port made from these types
-  auto my_array_size = parameter("array_size", integer());
-  auto my_comp = component("my_comp", {vec_width,
-                                       my_array_size,
-                                       port_array("my_array", my_type, my_array_size, Port::OUT)});
+  auto size = parameter("array_size", 0);
+  auto x = component("x", {xw, size, port_array("a", rec, size, Port::OUT)});
 
-  auto my_other_comp = component("my_other_comp", {vec_width,
-                                                   port("my_port", my_type, Port::IN)});
+  auto yw = parameter("width", 32);
+  auto y = component("y", {yw, port("b", (*rec)({yw}), Port::IN)});
 
-  // Create a top level and add instances of each component
-  auto my_top = component("my_top_level");
-  auto my_inst = my_top->Instantiate(my_comp.get());
+  auto top = component("top");
+  auto xi = top->Instantiate(x);
 
-  // Create a bunch of instances and connect to other component
-  std::vector<Instance *> my_other_instances;
-  for (int i = 0; i < 10; i++) {
-    my_other_instances.push_back(my_top->Instantiate(my_other_comp.get(), "my_inst_" + std::to_string(i)));
-    Connect(my_other_instances[i]->prt("my_port"), my_inst->prt_arr("my_array")->Append());
+  std::vector<Instance *> yis;
+  for (int i = 0; i < 3; i++) {
+    auto yi = top->Instantiate(y);
+    Connect(yi->prt("b"), xi->prt_arr("a")->Append());
   }
 
-  return my_top;
+  return top;
 }
 
 }  // namespace cerata

@@ -68,8 +68,8 @@ Mantle::Mantle(std::string name,
   nucleus_inst_->prt("kcd") <<= kcr;
   nucleus_inst_->prt("mmio") <<= axi;
 
-  Connect(nucleus_inst_->par(tag_width()), par(tag_width()));
-  Connect(nucleus_inst_->par(index_width()), par(index_width()));
+  nucleus_inst_->par("INDEX_WIDTH")->SetValue(iw);
+  nucleus_inst_->par("TAG_WIDTH")->SetValue(tw);
 
   // Handle RecordBatches.
   // We've instantiated the Nucleus, and now we should feed it with data from the RecordBatch components.
@@ -89,8 +89,8 @@ Mantle::Mantle(std::string name,
     rbi->prt("bcd") <<= bcr;
     rbi->prt("kcd") <<= kcr;
 
-    rbi->par(index_width()) <<= iw;
-    rbi->par(tag_width()) <<= tw;
+    rbi->par("INDEX_WIDTH")->SetValue(iw);
+    rbi->par("TAG_WIDTH")->SetValue(tw);
 
     // Look up its bus ports and remember them.
     auto rbi_bus_ports = rbi->GetAll<BusPort>();

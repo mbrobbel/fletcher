@@ -43,17 +43,15 @@ using fletcher::Mode;
 PARAM_FACTORY(index_width)
 PARAM_FACTORY(tag_width)
 
-std::shared_ptr<Node> GetCtrlWidth(const arrow::Field &field, const std::shared_ptr<Node> &bus_address_width) {
+int GetCtrlBufferCount(const arrow::Field &field) {
   fletcher::FieldMetadata field_meta;
   fletcher::FieldAnalyzer fa(&field_meta);
   fa.Analyze(field);
-  std::shared_ptr<Node> width = intl(field_meta.buffers.size());
-  return width * bus_address_width;
+  return field_meta.buffers.size();
 }
 
-std::shared_ptr<Node> GetTagWidth(const arrow::Field &field) {
-  auto meta_val = fletcher::GetIntMeta(field, fletcher::meta::TAG_WIDTH, 1);
-  return intl(meta_val);
+int GetTagWidth(const arrow::Field &field) {
+  return fletcher::GetIntMeta(field, fletcher::meta::TAG_WIDTH, 1);
 }
 
 std::shared_ptr<Type> cmd_type(const std::shared_ptr<Node> &index_width,

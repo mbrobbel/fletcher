@@ -163,30 +163,25 @@ TYPE_STRINGIFICATION_FACTORY(Expression)
 
 bool MultiOutputNode::AddEdge(const std::shared_ptr<Edge> &edge) {
   bool success = false;
-  // Check if this edge has a source
-  if (edge->src()) {
-    // Check if the source is this node
-    if (edge->src() == this) {
-      // Check if this node does not already contain this edge
-      if (!Contains(outputs_, edge)) {
-        // Add the edge to this node
-        outputs_.push_back(edge);
-        success = true;
-      }
+  // Check if the source is this node
+  if (edge->src() == this) {
+    // Check if this node does not already contain this edge
+    if (!Contains(outputs_, edge)) {
+      // Add the edge to this node
+      outputs_.push_back(edge);
+      success = true;
     }
   }
   return success;
 }
 
 bool MultiOutputNode::RemoveEdge(Edge *edge) {
-  if (edge->src()) {
-    if (edge->src() == this) {
-      // This node sources the edge.
-      for (auto i = outputs_.begin(); i < outputs_.end(); i++) {
-        if (i->get() == edge) {
-          outputs_.erase(i);
-          return true;
-        }
+  if (edge->src() == this) {
+    // This node sources the edge.
+    for (auto i = outputs_.begin(); i < outputs_.end(); i++) {
+      if (i->get() == edge) {
+        outputs_.erase(i);
+        return true;
       }
     }
   }

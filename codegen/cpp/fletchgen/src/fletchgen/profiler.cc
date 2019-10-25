@@ -151,31 +151,27 @@ NodeProfilerPorts EnableStreamProfiling(cerata::Component *comp,
             + ", sub-stream " + std::to_string(s)
             + " of flattened type " + node->type()->name()
             + " index " + std::to_string(fti) + ".");
-        auto domain = GetDomain(*node);
-        if (!domain) {
-          throw std::runtime_error("No clock domain specified for stream of node ["
-                                       + node->name() + "] on component ["
-                                       + comp->name() + ".");
-        }
-        auto cr_node = GetClockResetPort(comp, **domain);
+        // Signal must have domain, so we should be able to immediately get optional value.
+        auto domain = *GetDomain(*node);
+        auto cr_node = GetClockResetPort(comp, *domain);
         if (!cr_node) {
           throw std::runtime_error("No clock/reset port present on component [" + comp->name()
-                                       + "] for clock domain [" + (*domain)->name()
+                                       + "] for clock domain [" + domain->name()
                                        + "] of stream node [" + node->name() + "].");
         }
 
         // Instantiate a profiler.
         std::string name = flat_types[fti].name(cerata::NamePart(node->name(), true));
-        auto profiler_inst = comp->Instantiate(profiler(), name + "_inst");
+        auto profiler_inst = comp->Instantiate(profiler(), profiler()->name() + "_" + name + "_inst");
+        // Set the domain of all ports.
+        for (auto& p : profiler_inst->GetAll<Port>()) {
+          p->SetDomain(domain);
+        }
 
         // Obtain profiler ports.
         auto p_probe = profiler_inst->prt("probe");
         auto p_cr = profiler_inst->prt("pcd");
         auto p_in_count_width = profiler_inst->par("PROBE_COUNT_WIDTH");
-
-        // Set clock domain.
-        p_probe->SetDomain(*domain);
-        p_cr->SetDomain(*domain);
 
         // Set up a type mapper.
         auto mapper = TypeMapper::Make(node->type(), p_probe->type());
@@ -218,9 +214,6 @@ NodeProfilerPorts EnableStreamProfiling(cerata::Component *comp,
                                               profiler_inst->prt("vcount"),
                                               profiler_inst->prt("tcount"),
                                               profiler_inst->prt("pcount")});
-        for (auto &p : new_ports) {
-          p->SetDomain(*domain);
-        }
 
         if (result.count(node) == 0) {
           // We need to create a new entry.

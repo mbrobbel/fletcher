@@ -57,10 +57,10 @@ struct FieldPort : public Port {
     UNLOCK      ///< Port that signals the kernel a command was completed.
   } function_;  ///< The function of this FieldPort.
 
-  /// The Arrow field this port was derived from.
-  std::shared_ptr<arrow::Field> field_;
   /// The Fletcher schema this port was derived from.
   std::shared_ptr<FletcherSchema> fletcher_schema_;
+  /// The Arrow field this port was derived from.
+  std::shared_ptr<arrow::Field> field_;
   /// Whether this field port should be profiled.
   bool profile_ = false;
 
@@ -85,8 +85,8 @@ struct FieldPort : public Port {
             bool profile)
       : Port(std::move(name), std::move(type), dir, std::move(domain)),
         function_(function),
-        field_(std::move(field)),
         fletcher_schema_(std::move(fletcher_schema)),
+        field_(std::move(field)),
         profile_(profile) {}
 
   /// @brief Create a deep-copy of the FieldPort.
@@ -111,7 +111,7 @@ std::shared_ptr<FieldPort> arrow_port(const std::shared_ptr<FletcherSchema> &fle
                                       const std::shared_ptr<ClockDomain> &domain = default_domain());
 /**
  * @brief Construct a field-derived command port.
- * @param fletcher_schema  The Fletcher-derived schema.
+ * @param schema  The Fletcher-derived schema.
  * @param field            The Arrow field to derive the port from.
  * @param index_width      Type generic node for index field width.
  * @param tag_width        Type generic node for tag field width.
@@ -120,7 +120,7 @@ std::shared_ptr<FieldPort> arrow_port(const std::shared_ptr<FletcherSchema> &fle
  * @param domain           The clock domain.
  * @return                 A shared pointer to a new FieldPort.
  */
-std::shared_ptr<FieldPort> command_port(const std::shared_ptr<FletcherSchema> &fletcher_schema,
+std::shared_ptr<FieldPort> command_port(const std::shared_ptr<FletcherSchema> &schema,
                                         const std::shared_ptr<arrow::Field> &field,
                                         const std::shared_ptr<Node> &index_width,
                                         const std::shared_ptr<Node> &tag_width,
@@ -129,12 +129,12 @@ std::shared_ptr<FieldPort> command_port(const std::shared_ptr<FletcherSchema> &f
 
 /**
  * @brief Construct a field-derived unlock port.
- * @param fletcher_schema  The Fletcher-derived schema.
+ * @param schema  The Fletcher-derived schema.
  * @param field            The Arrow field to derive the port from.
  * @param domain           The clock domain.
  * @return                 A shared pointer to a new FieldPort.
  */
-std::shared_ptr<FieldPort> unlock_port(const std::shared_ptr<FletcherSchema> &fletcher_schema,
+std::shared_ptr<FieldPort> unlock_port(const std::shared_ptr<FletcherSchema> &schema,
                                        const std::shared_ptr<arrow::Field> &field,
                                        const std::shared_ptr<Node> &tag_width,
                                        const std::shared_ptr<ClockDomain> &domain = default_domain());

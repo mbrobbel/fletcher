@@ -34,7 +34,7 @@ using cerata::Object;
 // Bus channel constructs.
 PARAM_DECL_FACTORY(bus_addr_width, 64)
 PARAM_DECL_FACTORY(bus_data_width, 512)
-PARAM_DECL_FACTORY(bus_strobe_width, 512/8) // to be removed
+PARAM_DECL_FACTORY(bus_strobe_width, 512 / 8) // to be removed
 PARAM_DECL_FACTORY(bus_len_width, 8)
 PARAM_DECL_FACTORY(bus_burst_step_len, 4)
 PARAM_DECL_FACTORY(bus_burst_max_len, 16)

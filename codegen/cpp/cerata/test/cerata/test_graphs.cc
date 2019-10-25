@@ -17,6 +17,7 @@
 #include <string>
 
 #include "cerata/api.h"
+#include "cerata/test_utils.h"
 
 namespace cerata {
 
@@ -48,8 +49,7 @@ TEST(Instances, NodeMap) {
 
   ASSERT_EQ(refs[0], map->at(exp.get()));  // Should be the rebound expression:  expr *
   ASSERT_EQ(refs[1], inst->par("par"));   // Should be the rebound parameter :  - par
-  ASSERT_EQ(refs[2], rintl(8));           // Should be the literal 8         :    - 8
-  ASSERT_EQ(refs[3], rintl(2));           // Should be the literal 2         :  - 2
+  ASSERT_EQ(refs[2], rintl(2));           // Should be the literal 2         :  - 2
 
   // Signals, expressions and literals shouldn't be on the instance graph.
   ASSERT_EQ(map->count(sig.get()), 0);
@@ -79,18 +79,10 @@ TEST(Instances, NodeArrayMap) {
   std::vector<Object *> refs;
   inst->prt_arr("prt")->AppendReferences(&refs);
 
-  for (const auto &r : refs) {
-    std::cout << dynamic_cast<Node*>(r)->ToString() << std::endl;
-  }
-
-  std::cout << exp->ToString() << std::endl;
-
   ASSERT_EQ(refs[0], map->at(size.get())); // Should be the size parameter node  : size
-  ASSERT_EQ(refs[1], rintl(0));            // Should be the size value node      : 0
-  ASSERT_EQ(refs[2], map->at(exp.get()));  // Should be the rebound expression   : expr *
-  ASSERT_EQ(refs[3], inst->par("par"));    // Should be the rebound parameter    : - par
-  ASSERT_EQ(refs[4], rintl(8));            // Should be the literal 8            :   - 8
-  ASSERT_EQ(refs[5], rintl(2));            // Should be the literal 2            : - 2
+  ASSERT_EQ(refs[1], map->at(exp.get()));  // Should be the rebound expression   : expr *
+  ASSERT_EQ(refs[2], inst->par("par"));    // Should be the rebound parameter    : - par
+  ASSERT_EQ(refs[3], rintl(2));            // Should be the literal 2            : - 2
 
   // Signals, expressions and literals shouldn't be on the instance graph.
   ASSERT_EQ(map->count(sig.get()), 0);

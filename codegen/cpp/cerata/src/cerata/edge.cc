@@ -115,6 +115,10 @@ std::shared_ptr<Edge> Connect(Node *dst, Node *src) {
       // We must do this because otherwise, if we e.g. attach signals to instance ports, the signal type generics
       // could be bound to the instance parameter. They should be rebound to the source of the parameter.
       auto map = dynamic_cast<Component *>(ip->parent())->inst_to_comp_map();
+      if (src->IsExpression()) {
+        // bla
+        std::cerr << "expr" << std::endl;
+      }
       (*map)[dst] = src;
     }
   }
@@ -168,20 +172,12 @@ std::shared_ptr<Edge> operator<<=(Node *dst, const std::shared_ptr<Node> &src) {
   return Connect(dst, src.get());
 }
 
-std::shared_ptr<Edge> operator<<=(const std::weak_ptr<Node> &dst, const std::weak_ptr<Node> &src) {
-  return Connect(dst.lock().get(), src.lock().get());
-}
-
-std::shared_ptr<Edge> operator<<=(const std::weak_ptr<Node> &dst, const std::shared_ptr<Node> &src) {
-  return Connect(dst.lock().get(), src.get());
-}
-
 std::shared_ptr<Edge> operator<<=(const std::shared_ptr<Node> &dst, const std::shared_ptr<Node> &src) {
   return Connect(dst.get(), src.get());
 }
 
-std::shared_ptr<Edge> operator<<=(const std::weak_ptr<Node> &dst, Node *src) {
-  return Connect(dst.lock().get(), src);
+std::shared_ptr<Edge> operator<<=(const std::shared_ptr<Node> &dst, Node *src) {
+  return Connect(dst.get(), src);
 }
 
 std::vector<Edge *> GetAllEdges(const Graph &graph) {

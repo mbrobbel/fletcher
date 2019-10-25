@@ -33,7 +33,11 @@ static std::string ToString(std::shared_ptr<Node> n) {
 
 std::shared_ptr<Expression> Expression::Make(Op op, std::shared_ptr<Node> lhs, std::shared_ptr<Node> rhs) {
   auto e = new Expression(op, std::move(lhs), std::move(rhs));
-  return std::shared_ptr<Expression>(e);
+  auto result = std::shared_ptr<Expression>(e);
+  if (e->parent()) {
+    e->parent().value()->Add(result);
+  }
+  return result;
 }
 
 // Hash the the node pointers into a short string.
@@ -41,25 +45,30 @@ static std::string GenerateName(Expression *expr, std::shared_ptr<Node> lhs, std
   auto l = ::cerata::ToString(lhs);
   auto e = ::cerata::ToString(expr);
   auto r = ::cerata::ToString(rhs);
-#ifndef NDEBUG
-  // For debugging, make a tiny but somewhat readable string out of the addresses.
-  std::string result = "Expr_ABCDEFGHIJKLMNOP";
-  for (size_t i = 0; i < l.size(); i++) {
-    result[5 + i % 16] = static_cast<char>(65 + (l[i] ^ e[i] ^ r[i]) % 26);
-  }
-#else
   std::string result = "Expr_" + l + e + r;
-#endif
   return result;
 }
 
 Expression::Expression(Expression::Op op, std::shared_ptr<Node> lhs, std::shared_ptr<Node> rhs)
-    : MultiOutputNode(GenerateName(this, lhs, rhs),
-                      NodeID::EXPRESSION,
-                      string()),
+    : MultiOutputNode(GenerateName(this, lhs, rhs), NodeID::EXPRESSION, string()),
       operation_(op),
       lhs_(std::move(lhs)),
-      rhs_(std::move(rhs)) {}
+      rhs_(std::move(rhs)) {
+  if (lhs_->parent() && rhs_->parent()) {
+    auto lp = *lhs_->parent();
+    auto rp = *rhs_->parent();
+    if (lp != rp) {
+      CERATA_LOG(ERROR, "Can only generate expressions between nodes on same parent.");
+    }
+  }
+  if (lhs_->parent()) {
+    auto lp = *lhs_->parent();
+    SetParent(lp);
+  } else if (rhs_->parent()) {
+    auto rp = *rhs_->parent();
+    SetParent(rp);
+  }
+}
 
 std::shared_ptr<Node> Expression::MergeIntLiterals(Expression *exp) {
   if (exp->lhs_->IsLiteral() && exp->rhs_->IsLiteral()) {

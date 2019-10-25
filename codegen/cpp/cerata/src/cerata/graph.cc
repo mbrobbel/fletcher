@@ -25,6 +25,7 @@
 #include "cerata/pool.h"
 #include "cerata/edge.h"
 #include "cerata/parameter.h"
+#include "cerata/expression.h"
 
 namespace cerata {
 
@@ -36,23 +37,30 @@ Graph &Graph::Add(const std::shared_ptr<Object> &object) {
         // Graph already owns object. We can skip adding.
         return *this;
       } else {
-        CERATA_LOG(FATAL, "Graph " + name() + " already contains an object with name " + object->name());
+        CERATA_LOG(ERROR, "Graph " + name() + " already contains an object with name " + object->name());
       }
     }
   }
+
+  // Check if it already has a parent. At this point we may want to move to unique ptrs to objects.
+  if (object->parent() && object->parent().value() != this) {
+    CERATA_LOG(FATAL, "Object " + name() + " already has parent " + object->parent().value()->name());
+  }
+
   // Get any objects referenced by this object. They must already be on this graph.
-  std::vector<Object *> generics;
-  GetObjectReferences(*object, &generics);
-  for (const auto &gen : generics) {
+  std::vector<Object *> references;
+  object->AppendReferences(&references);
+  for (const auto &ref : references) {
     // If the sub-object has a parent and it is this graph, everything is OK.
-    if (gen->parent()) {
-      if (gen->parent().value() == this) {
+    if (ref->parent()) {
+      if (ref->parent().value() == this) {
         continue;
       }
     }
-    // Literals are owned by the literal pool, so everything is OK as well in that case.
-    if (gen->IsNode()) {
-      auto gen_node = dynamic_cast<Node *>(gen);
+    if (ref->IsNode()) {
+      // There are two special cases where a references doesn't yet have to be owned by this graph.
+      auto gen_node = dynamic_cast<Node *>(ref);
+      // Literals are owned by the literal pool, so everything is OK as well in that case.
       if (gen_node->IsLiteral()) {
         continue;
       }
@@ -61,7 +69,7 @@ Graph &Graph::Add(const std::shared_ptr<Object> &object) {
       }
     }
     // Otherwise throw an error.
-    CERATA_LOG(FATAL, "Object [" + gen->name()
+    CERATA_LOG(ERROR, "Object [" + ref->name()
         + "] bound to object [" + object->name()
         + "] is not present on Graph " + name());
   }
@@ -295,6 +303,7 @@ Instance *Component::Instantiate(Component *comp, const std::string &name) {
   int i = 0;
   while (HasChild(new_name)) {
     new_name = comp->name() + "_inst" + std::to_string(i);
+    i++;
   }
   auto inst = Instance::Make(comp, new_name);
   inst->parent_ = this;
