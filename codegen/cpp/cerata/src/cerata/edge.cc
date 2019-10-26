@@ -115,10 +115,6 @@ std::shared_ptr<Edge> Connect(Node *dst, Node *src) {
       // We must do this because otherwise, if we e.g. attach signals to instance ports, the signal type generics
       // could be bound to the instance parameter. They should be rebound to the source of the parameter.
       auto map = dynamic_cast<Component *>(ip->parent())->inst_to_comp_map();
-      if (src->IsExpression()) {
-        // bla
-        std::cerr << "expr" << std::endl;
-      }
       (*map)[dst] = src;
     }
   }

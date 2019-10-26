@@ -198,12 +198,12 @@ std::shared_ptr<RecordBatch> record_batch(const std::string &name,
 
 std::shared_ptr<FieldPort> arrow_port(const std::shared_ptr<FletcherSchema> &fletcher_schema,
                                       const std::shared_ptr<arrow::Field> &field,
-                                      bool invert,
+                                      bool reverse,
                                       const std::shared_ptr<ClockDomain> &domain) {
   auto name = fletcher_schema->name() + "_" + field->name();
   auto type = GetStreamType(*field, fletcher_schema->mode());
   Port::Dir dir;
-  if (invert) {
+  if (reverse) {
     dir = Term::Reverse(mode2dir(fletcher_schema->mode()));
   } else {
     dir = mode2dir(fletcher_schema->mode());

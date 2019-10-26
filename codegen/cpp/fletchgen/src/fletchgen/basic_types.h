@@ -28,10 +28,6 @@ namespace meta {
 constexpr char ARRAY_DATA[] = "fletchgen_array_data";
 /// Key to mark the count field in Arrow streams.
 constexpr char COUNT[] = "fletchgen_count";
-/// Key for elements-per-cycle on streams.
-constexpr char EPC[] = "fletchgen_epc";
-/// Key for length-elements-per-cycle on length streams. Must be seperate from EPC for "listprim" config string.
-constexpr char LEPC[] = "fletchgen_lepc";
 }
 
 using cerata::Type;

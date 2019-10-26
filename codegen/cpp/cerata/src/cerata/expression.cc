@@ -168,7 +168,7 @@ std::string Expression::ToString() const {
   if (min->IsExpression()) {
     auto mine = std::dynamic_pointer_cast<Expression>(min);
     auto ls = mine->lhs_->ToString();
-    auto op = cerata::ToString(operation_);
+    auto op = cerata::ToString(mine->operation_);
     auto rs = mine->rhs_->ToString();
     return ls + op + rs;
   } else {

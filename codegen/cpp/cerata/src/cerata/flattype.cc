@@ -108,9 +108,14 @@ std::string ToString(std::vector<FlatType> flat_type_list) {
     ret << std::setw(3) << std::right << i << " :"
         << std::setw(32) << std::left
         << std::string(static_cast<int64_t>(2 * ft.nesting_level_), ' ') + name << " | "
-        << std::setw(24) << std::left << ft.type_->name() << " | "
-        << std::setw(3) << std::right << ft.nesting_level_ << " | "
-        << std::setw(8) << std::left << ft.type_->ToString(true) << std::endl;
+        << std::setw(16) << std::left << ft.type_->name() << " | "
+        << std::setw(3) << std::right << ft.nesting_level_ << " | ";
+    if (ft.type_->width()) {
+      ret << std::setw(3) << std::right << (*ft.type_->width())->ToString() << " | ";
+    } else {
+      ret << std::setw(3) << std::right << 0 << " | ";
+    }
+    ret << std::setw(8) << std::left << ft.type_->ToString(true) << std::endl;
   }
   return ret.str();
 }
@@ -330,13 +335,11 @@ std::shared_ptr<Node> MappingPair::width_b(const std::optional<std::shared_ptr<N
   for (int64_t i = 0; i < num_b(); i++) {
     auto fw = flat_type_b(i).type_->width();
     if (fw) {
-      std::cerr << "flat width incr: " + fw.value()->ToString() << std::endl;
       result = result + fw.value();
     } else if (no_width_increment) {
       result = result + *no_width_increment;
     }
   }
-  std::cerr << "flat width result: " + result->ToString() << std::endl;
   return result;
 }
 

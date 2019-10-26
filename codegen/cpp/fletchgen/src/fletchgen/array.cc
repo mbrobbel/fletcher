@@ -243,8 +243,8 @@ std::string GenerateConfigString(const arrow::Field &field, int level) {
     level++;
   }
 
-  int epc = fletcher::GetIntMeta(field, meta::EPC, 1);
-  int lepc = fletcher::GetIntMeta(field, meta::LEPC, 1);
+  int epc = fletcher::GetIntMeta(field, fletcher::meta::VALUE_EPC, 1);
+  int lepc = fletcher::GetIntMeta(field, fletcher::meta::LIST_EPC, 1);
 
   if (ct == ConfigType::PRIM) {
     auto w = GetWidth(field.type().get());
@@ -333,9 +333,8 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
   //
   // WARNING: Modifications to this function must be reflected in the manual hardware implementation of Fletcher
   //  components! See: hardware/arrays/ArrayConfig_pkg.vhd
-
-  int epc = fletcher::GetIntMeta(arrow_field, meta::EPC, 1);
-  int lepc = fletcher::GetIntMeta(arrow_field, meta::LEPC, 1);
+  int epc = fletcher::GetIntMeta(arrow_field, fletcher::meta::VALUE_EPC, 1);
+  int lepc = fletcher::GetIntMeta(arrow_field, fletcher::meta::LIST_EPC, 1);
 
   auto e_count_width = static_cast<int>(ceil(log2(epc + 1)));
   auto l_count_width = static_cast<int>(ceil(log2(lepc + 1)));
@@ -353,16 +352,11 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
       auto data_width = epc * 8;
       auto length_width = lepc * 32;
 
-      auto child = stream(record("slave_rec", {
-          field("dvalid", dvalid()),
-          field("count", count(e_count_width)),
-          field("last", last()),
-          field("data", data(data_width)),
-      }));
       type = record({field("length", length(length_width)),
-                     field("count", count(l_count_width)),
-                     field("bytes", child)
-                    });
+                     field("bytes", stream(record({field("dvalid", dvalid()),
+                                                   field("count", count(e_count_width)),
+                                                   field("last", last()),
+                                                   field("", data(data_width))})))});
       e_count_width = l_count_width;
       break;
     }
@@ -374,16 +368,11 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
       auto data_width = epc * 8;
       auto length_width = lepc * 32;
 
-      auto child = stream(record("slave_rec", {
-          field("dvalid", dvalid()),
-          field("count", count(e_count_width)),
-          field("last", last()),
-          field("data", data(data_width))
-      }));
       type = record({field("length", length(length_width)),
-                     field("count", count(l_count_width)),
-                     field("chars", child)
-                    });
+                     field("chars", stream(record({field("dvalid", dvalid()),
+                                                   field("count", count(e_count_width)),
+                                                   field("last", last()),
+                                                   field("", data(data_width))})))});
       e_count_width = l_count_width;
       break;
     }
@@ -400,16 +389,12 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
       auto element_type = GetStreamType(*arrow_child, mode, level + 1);
       auto length_width = 32;
 
-      auto child = stream(record("slave_rec", {
-          field("dvalid", dvalid()),
-          field("count", count(e_count_width)),
-          field("last", last()),
-          field("data", element_type)}));
-      type = record(name + "_rec", {
-          field("length", length(length_width)),
-          field("count", count(l_count_width)),
-          field(arrow_child->name(), child)
-      });
+      auto child = stream(record({field("dvalid", dvalid()),
+                                  field("count", count(e_count_width)),
+                                  field("last", last()),
+                                  field("data", element_type)}));
+      type = record({field("length", length(length_width)),
+                     field(arrow_child->name(), child)});
       e_count_width = l_count_width;
       break;
     }
@@ -480,10 +465,13 @@ std::pair<int, int> GetArrayDataSpec(const arrow::Field &arrow_field) {
       // Lists
     case arrow::Type::LIST: {
       if (arrow_field.type()->num_children() != 1) {
-        FLETCHER_LOG(FATAL, "Encountered Arrow list type with other than 1 child.");
+        FLETCHER_LOG(ERROR, "Encountered Arrow list type with other than 1 child.");
       }
       if (epc > 1) {
-        FLETCHER_LOG(FATAL, "Elements per cycle on non-primitive list is unsupported.");
+        FLETCHER_LOG(ERROR, "Multi-elements-per-cycle on non-primitive list is unsupported.");
+      }
+      if (lepc > 1) {
+        FLETCHER_LOG(ERROR, "Multi-lengths-per-cycle on non-primitive list is unsupported.");
       }
       auto arrow_child = arrow_field.type()->child(0);
       auto elem_spec = GetArrayDataSpec(*arrow_child);
@@ -494,8 +482,15 @@ std::pair<int, int> GetArrayDataSpec(const arrow::Field &arrow_field) {
 
       // Structs
     case arrow::Type::STRUCT: {
+      if (epc > 1) {
+        FLETCHER_LOG(ERROR, "Multi-elements-per-cycle at struct-level is unsupported."
+                            "Try to set EPC > 1 at struct field level.");
+      }
+      if (lepc > 1) {
+        FLETCHER_LOG(ERROR, "Struct delivers no length stream.");
+      }
       if (arrow_field.type()->num_children() < 1) {
-        FLETCHER_LOG(FATAL, "Encountered Arrow struct type without any children.");
+        FLETCHER_LOG(ERROR, "Encountered Arrow struct type without any children.");
       }
       auto spec = std::pair<int, int>{0, 0};
       for (const auto &f : arrow_field.type()->children()) {
@@ -510,7 +505,7 @@ std::pair<int, int> GetArrayDataSpec(const arrow::Field &arrow_field) {
     default: {
       auto fwt = std::dynamic_pointer_cast<arrow::FixedWidthType>(arrow_field.type());
       if (fwt == nullptr) {
-        FLETCHER_LOG(FATAL, "Encountered unsupported Arrow type: " + arrow_field.type()->ToString());
+        FLETCHER_LOG(ERROR, "Unsupported Arrow type: " + arrow_field.type()->ToString());
       }
       return {1, fwt->bit_width() + validity_bit};
     }

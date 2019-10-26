@@ -37,16 +37,15 @@ TEST(Array, TypeMapper) {
   std::vector<std::shared_ptr<Type>> array_types(n_tests);
   std::vector<std::shared_ptr<TypeMapper>> mappers(n_tests);
 
-  // Arrow type.                                                   (streams, data width + counts width + nullable )
-  fields[0] = field("test", arrow::uint64(), false);                        // 1, 64     +   0   +   0
-  fields[1] = field("test", arrow::uint64(), true);                         // 1, 64     +   0   +   1
-  fields[2] = field("test", arrow::utf8(), false);                          // 2, 32+8   + 1+1   +   0
-  fields[3] = WithMetaEPC(*arrow::field("test", arrow::utf8(), false), 4);  // 2, 4*8+32 + 1+3   +   0
-  fields[4] = WithMetaEPC(*arrow::field("test", arrow::binary(), true), 8); // 2, 8*8+32 + 1+4   +   1
+  // Arrow type.                                                     (streams, data width + counts width + nullable )
+  fields[0] = field("test", arrow::uint64(), false);                        // 1, 64      +   0   +   0
+  fields[1] = field("test", arrow::uint64(), true);                         // 1, 64      +   0   +   1
+  fields[2] = field("test", arrow::utf8(), false);                          // 2, 32+8    + 1+1   +   0
+  fields[3] = WithMetaEPC(*arrow::field("test", arrow::utf8(), false), 4);  // 2, 4*8+32  + 1+3   +   0
+  fields[4] = WithMetaEPC(*arrow::field("test", arrow::binary(), true), 8); // 2, 8*8+32  + 1+4   +   1
   fields[5] = field("test",
                     arrow::list(
-                        field("inner", arrow::utf8(), false)), false);      // 3, 32+32+8 + 1+1  + 0
-
+                        field("inner", arrow::utf8(), false)), false);      // 3, 32+32+8 + 1+1   +   0
   // Array data spec must return correct pair.
   for (int i = 0; i < n_tests; i++) {
     specs[i] = GetArrayDataSpec(*fields[i]);

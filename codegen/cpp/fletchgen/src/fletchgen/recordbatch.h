@@ -101,13 +101,13 @@ struct FieldPort : public Port {
  * @param fletcher_schema  The Fletcher-derived schema.
  * @param field            The Arrow field to derive the port from.
  * @param mode             The mode of the port, whether to read or write.
- * @param invert           Invert the direction of the port.
+ * @param reverse           Invert the direction of the port.
  * @param domain           The clock domain of this port.
  * @return                 A shared pointer to a new FieldPort.
  */
 std::shared_ptr<FieldPort> arrow_port(const std::shared_ptr<FletcherSchema> &fletcher_schema,
                                       const std::shared_ptr<arrow::Field> &field,
-                                      bool invert,
+                                      bool reverse,
                                       const std::shared_ptr<ClockDomain> &domain = default_domain());
 /**
  * @brief Construct a field-derived command port.
