@@ -64,7 +64,7 @@ TEST(Instances, NodeArrayMap) {
   auto exp = par * 2;
   auto prt = port_array("prt", vector(exp), size, Port::Dir::IN);
   auto comp = component("test", {par, size, sig, lit, exp, prt});
-  auto top = component("top", {par});
+  auto top = component("top");
   auto inst = top->Instantiate(comp, "inst");
   auto map = inst->comp_to_inst_map();
 
