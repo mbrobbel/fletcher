@@ -317,9 +317,9 @@ begin
     mmio_write(9, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset);
     mmio_write(10, X"00000040", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- R B_values
     mmio_write(11, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset);
-    mmio_write(12, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- W C_values
+    mmio_write(12, X"00001000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- W C_values
     mmio_write(13, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset);
-    mmio_write(14, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- W D_values
+    mmio_write(14, X"00002000", mmio_source, mmio_sink, bcd_clk, bcd_reset); -- W D_values
     mmio_write(15, X"00000000", mmio_source, mmio_sink, bcd_clk, bcd_reset);
 
     -- 3. Write recordbatch bounds.

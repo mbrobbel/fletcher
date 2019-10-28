@@ -8,15 +8,20 @@ sim:
 	rm -f vhdl/SimTop_tc.gen.vhd
 	vhdeps -i ${FLETCHER_DIR}/hardware -i . ghdl SimTop_tc
 
-questa:
-	rm -f vhdl/Kernel.gen.vhd
-	rm -f vhdl/SimTop_tc.gen.vhd
-	vhdeps -i ${FLETCHER_DIR}/hardware -i . vsim SimTop_tc
-
 gui:
 	rm -f vhdl/Kernel.gen.vhd
 	rm -f vhdl/SimTop_tc.gen.vhd
 	vhdeps -i ${FLETCHER_DIR}/hardware -i . --gui ghdl SimTop_tc
+
+vsim:
+	rm -f vhdl/Kernel.gen.vhd
+	rm -f vhdl/SimTop_tc.gen.vhd
+	vhdeps -i ${FLETCHER_DIR}/hardware -i . vsim SimTop_tc
+	
+vsim-gui:
+	rm -f vhdl/Kernel.gen.vhd
+	rm -f vhdl/SimTop_tc.gen.vhd
+	vhdeps -i ${FLETCHER_DIR}/hardware -i . --gui vsim SimTop_tc
 
 clean:
 	rm -rf vhdmmio-doc

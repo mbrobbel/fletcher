@@ -11,6 +11,14 @@ gui:
 	rm -f vhdl/Kernel.gen.vhd
 	vhdeps -i ${FLETCHER_DIR}/hardware -i . --gui ghdl SimTop_tc
 
+vsim:
+	rm -f vhdl/Kernel.gen.vhd
+	vhdeps -i ${FLETCHER_DIR}/hardware -i . vsim SimTop_tc
+	
+vsim-gui:
+	rm -f vhdl/Kernel.gen.vhd
+	vhdeps -i ${FLETCHER_DIR}/hardware -i . --gui vsim SimTop_tc
+
 clean:
 	rm -rf vhdmmio-doc
 	rm -f fletchgen.mmio.yaml

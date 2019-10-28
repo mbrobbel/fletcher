@@ -18,6 +18,7 @@ clean:
 	# vhdmmio stuff	
 	rm -rf vhdmmio-doc
 	rm -f fletchgen.mmio.yaml
+	rm -f vhdmmio.log
 	# fletchgen stuff
 	rm -f memory.srec
 	rm -rf dot

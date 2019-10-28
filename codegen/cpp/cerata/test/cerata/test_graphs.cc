@@ -64,7 +64,7 @@ TEST(Instances, NodeArrayMap) {
   auto exp = par * 2;
   auto prt = port_array("prt", vector(exp), size, Port::Dir::IN);
   auto comp = component("test", {par, size, sig, lit, exp, prt});
-  auto top = component("top");
+  auto top = component("top", {par});
   auto inst = top->Instantiate(comp, "inst");
   auto map = inst->comp_to_inst_map();
 
@@ -79,10 +79,10 @@ TEST(Instances, NodeArrayMap) {
   std::vector<Object *> refs;
   inst->prt_arr("prt")->AppendReferences(&refs);
 
-  ASSERT_EQ(refs[0], map->at(size.get())); // Should be the size parameter node  : size
-  ASSERT_EQ(refs[1], map->at(exp.get()));  // Should be the rebound expression   : expr *
-  ASSERT_EQ(refs[2], inst->par("par"));    // Should be the rebound parameter    : - par
-  ASSERT_EQ(refs[3], rintl(2));            // Should be the literal 2            : - 2
+  ASSERT_EQ(refs[0], map->at(size.get()));  // Should be the size parameter node  : size
+  ASSERT_EQ(refs[1], map->at(exp.get()));   // Should be the rebound expression   : expr *
+  ASSERT_EQ(refs[2], inst->par("par"));     // Should be the rebound parameter    : - par
+  ASSERT_EQ(refs[3], rintl(2));             // Should be the literal 2            : - 2
 
   // Signals, expressions and literals shouldn't be on the instance graph.
   ASSERT_EQ(map->count(sig.get()), 0);

@@ -16,9 +16,9 @@
 
 #include <cerata/api.h>
 #include <fletcher/common.h>
+#include <utility>
 #include <memory>
 #include <cmath>
-#include <vector>
 #include <vector>
 #include <string>
 
@@ -82,7 +82,7 @@ std::shared_ptr<Type> array_reader_out(int num_streams, int full_width) {
                                                   field(dvalid(num_streams, true)),
                                                   field(last(num_streams, true))}),
                             {field("valid", vector(num_streams)),
-                             field("ready", vector(num_streams))});
+                             field("ready", vector(num_streams))->Reverse()});
   return data_stream;
 }
 
@@ -91,12 +91,12 @@ std::shared_ptr<Type> array_writer_in(int num_streams, int full_width) {
                                                  field(dvalid(num_streams, true)),
                                                  field(last(num_streams, true))}),
                             {field("valid", vector(num_streams)),
-                             field("ready", vector(num_streams))});
+                             field("ready", vector(num_streams))->Reverse()});
   return data_stream;
 }
 
 static std::string ArrayName(fletcher::Mode mode) {
-  return mode == Mode::READ ? "ArrayReader" : "ArrayWriter";;
+  return mode == Mode::READ ? "ArrayReader" : "ArrayWriter";
 }
 
 static std::string DataName(fletcher::Mode mode) {
@@ -330,6 +330,8 @@ std::shared_ptr<TypeMapper> GetStreamTypeMapper(Type *stream_type, Type *other) 
 std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::Mode mode, int level) {
   // The ordering of the record fields in this function determines the order in which a nested stream is type converted
   // automatically using GetStreamTypeConverter. This corresponds to how the hardware is implemented.
+  // More specifically, this is how the data, count and validity fields are currently concatenated onto one big data
+  // field of the output and input streams of ArrayReaders/Writers.
   //
   // WARNING: Modifications to this function must be reflected in the manual hardware implementation of Fletcher
   //  components! See: hardware/arrays/ArrayConfig_pkg.vhd
@@ -352,13 +354,15 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
       auto data_width = epc * 8;
       auto length_width = lepc * 32;
 
-      type = record({field("length", length(length_width)),
+      type = record({field("", stream(record({field("dvalid", dvalid()),
+                                              field("last", last()),
+                                              field("length", length(length_width)),
+                                              field("count", count(l_count_width))}))),
                      field("bytes", stream(record({field("dvalid", dvalid()),
-                                                   field("count", count(e_count_width)),
                                                    field("last", last()),
-                                                   field("", data(data_width))})))});
-      e_count_width = l_count_width;
-      break;
+                                                   field("", data(data_width)),
+                                                   field("count", count(e_count_width))})))});
+      return type;
     }
 
     case arrow::Type::STRING: {
@@ -368,13 +372,15 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
       auto data_width = epc * 8;
       auto length_width = lepc * 32;
 
-      type = record({field("length", length(length_width)),
+      type = record({field("", stream(record({field("dvalid", dvalid()),
+                                              field("last", last()),
+                                              field("length", length(length_width)),
+                                              field("count", count(l_count_width))}))),
                      field("chars", stream(record({field("dvalid", dvalid()),
-                                                   field("count", count(e_count_width)),
                                                    field("last", last()),
-                                                   field("", data(data_width))})))});
-      e_count_width = l_count_width;
-      break;
+                                                   field("", data(data_width)),
+                                                   field("count", count(e_count_width))})))});
+      return type;
     }
 
       // Lists
@@ -390,9 +396,9 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
       auto length_width = 32;
 
       auto child = stream(record({field("dvalid", dvalid()),
-                                  field("count", count(e_count_width)),
                                   field("last", last()),
-                                  field("data", element_type)}));
+                                  field("data", element_type),
+                                  field("count", count(e_count_width))}));
       type = record({field("length", length(length_width)),
                      field(arrow_child->name(), child)});
       e_count_width = l_count_width;
@@ -424,13 +430,15 @@ std::shared_ptr<Type> GetStreamType(const arrow::Field &arrow_field, fletcher::M
   if (level == 0) {
     // Create the stream record
     auto rec = record({field("dvalid", dvalid()),
-                       field("last", last()),
-                       field("", type)});
-    if (epc > 1) {
-      rec->AddField(field("count", count(e_count_width)), 2);
-    }
+                       field("last", last())});
     if (arrow_field.nullable()) {
       rec->AddField(field("validity", validity()));
+    }
+
+    rec->AddField(field("", type));
+
+    if (epc > 1) {
+      rec->AddField(field("count", count(e_count_width)));
     }
     return stream(rec);
   } else {

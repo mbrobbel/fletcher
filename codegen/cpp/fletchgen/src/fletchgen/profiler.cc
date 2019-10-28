@@ -93,7 +93,9 @@ std::vector<MmioReg> GetProfilingRegs(const std::vector<std::shared_ptr<RecordBa
 }
 
 std::shared_ptr<cerata::Type> stream_probe(const std::shared_ptr<Node> &count_width) {
-  auto result = stream("probe", "count", vector(count_width));
+  // We require a probe stream where the valid and ready are control fields that travel in the same direction.
+  auto result = stream("probe", "count", vector(count_width), {field(cerata::Stream::valid()),
+                                                               field(cerata::Stream::ready())});
   return result;
 }
 

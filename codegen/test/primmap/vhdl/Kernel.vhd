@@ -155,8 +155,15 @@ architecture Implementation of Kernel is
       loop
         last := i_last;
         wait until rising_edge(kcd_clk);
-        exit when i_valid <= '1';
+        exit when i_valid = '1';
       end loop;
+      
+      -- dvalid should always be 1 for these schemas, since this is only used
+      -- to signal empty lists on a list child stream.
+      assert(i_dvalid = '1')
+        report("dvalid expected to be '1', but was '0'")
+        severity failure;
+      
       i_ready <= '0';
 
       -- Convert to signed integer
@@ -206,7 +213,12 @@ begin
     R_A_ready <= '0';
     R_B_ready <= '0';
     W_C_valid <= '0';
-    W_D_valid <= '0';    
+    W_C_last <= '0';
+    W_D_valid <= '0';
+    R_A_unl_ready <= '1';
+    R_B_unl_ready <= '1';
+    W_C_unl_ready <= '1';
+    W_D_unl_ready <= '1';
  
     -- Wait for reset to go low and start to go high.
     loop

@@ -44,7 +44,7 @@ Graph &Graph::Add(const std::shared_ptr<Object> &object) {
 
   // Check if it already has a parent. At this point we may want to move to unique ptrs to objects.
   if (object->parent() && object->parent().value() != this) {
-    CERATA_LOG(FATAL, "Object " + name() + " already has parent " + object->parent().value()->name());
+    CERATA_LOG(FATAL, "Object " + object->name() + " already has parent " + object->parent().value()->name());
   }
 
   // Get any objects referenced by this object. They must already be on this graph.
