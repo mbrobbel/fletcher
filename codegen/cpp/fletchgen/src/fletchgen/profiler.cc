@@ -34,7 +34,6 @@ using cerata::record;
 using cerata::field;
 using cerata::integer;
 using cerata::bit;
-using cerata::nul;
 
 static constexpr uint32_t COUNT_WIDTH = 32;
 

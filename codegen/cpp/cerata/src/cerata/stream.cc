@@ -33,44 +33,6 @@ Stream &Stream::SetElementType(std::shared_ptr<Type> type) {
   return *this;
 }
 
-bool Stream::CanGenerateMapper(const Type &other) const {
-  if (other.Is(Type::RECORD)) {
-    auto rec = dynamic_cast<const Record &>(other);
-    // If this and the other streams are "equal", a mapper can be generated
-    if (IsEqual(other)) {
-      return true;
-    } else {
-      // We can also map an empty stream, without mapping the elements. In practise, a back-end might emit e.g.
-      // additional ready/valid/count wires, connect those, but not any data elements.
-      if ((this->fields_.back()->type() == nul()) || (rec.fields().back()->type() == nul())) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-std::shared_ptr<TypeMapper> Stream::GenerateMapper(Type *other) {
-  // Check if we can even do this:
-  if (!CanGenerateMapper(*other)) {
-    CERATA_LOG(FATAL, "No mapper generator known from Stream to " + other->name() + ToString(other->id()));
-  }
-  if (IsEqual(*other)) {
-    return TypeMapper::MakeImplicit(this, other);
-  } else {
-    // If this or the other stream has a no element type:
-    if ((fields_.back()->type() == nul()) || (dynamic_cast<Stream *>(other)->fields_.back()->type() == nul())) {
-      auto mapper = TypeMapper::Make(this, other);
-      // Only connect the two stream flat types.
-      auto matrix = mapper->map_matrix();
-      matrix(0, 0) = 1;
-      mapper->SetMappingMatrix(matrix);
-      return mapper;
-    }
-  }
-  return nullptr;
-}
-
 Stream::Stream(const std::string &name,
                const std::string &data_name,
                const std::shared_ptr<Type> &data_type,

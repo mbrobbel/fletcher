@@ -336,10 +336,25 @@ TEST(VHDL_DESIGN, ExprGenericInArray) {
   ASSERT_EQ(generated, expected);
 }
 
-
 TEST(VHDL_DESIGN, Example) {
   default_component_pool()->Clear();
-  GenerateDebugOutput(GetExampleDesign());
+  auto top = GetExampleDesign();
+
+  dot::Grapher dot;
+  dot.style.config = dot::Config::all();
+  dot.GenFile(*top, "Example.dot");
+
+  GenerateDebugOutput(top);
+}
+
+TEST(VHDL_DESIGN, Example2) {
+  default_component_pool()->Clear();
+  auto top = GetExampleDesign2();
+
+  dot::Grapher dot;
+  dot.GenFile(*top, "Example.dot");
+
+  GenerateDebugOutput(top);
 }
 
 }  // namespace cerata

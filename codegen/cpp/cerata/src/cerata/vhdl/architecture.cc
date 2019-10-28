@@ -30,7 +30,7 @@
 
 namespace cerata::vhdl {
 
-MultiBlock GenerateCompDeclarations(const Component &comp, int indent = 0) {
+MultiBlock Arch::GenerateCompDeclarations(const Component &comp, int indent) {
   MultiBlock result(indent);
   // Component declarations
   auto inst_comps = comp.GetAllInstanceComponents();
@@ -47,7 +47,7 @@ MultiBlock GenerateCompDeclarations(const Component &comp, int indent = 0) {
   return result;
 }
 
-MultiBlock GenerateCompInstantiations(const Component &comp, int indent = 0) {
+MultiBlock Arch::GenerateCompInstantiations(const Component &comp, int indent) {
   MultiBlock result(indent);
   auto instances = comp.children();
   for (const auto &i : instances) {
@@ -56,34 +56,6 @@ MultiBlock GenerateCompInstantiations(const Component &comp, int indent = 0) {
     result << Line();
   }
   return result;
-}
-
-template<typename T>
-Block GenerateNodeDeclarations(const Component &comp, int indent = 0) {
-  Block result(indent);
-  auto objs = comp.GetAll<T>();
-  for (const auto &o : objs) {
-    auto decl = Decl::Generate(*o, 1);
-    result << decl;
-    if (decl.lines.size() > 1) {
-      result << Line();
-    }
-  }
-  return result.AppendBlankLineIfNotEmpty();
-}
-
-template<typename T>
-Block GenerateAssignments(const Component &comp, int indent = 0) {
-  Block result(indent);
-  auto objs = comp.GetAll<T>();
-  for (const auto &o : objs) {
-    auto assignment = Arch::Generate(*o, 1);
-    result << assignment;
-    if (assignment.lines.size() > 1) {
-      result << Line();
-    }
-  }
-  return result.AppendBlankLineIfNotEmpty();
 }
 
 MultiBlock Arch::Generate(const Component &comp) {

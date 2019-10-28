@@ -95,7 +95,7 @@ std::shared_ptr<Edge> Connect(const std::shared_ptr<Node> &dst, const std::share
 /**
  * @brief Connect a string literal to another node.
  * @param dst The destination node.
- * @param src A string out of which a string literal node will be created..
+ * @param str A string out of which a string literal node will be created..
  * @return The edge connecting the nodes.
  */
 std::shared_ptr<Edge> Connect(Node *dst, std::string str);
@@ -113,18 +113,22 @@ std::shared_ptr<Edge> operator<<=(const std::shared_ptr<Node> &dst, Node *src);
 std::vector<Edge *> GetAllEdges(const Graph &graph);
 
 /**
-* @brief Insert a signal array based on a node array and connect every node.
-*/
-SignalArray *AttachSignalArrayToNodeArray(Component *comp,
-                                          NodeArray *array,
-                                          std::unordered_map<const Node *, Node *> *rebinding);
+ * @brief Attach a Signal to a Node, redirecting all edges through the new Signal.
+ * @param comp        The component to add and own the Signal.
+ * @param node        The Node to attach the Signal to.
+ * @param rebinding   A pointer to a NodeMap to which all rebound Nodes will be appended.
+ * @param name        A name for the new Signal.
+ * @return            A pointer to the new Signal.
+ */
+Signal *AttachSignalToNode(Component *comp, NormalNode *node, NodeMap *rebinding, std::string name = "");
 
 /**
- * @brief Insert a signal based on a node and reconnect every edge.
+ * @brief Attach a SignalArray to a Node, redirecting all edges through the new SignalArray.
+ * @param comp        The component to add and own the SignalArray.
+ * @param array       The NodeArray to attach the SignalArray to.
+ * @param rebinding   A pointer to a NodeMap to which all rebound Nodes will be appended.
+ * @return            A pointer to the new SignalArray.
  */
-Signal *AttachSignalToNode(Component *comp,
-                           NormalNode *node,
-                           std::unordered_map<const Node *, Node *> *rebinding,
-                           std::string name = "");
+SignalArray *AttachSignalArrayToNodeArray(Component *comp, NodeArray *array, NodeMap *rebinding);
 
 }  // namespace cerata

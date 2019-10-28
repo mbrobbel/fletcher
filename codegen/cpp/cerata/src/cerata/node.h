@@ -92,16 +92,11 @@ class Node : public Object, public std::enable_shared_from_this<Node> {
   /// @brief Return parent array, if any.
   std::optional<NodeArray *> array() const { return array_; }
 
-  /**
-* @brief Replace some node with another node, reconnecting all original edges.
-* @param original      The original node to replace.
-* @param replacement   The replacement node.
-* @return              A pointer to the replaced node for function chaining.
-*/
+  /// @brief Replace some node with another node, reconnecting all original edges. Returns the replaced node.
   Node *Replace(Node *replacement);
 
   /**
-   * @brief Copy node onto a graph, implicitly rebinding referenced nodes.
+   * @brief Copy node onto a graph, implicitly copying over and rebinding e.g. type generics of referenced nodes.
    *
    * Referenced nodes means any nodes this node references in its implementation (including its type), but not that it
    * connects to through edges in the graph.
@@ -111,7 +106,8 @@ class Node : public Object, public std::enable_shared_from_this<Node> {
    *
    * This function appends this node to the rebinding.
    *
-   * @param dst     The destination graph to copy the node onto.
+   * @param dst       The destination graph to copy the node onto.
+   * @param name      The name of the new node.
    * @param rebinding The rebinding to use, and to append, if required.
    * @return          The copy.
    */
@@ -197,6 +193,6 @@ struct NormalNode : public MultiOutputNode {
 void GetObjectReferences(const Object &obj, std::vector<Object *> *out);
 
 /// @brief Make sure that the NodeMap contains all nodes to be rebound onto the destination graph.
-void ImplicitlyRebindNodes(Graph*dst, const std::vector<Node *>& nodes, NodeMap *rebinding);
+void ImplicitlyRebindNodes(Graph *dst, const std::vector<Node *> &nodes, NodeMap *rebinding);
 
 }  // namespace cerata

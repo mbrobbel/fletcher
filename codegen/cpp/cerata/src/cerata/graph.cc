@@ -300,7 +300,7 @@ Instance *Component::Instantiate(Component *comp, const std::string &name) {
   if (new_name.empty()) {
     new_name = comp->name() + "_inst";
   }
-  int i = 0;
+  int i = 1;
   while (HasChild(new_name)) {
     new_name = comp->name() + "_inst" + std::to_string(i);
     i++;

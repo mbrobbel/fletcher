@@ -145,7 +145,6 @@ Mantle::Mantle(std::string name,
   // For every required bus, instantiate a bus arbiter.
   std::unordered_map<BusSpec, Instance *> arb_map;
   for (const auto &b : bus_specs) {
-    //auto params = BusDimParams(this, b.dim);
     auto prefix = b.ToName();
     Instance *inst = Instantiate(bus_arbiter(b.func), prefix + "_inst");
 

@@ -43,6 +43,7 @@ class Parameter : public NormalNode {
 
   // TODO(johanpel): Work-around for parameters nodes that are size nodes of arrays.
   //  To prevent this, it requires a restructuring of node arrays.
+  /// If this parametrizes a node array, this stores a pointer to the NodeArray.
   std::optional<NodeArray *> node_array_parent;
 
   /// Parameter value.

@@ -74,8 +74,6 @@ Node *Node::CopyOnto(Graph *dst, const std::string &name, NodeMap *rebinding) co
 }
 
 Node *Node::Replace(Node *replacement) {
-  // TODO(johanpel): override this function in the respective implementations.
-
   // Iterate over all sourcing edges of the original node.
   for (const auto &e : this->sources()) {
     auto src = e->src();

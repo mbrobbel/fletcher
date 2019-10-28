@@ -55,7 +55,6 @@ class Literal : public MultiOutputNode {
   StorageType storage_type_;
 
   // Macros to generate Literal functions for different storage types.
-#ifndef LITERAL_DECL_FACTORY
 #define LITERAL_DECL_FACTORY(NAME, TYPENAME)                                                                        \
  public:                                                                                                            \
   explicit Literal(std::string name, const std::shared_ptr<Type> &type, TYPENAME value);                            \
@@ -65,19 +64,18 @@ class Literal : public MultiOutputNode {
   TYPENAME NAME##Value() const { return NAME##_val_; }                                                              \
                                                                                                                     \
  protected:                                                                                                         \
-  TYPENAME NAME##_val_{};
-#endif
+  TYPENAME NAME##_val_
 
   /// Bools
- LITERAL_DECL_FACTORY(Bool, bool) //NOLINT
+ LITERAL_DECL_FACTORY(Bool, bool); //NOLINT
   /// Ints
- LITERAL_DECL_FACTORY(Int, int64_t) //NOLINT
+ LITERAL_DECL_FACTORY(Int, int64_t); //NOLINT
   /// Strings
- LITERAL_DECL_FACTORY(String, std::string) //NOLINT
+ LITERAL_DECL_FACTORY(String, std::string); //NOLINT
 
  public:
   /// @brief Literal nodes are only owned by the literal pool, hence never have a parent graph.
-  void SetParent(Graph* graph) override;
+  void SetParent(Graph *graph) override;
   /// @brief Create a boolean literal.
   static std::shared_ptr<Literal> Make(bool value) { return MakeBool(value); }
   /// @brief Create an integer literal.

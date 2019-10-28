@@ -177,7 +177,7 @@ std::shared_ptr<Type> Type::operator()(std::vector<Node *> nodes) {
   return Copy(map);
 }
 
-std::shared_ptr<Type> Type::operator()(std::vector<std::shared_ptr<Node>> nodes) {
+std::shared_ptr<Type> Type::operator()(const std::vector<std::shared_ptr<Node>>& nodes) {
   return this->operator()(ToRawPointers(nodes));
 }
 
@@ -246,11 +246,6 @@ std::shared_ptr<Type> bit(const std::string &name) {
     std::shared_ptr<Type> result = std::make_shared<Bit>(name);
     return result;
   }
-}
-
-std::shared_ptr<Type> nul() {
-  static std::shared_ptr<Type> result = std::make_shared<Nul>("null");
-  return result;
 }
 
 std::shared_ptr<Type> boolean() {

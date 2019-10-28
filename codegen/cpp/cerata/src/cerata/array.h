@@ -56,7 +56,7 @@ class NodeArray : public Object {
   NodeArray *CopyOnto(Graph *dst, const std::string &name, NodeMap *rebinding);
 
   /// @brief Append a node to this array, optionally incrementing the size node. Returns a pointer to that node.
-  Node *Append(bool increment_size = true);
+  std::shared_ptr<Node> Append(bool increment_size = true);
   /// @brief Return all nodes of this NodeArray.
   std::vector<Node *> nodes() const { return ToRawPointers(nodes_); }
   /// @brief Return element node i.

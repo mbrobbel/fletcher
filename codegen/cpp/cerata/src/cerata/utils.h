@@ -25,8 +25,9 @@
 
 namespace cerata {
 
-/// @brief Convert string to uppercase.
+/// @brief Convert string to upper-case.
 std::string ToUpper(std::string str);
+/// @brief Convert string to lower-case.
 std::string ToLower(std::string str);
 
 /// @brief Return a human-readable representation of an unordered map of string key-value pairs.
@@ -73,6 +74,7 @@ void Append(std::vector<T> *list_a, const std::vector<T> &list_b) {
   list_a->insert(list_a->end(), list_b.begin(), list_b.end());
 }
 
+/// @brief Merge a list of vectors into one vector.
 template<typename T>
 std::vector<T> Merge(std::initializer_list<std::vector<T>> lists) {
   std::vector<T> result;
@@ -82,6 +84,7 @@ std::vector<T> Merge(std::initializer_list<std::vector<T>> lists) {
   return result;
 }
 
+/// @brief Merge a list of unordered maps into one unordered map.
 template<typename T, typename U>
 std::vector<T> Merge(std::initializer_list<std::unordered_map<T, U>> lists) {
   std::vector<T> result;
@@ -141,9 +144,9 @@ std::vector<T *> ToRawPointers(const std::vector<std::unique_ptr<T>> &list) {
 
 /**
  * @brief Cast a vector of pointers to some other type.
- * @tparam T    The type of the objects being pointed to.
- * @param list  The list of unique pointers.
- * @return      A list of raw pointers.
+ * @tparam T  The type of the objects being pointed to.
+ * @param vec The vector of pointers.
+ * @return    A list of raw pointers.
  */
 template<typename T, typename U>
 std::vector<T *> As(const std::vector<U *> &vec) {
@@ -154,9 +157,7 @@ std::vector<T *> As(const std::vector<U *> &vec) {
   return result;
 }
 
-/**
- * @brief Remove all duplicates from a vector.
- */
+/// @brief Return a copy of a vector without any duplicates.
 template<typename T>
 std::vector<T> Unique(const std::vector<T> &vec) {
   auto result = vec;
@@ -165,6 +166,7 @@ std::vector<T> Unique(const std::vector<T> &vec) {
   return vec;
 }
 
+/// @brief Filter duplicate entries from a vector.
 template<typename T>
 void FilterDuplicates(std::vector<T> *vec) {
   auto last = std::unique(vec->begin(), vec->end());

@@ -155,14 +155,6 @@ std::string ToString(Expression::Op operation) {
   return "INVALID OP";
 }
 
-void AppendAllNodes(Node *node, std::vector<Node *> *out) {
-  out->push_back(node);
-  if (node->IsExpression()) {
-    AppendAllNodes(node->AsExpression()->lhs(), out);
-    AppendAllNodes(node->AsExpression()->lhs(), out);
-  }
-}
-
 std::string Expression::ToString() const {
   auto min = Minimize(const_cast<Expression *>(this));
   if (min->IsExpression()) {

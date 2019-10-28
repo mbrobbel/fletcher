@@ -47,37 +47,35 @@ typedef std::unordered_map<const Node *, Node *> NodeMap;
  * - No.
  *      They can not be represented as bits in hardware without a more elaborate definition.
  *
- * Nested:
- * - No.
- *      These types contain no subtype.
- * - Yes.
- *      These types contain some subtype, and so the realm depends on the sub-types used.
- *
  * Generic:
  * - No.
  *      Not parametrized by some node.
  * - Yes.
  *      Parameterized by some node.
+ *
+ * Nested:
+ * - No.
+ *      These types contain no subtype.
+ * - Yes.
+ *      These types contain some subtype, and so other properties depend on the sub-types used.
+ *
  */
 class Type : public Named, public std::enable_shared_from_this<Type> {
  public:
-  /// @brief The Type ID. Used for convenient type checking.
+  /// The Type ID. Used for convenient type checking.
   //
-  //                Physical | Nested    | Generic
-  //                ---------|-----------|--------
+  //                Physical | Generic | Nested
+  //                ---------|---------|-----------
   enum ID {
-    BIT,      ///<  Yes      | No        | No
-    VECTOR,   ///<  Yes      | No        | Yes
+    BIT,      ///<  Yes      | No      | No
+    VECTOR,   ///<  Yes      | Yes     | No
 
-    NUL,      ///<  No       | No        | No
-    INTEGER,  ///<  No       | No        | No
-    STRING,   ///<  No       | No        | No
-    BOOLEAN,  ///<  No       | No        | No
+    INTEGER,  ///<  No       | No      | No
+    STRING,   ///<  No       | No      | No
+    BOOLEAN,  ///<  No       | No      | No
 
-    RECORD    ///<  ?        | Yes       | ?
+    RECORD    ///<  ?        | ?       | Yes
   };
-
-  // TODO(johanpel): potentially remove stream as it could be just a record
 
   /**
    * @brief Type constructor.
@@ -150,12 +148,17 @@ class Type : public Named, public std::enable_shared_from_this<Type> {
 
   /**
    * @brief Make a copy of the type, and rebind any type generic nodes in order of the GetGenerics call.
-   * @param node The nodes to rebind the type to.
-   * @return     The rebound type.
+   * @param nodes The nodes to rebind the type to.
+   * @return      The rebound type.
    */
   std::shared_ptr<Type> operator()(std::vector<Node *> nodes);
 
-  std::shared_ptr<Type> operator()(std::vector<std::shared_ptr<Node>> nodes);
+  /**
+   * @brief Make a copy of the type, and rebind any type generic nodes in order of the GetGenerics call.
+   * @param nodes The nodes to rebind the type to.
+   * @return      The rebound type.
+   */
+  std::shared_ptr<Type> operator()(const std::vector<std::shared_ptr<Node>> &nodes);
 
  protected:
   /// Type ID
@@ -179,21 +182,11 @@ struct Bit : public Type {
   std::shared_ptr<Type> Copy(const NodeMap &rebinding) const override;
 };
 
-/// @brief Return a static Nul type.
-std::shared_ptr<Type> nul();
-/// Null type. Useful for e.g. empty streams (or not anymore?)
-struct Nul : public Type {
-  explicit Nul(std::string name) : Type(std::move(name), Type::NUL) {}
-  bool IsPhysical() const override { return false; }
-  bool IsGeneric() const override { return false; }
-  bool IsNested() const override { return false; }
-  std::shared_ptr<Type> Copy(const NodeMap &rebinding) const override { return nul(); }
-};
-
 /// @brief Return a static boolean type.
 std::shared_ptr<Type> boolean();
 /// Boolean type.
 struct Boolean : public Type {
+  /// @brief Boolean constructor.
   explicit Boolean(std::string name) : Type(std::move(name), Type::BOOLEAN) {}
   bool IsPhysical() const override { return false; }
   bool IsGeneric() const override { return false; }
@@ -205,6 +198,7 @@ struct Boolean : public Type {
 std::shared_ptr<Type> integer();
 /// Integer type.
 struct Integer : public Type {
+  /// @brief Integer constructor.
   explicit Integer(std::string name) : Type(std::move(name), Type::INTEGER) {}
   bool IsPhysical() const override { return false; }
   bool IsGeneric() const override { return false; }
@@ -216,6 +210,7 @@ struct Integer : public Type {
 std::shared_ptr<Type> string();
 /// @brief String type.
 struct String : public Type {
+  /// @brief String constructor.
   explicit String(std::string name) : Type(std::move(name), Type::STRING) {}
   bool IsPhysical() const override { return false; }
   bool IsGeneric() const override { return false; }
@@ -331,13 +326,24 @@ class Record : public Type {
   std::shared_ptr<Type> Copy(const NodeMap &rebinding) const override;
 
  protected:
+  /// The fields of this Record.
   std::vector<std::shared_ptr<Field>> fields_;
 };
 
-/// @brief Create a new Record Type, and return a shared pointer to it.
+/**
+ * @brief Create a new Record type, and return a shared pointer to it.
+ * @param name    The name of the new Record type.
+ * @param fields  The fields of the record type.
+ * @return        A shared pointer to the Record Type.
+ */
 std::shared_ptr<Record> record(const std::string &name,
                                const std::vector<std::shared_ptr<Field>> &fields = {});
 
+/**
+ * @brief Create a new, anonymous Record type, and return a shared pointer to it.
+ * @param fields  The fields of the record type.
+ * @return        A shared pointer to the Record Type.
+ */
 std::shared_ptr<Record> record(const std::vector<std::shared_ptr<Field>> &fields);
 
 }  // namespace cerata

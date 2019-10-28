@@ -75,7 +75,7 @@ void NodeArray::IncrementSize() {
   SetSize(IncrementNode(size()));
 }
 
-Node *NodeArray::Append(bool increment_size) {
+std::shared_ptr<Node> NodeArray::Append(bool increment_size) {
   // Create a new copy of the base node.
   auto new_node = std::dynamic_pointer_cast<Node>(base_->Copy());
   if (parent()) {
@@ -90,7 +90,7 @@ Node *NodeArray::Append(bool increment_size) {
   }
 
   // Return the new node.
-  return new_node.get();
+  return new_node;
 }
 
 Node *NodeArray::node(size_t i) const {

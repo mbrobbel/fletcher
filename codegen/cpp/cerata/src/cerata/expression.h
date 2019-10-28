@@ -121,11 +121,4 @@ EXPRESSION_OP_FACTORY(-, SUB)
 EXPRESSION_OP_FACTORY(*, MUL)
 EXPRESSION_OP_FACTORY(/, DIV)
 
-/**
- * @brief Recursively append all nodes from the expression tree. Includes the expression itself.
- * @param expr  The expression.
- * @param out   The vector to append.
- */
-void AppendAllNodes(Node *node, std::vector<Node *> *out);
-
 }  // namespace cerata

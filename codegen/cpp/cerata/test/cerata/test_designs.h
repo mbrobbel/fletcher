@@ -245,25 +245,62 @@ std::shared_ptr<Component> GetAllPortTypesComponent() {
 }
 
 std::shared_ptr<Component> GetExampleDesign() {
-  auto xw = parameter("width", 32);
-  auto rec = record({field("bit", bit()),
-                     field("vec", vector(xw)),
-                     field("parent", stream("child",
-                         stream("data", vector(32))))});
-
+// A parameter node.
+  auto x_width = parameter("width", 32);
+// A type using the parameter node as generic.
+  auto rec = record({field("foo", bit()),
+                     field("bar", vector(x_width)),
+                     field("parent", stream("child", stream("data", vector(32))))});
+// A size parameter for the port array.
   auto size = parameter("array_size", 0);
-  auto x = component("x", {xw, size, port_array("a", rec, size, Port::OUT)});
-
-  auto yw = parameter("width", 32);
-  auto y = component("y", {yw, port("b", (*rec)({yw}), Port::IN)});
-
+// A component declaration using all of the above.
+  auto x = component("x", {x_width,
+                           size,
+                           port_array("a", rec, size, Port::IN)});
+// Another parameter for the next component.
+  auto y_width = parameter("width", 32);
+// Another component. The record type is rebound to use the new parameter as generic.
+  auto y = component("y", {y_width,
+                           port("b", (*rec)({y_width}), Port::OUT)});
+// The top-level component.
   auto top = component("top");
+// Instantiate one X component.
   auto xi = top->Instantiate(x);
-
-  std::vector<Instance *> yis;
+// Instantiate three Y components.
   for (int i = 0; i < 3; i++) {
     auto yi = top->Instantiate(y);
-    Connect(yi->prt("b"), xi->prt_arr("a")->Append());
+// Append the port array "a" on X, and source it with port "b" of the new Y instance.
+    xi->prt_arr("a")->Append() <<= yi->prt("b");
+  }
+  return top;
+}
+
+std::shared_ptr<Component> GetExampleDesign2() {
+  // Generate a bunch of components randomly containing some output.
+  std::vector<std::shared_ptr<Component>> random_components;
+  for (int i = 0; i < 3; i++) {
+    // Another parameter for the next component.
+    auto comp = component("RandomComp" + std::to_string(i), {port("clk", bit(), Port::IN)});
+    if (std::rand() % 2 == 1) {
+      comp->Add(port("o", bit(), Port::OUT));
+    }
+    random_components.push_back(comp);
+  }
+
+  // Instantiate the top level.
+  auto top = component("top", {port("clk", bit(), Port::IN)});
+  int j = 0;
+  for (int i = 0; i < 3; i++) {
+    // Instantiate every random component.
+    auto inst = top->Instantiate(random_components[i]);
+    Connect(inst->prt("clk"), top->prt("clk"));
+    // Check if it has a port we'd also want to expose at the top-level.
+    if (inst->Has("o")) {
+      auto top_port = port("o" + std::to_string(j), bit(), Port::OUT);
+      top_port <<= inst->Get<Port>("o");
+      top->Add(top_port);
+      j++;
+    }
   }
 
   return top;

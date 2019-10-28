@@ -40,10 +40,11 @@ struct Design {
   explicit Design(Component *component, std::string notice = "", std::string header = DEFAULT_LIBS)
       : component_(component), notice_(std::move(notice)), libs_(std::move(header)) {}
 
+  /// @brief Design constructor.
   explicit Design(const std::shared_ptr<Component> &component,
                   std::string notice = "",
                   std::string header = DEFAULT_LIBS)
-      : Design(component.get(), std::move(notice), std::move(header)) {};
+      : Design(component.get(), std::move(notice), std::move(header)) {}
 
   /// @brief Generate the design VHDL code.
   MultiBlock Generate();

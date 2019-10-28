@@ -169,18 +169,17 @@ class Component : public Graph {
 
   /**
    * @brief Add an Instance of another Component to this component.
-   * @param comp      The component to instantiate and add.
-   * @param name      The name of the new instance. If left blank, it will use the Component name + "_inst".
-   * @param rebinding A map from original component nodes to instantiated nodes.
-   * @return        A pointer to the instantiated component.
+   * @param comp  The component to instantiate and add.
+   * @param name  The name of the new instance. If left blank, it will use the Component name + "_inst".
+   * @return      A pointer to the instantiated component.
    */
   Instance *Instantiate(Component *comp, const std::string &name = "");
 
   /**
    * @brief Add an Instance of another Component to this component.
-   * @param comp    The component to instantiate and add.
-   * @param name    The name of the new instance. If left blank, it will use the Component name + "_inst".
-   * @return        A pointer to the instantiated component.
+   * @param comp  The component to instantiate and add.
+   * @param name  The name of the new instance. If left blank, it will use the Component name + "_inst".
+   * @return      A pointer to the instantiated component.
    */
   Instance *Instantiate(const std::shared_ptr<Component> &comp, const std::string &name = "");
 
@@ -243,7 +242,7 @@ class Instance : public Graph {
   NodeMap *comp_to_inst_map() { return &comp_to_inst; }
 
  protected:
-  // Only a Component should be able to make instances.
+  /// Only a Component should be able to make instances.
   friend Component;
   /// @brief Construct an Instance of a Component, copying over all its ports and parameters
   explicit Instance(Component *comp, std::string name);

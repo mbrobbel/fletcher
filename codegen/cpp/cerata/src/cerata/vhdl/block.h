@@ -24,10 +24,11 @@ namespace cerata::vhdl {
 /// A line of code.
 struct Line {
   Line() = default;
-  /// Line constructor.
+  /// @brief Line constructor.
   explicit Line(const std::string &str) {
     parts.push_back(str);
   }
+  /// @brief Return true if line is blank.
   [[nodiscard]] bool IsBlank() const {
     if (parts.size() == 0) {
       return true;
