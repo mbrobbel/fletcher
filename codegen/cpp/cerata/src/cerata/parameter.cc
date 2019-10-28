@@ -50,18 +50,19 @@ std::shared_ptr<Parameter> parameter(const std::string &name,
 }
 
 std::shared_ptr<Parameter> parameter(const std::string &name, int default_value) {
-  auto p = new Parameter(name, integer(), intl(default_value));
-  return std::shared_ptr<Parameter>(p);
+  return parameter(name, integer(), intl(default_value));
 }
 
 std::shared_ptr<Parameter> parameter(const std::string &name, bool default_value) {
-  auto p = new Parameter(name, boolean(), booll(default_value));
-  return std::shared_ptr<Parameter>(p);
+  return parameter(name, boolean(), booll(default_value));
 }
 
 std::shared_ptr<Parameter> parameter(const std::string &name, std::string default_value) {
-  auto p = new Parameter(name, string(), strl(default_value));
-  return std::shared_ptr<Parameter>(p);
+  return parameter(name, string(), strl(std::move(default_value)));
+}
+
+std::shared_ptr<Parameter> parameter(const std::string &name) {
+  return parameter(name, 0);
 }
 
 Node *Parameter::value() const {

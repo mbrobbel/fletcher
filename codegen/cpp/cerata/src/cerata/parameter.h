@@ -67,6 +67,9 @@ std::shared_ptr<Parameter> parameter(const std::string &name,
 /// @brief Create a new integer-type parameter.
 std::shared_ptr<Parameter> parameter(const std::string &name, int default_value);
 
+/// @brief Create a new integer-type parameter with default value 0.
+std::shared_ptr<Parameter> parameter(const std::string &name);
+
 /// @brief Create a new boolean-type parameter.
 std::shared_ptr<Parameter> parameter(const std::string &name, bool default_value);
 
