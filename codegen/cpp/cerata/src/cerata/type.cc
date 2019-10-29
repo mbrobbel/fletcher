@@ -294,7 +294,16 @@ Record &Record::AddField(const std::shared_ptr<Field> &field, std::optional<size
 }
 
 Record::Record(std::string name, std::vector<std::shared_ptr<Field>> fields)
-    : Type(std::move(name), Type::RECORD), fields_(std::move(fields)) {}
+    : Type(std::move(name), Type::RECORD), fields_(std::move(fields)) {
+  // Check for duplicate field names.
+  std::vector<std::string> names;
+  for (const auto& field : fields_) {
+    names.push_back(field->name());
+  }
+  if (Unique(names).size() != fields_.size()) {
+    CERATA_LOG(ERROR, "Record field names must be unique.");
+  }
+}
 
 std::shared_ptr<Record> record(const std::string &name, const std::vector<std::shared_ptr<Field>> &fields) {
   return std::make_shared<Record>(name, fields);
@@ -450,5 +459,37 @@ Field *Record::at(size_t i) const {
 }
 
 Field *Record::operator[](size_t i) const { return at(i); }
+
+bool Record::Has(const std::string& name) const {
+  for (const auto& field : fields_) {
+    if (field->name() == name) {
+      return true;
+    }
+  }
+  return false;
+}
+
+Field *Record::at(const std::string &name) const {
+  for (auto &f : fields_) {
+    if (f->name() == name) {
+      return f.get();
+    }
+  }
+  CERATA_LOG(ERROR, "Field with name " + name + " does not exist on Record type " + this->name()
+      + " Must one of: " + ToStringFieldNames());
+}
+
+Field *Record::operator[](std::string name) const { return at(name); }
+
+std::string Record::ToStringFieldNames() const {
+  std::stringstream ss;
+  for (const auto &f : fields_) {
+    ss << f->name();
+    if (f != fields_.back()) {
+      ss << ", ";
+    }
+  }
+  return ss.str();
+}
 
 }  // namespace cerata

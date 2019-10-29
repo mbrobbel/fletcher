@@ -5,20 +5,20 @@ The hardware structures are basically graphs (components and instance graphs) wi
 literals).
 
 Rather than suffering from the verbosity of languages such as VHDL and Verilog, a developer can use Cerata to 
-programmatically construct potentially complex and nested types, and "drag" them around the design with a few lines of 
+construct potentially complex and nested types, and "drag" them around the design with a few lines of 
 code. The hassle of turning the graph representation into something synthesizable for various output targets 
 (especially FPGA) is left to Cerata's back-ends.
 
 Furthermore, it allows you to programmatically inspect and modify constructed graphs. This allows other code to 
 reflect on designs that were generated, for whatever purpose. Examples include: adding profilers to streams or creating
-optimized bus infrastructures based on bus interfaces exposed by some components way down in your hierarchy.
+an optimized infrastructure for bus interfaces required by some components way down in your design hierarchy.
 
 Cerata currently only focuses on structure, not on behavior. This means that Cerata is definitely not a High-Level 
 Synthesis tool. Although it might look somewhat similar at a first glance, it is also not an Embedded Hardware 
 Construction Language like Chisel, where you can also describe combinatorial and sequential transformations on your 
-signals and ports. That project is much more advanced, and you should check it out, if like Scala and having a 
-relatively large and complicated dependency. Cerata is just a bit lighter-weight but less feature-rich for now. And it
-was interesting to develop.
+signals and ports. That project is much more advanced, and you should check it out, if you like Scala and don't mind 
+having a relatively large and complicated dependency. Cerata is just a bit lighter-weight but less feature-rich for 
+now. And it was interesting to develop.
 
 Currently, there is no front-end language for Cerata, or a storage format for the graphs. We developed Cerata mainly as
 a companion library of Fletcher, but it does not include anything specific to Fletcher in its codebase.

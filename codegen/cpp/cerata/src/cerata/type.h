@@ -249,7 +249,7 @@ std::shared_ptr<Type> vector(const std::string &name, const std::shared_ptr<Node
 std::shared_ptr<Type> vector(const std::shared_ptr<Node> &width);
 /// @brief Create a new vector type with an integer literal as width.
 std::shared_ptr<Type> vector(unsigned int width);
-/// @brief Create a new vector type with an integer literl as width and a custom name.
+/// @brief Create a new vector type with an integer literal as width and a custom name.
 std::shared_ptr<Type> vector(std::string name, unsigned int width);
 
 /// @brief A Record field.
@@ -308,10 +308,16 @@ class Record : public Type {
   explicit Record(std::string name, std::vector<std::shared_ptr<Field>> fields = {});
   /// @brief Add a field to this Record.
   Record &AddField(const std::shared_ptr<Field> &field, std::optional<size_t> index = std::nullopt);
+  /// @brief Return true if record has field with name name.
+  bool Has(const std::string &name) const;
+  /// @brief Return the field with a specific name.
+  Field *at(const std::string &name) const;
   /// @brief Return the field at index i contained by this record.
   Field *at(size_t i) const;
   /// @brief Return the field at index i contained by this record.
   Field *operator[](size_t i) const;
+  /// @brief Return the field with name name contained by this record.
+  Field *operator[](std::string name) const;
   /// @brief Return all fields contained by this record.
   std::vector<std::shared_ptr<Field>> fields() const { return fields_; }
   /// @brief Return the number of fields in this record.
@@ -324,6 +330,9 @@ class Record : public Type {
   std::vector<Type *> GetNested() const override;
 
   std::shared_ptr<Type> Copy(const NodeMap &rebinding) const override;
+
+  /// @brief Return the names of the fields as a comma separated string.
+  std::string ToStringFieldNames() const;
 
  protected:
   /// The fields of this Record.

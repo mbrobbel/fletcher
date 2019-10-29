@@ -295,22 +295,16 @@ std::string GenerateConfigString(const arrow::Field &field, int level) {
 std::shared_ptr<TypeMapper> GetStreamTypeMapper(Type *stream_type, Type *other) {
   auto result = TypeMapper::Make(stream_type, other);
 
-  size_t idx_stream = 0;
-  size_t idx_valid = 1;
-  size_t idx_ready = 2;
-  size_t idx_data = 4;
-  size_t idx_dvalid = 5;
-  size_t idx_last = 6;
+  constexpr size_t idx_valid = 1;
+  constexpr size_t idx_ready = 2;
+  constexpr size_t idx_data = 4;
+  constexpr size_t idx_dvalid = 5;
+  constexpr size_t idx_last = 6;
 
   auto flat_stream = result->flat_a();
   for (size_t i = 0; i < flat_stream.size(); i++) {
     auto t = flat_stream[i].type_;
-    // If we see a record, check if its a stream.
     if (t->Is(Type::RECORD)) {
-      if (dynamic_cast<cerata::Stream *>(t) != nullptr) {
-        // If it is, we map it, because we can.
-        result->Add(i, idx_stream);
-      }
     } else if (t == cerata::Stream::valid().get()) {
       result->Add(i, idx_valid);
     } else if (t == cerata::Stream::ready().get()) {
