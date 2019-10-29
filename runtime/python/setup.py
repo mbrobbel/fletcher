@@ -70,6 +70,8 @@ class build(_build):
                  ['-DCMAKE_INSTALL_PREFIX={}'.format(output_dir)] & FG
             make['-j4'] & FG
             make['install'] & FG
+            if not build:
+                raise Exception("Build failed")
         _build.run(self)
 
 class bdist(_bdist):
